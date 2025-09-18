@@ -10,21 +10,20 @@ const app = express();
 
 // Allowed origins array
 const allowedOrigins = [
-  'http://localhost:5173',          // for local dev
-  'https://alerto-qol2.onrender.com', // deployed frontend
+  "http://localhost:5173",              // Vite dev
+  "http://localhost:3000",              // React dev
+  "https://alerto-t3cj.onrender.com"    // Your deployed frontend
 ];
 
 app.use(cors({
-  origin: function(origin, callback){
-    // allow requests with no origin (like mobile apps or Postman)
-    if(!origin) return callback(null, true);
-    if(allowedOrigins.indexOf(origin) === -1){
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-      return callback(new Error(msg), false);
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS: " + origin));
     }
-    return callback(null, true);
   },
-  credentials: true, // if using cookies or auth headers
+  credentials: true
 }));
 
 app.use(express.json());
