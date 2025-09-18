@@ -1,0 +1,578 @@
+.wrapper {
+  font-family: 'Poppins', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.layout {
+  display: flex;
+  flex-direction: row;
+  height: calc(100vh - 80px);
+  margin-top: 80px;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.main-content {
+  position: relative;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: calc(100vh - 80px);
+  box-sizing: border-box;
+  transition: all 0.4s ease;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #374856;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+}
+
+.search-box {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.add-barangay-button {
+  background-color: #006FFD;
+  color: #fff;
+  border: none;
+  padding: 9px 22px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 15px;
+  box-shadow: 0 2px 4px rgba(0, 111, 253, 0.2);
+  transform: scale(1);
+}
+
+.add-barangay-button:hover {
+  transform: scale(1.03);
+}
+
+.section-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+  background-color: #fff;
+  box-sizing: border-box;
+}
+
+.section-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+  background-color: #fff;
+  box-sizing: border-box;
+}
+
+.pending-section {
+  flex: 3.5; /* 40% */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.approved-section {
+  flex: 6; /* 60% */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.header-table {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 5px;
+}
+
+.section-title {
+  font-size: 16px;
+  margin: 5px;
+  padding-left: 5px;
+  padding-bottom: 7px;
+  color: #374856;
+}
+
+/* ================= Empty Styles @@ npm install lottie-react ================= */
+.no-barangay-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  width: 100%;
+  padding: 30px 15px;
+  border-radius: 16px;
+}
+
+.no-barangay-content {
+  text-align: center;
+  padding: 40px 30px;
+  border-radius: 16px;
+  max-width: 480px;
+  width: 100%;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.no-barangay-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374856;
+}
+
+.no-barangay-subtext {
+  font-size: 14px;
+  color: #8696BB;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* ====================== Table Styles ====================== */
+/* ====================== Table Styles ====================== */
+/* ====================== Table Styles ====================== */
+
+.table-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding-bottom: 10px;
+}
+
+/* Hover effect for table rows */
+table.scroll tbody tr:hover {
+  background-color: #f0f8ff;  /* Light blue highlight */
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+}
+
+
+table.scroll,
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 14px;
+  table-layout: auto;
+}
+
+.table-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #fff;
+}
+
+.table-header {
+  padding: 12px 10px;
+  font-weight: 600;
+  text-align: left;
+  color: #006FFD;
+  white-space: nowrap;
+  min-width: 120px;
+  font-size: 15px;
+  background-color: #fff;
+}
+
+.table-cell {
+  padding: 12px 11px;
+  font-size: 14px;
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: 1.5;
+  min-width: 120px;
+  color: #374856;
+}
+
+.table-view-icon-button {
+  margin-left: 18px;
+  height: 15px;
+  width: 20px;
+  object-fit: contain;
+  vertical-align: middle;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+
+.table-view-icon-button:hover {
+  animation: bounce 0.4s ease;
+}
+
+
+.table-icon-button {
+  margin-left: 100px;
+  height: 18px;
+  width: 25px;
+  object-fit: contain;
+  vertical-align: middle;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+
+.table-icon-button:hover {
+  animation: bounce 0.4s ease;
+}
+
+@keyframes bounce {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-5px); }
+  50%  { transform: translateY(0); }
+  70%  { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 30px 25px;
+  width: 380px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  position: relative;
+  /*animation: modalFadeIn 0.20s ease-in-out;*/
+}
+
+.modal-content {
+  position: relative;
+  background-color: #ffffff;
+  padding: 30px 25px 25px;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  text-align: left;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.pop-in {
+  animation: pop-in 0.2s ease-out forwards;
+}
+
+@keyframes pop-out {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+.pop-out {
+  animation: pop-out 0.2s ease-in forwards;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  opacity: 1;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374856;
+    font-family: 'Poppins', sans-serif;
+}
+
+.modal-subtitle {
+    font-size: 12px;
+    color: #374856;
+    margin-bottom: 15px;
+}
+
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-label {
+    font-weight: 500;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #8696BB;
+    margin-top: 5px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 14px 14px;
+    margin-bottom: 5px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    font-family: 'Poppins', sans-serif;
+    box-sizing: border-box;
+    transition: border 0.2s ease;
+    font-weight: 700;
+}
+
+.modal-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 111, 253, 0.1);
+}
+
+.modal-input::placeholder {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.modal-button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.modal-add-button {
+  padding: 10px 20px;
+  background-color: #006FFD;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+  transition: background-color 0.2s ease;
+}
+
+.modal-add-button:hover {
+  background-color: #0056c7;
+}
+
+.modal-cancel-button {
+  padding: 10px 20px;
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+  transition: background-color 0.2s ease;
+}
+
+.modal-cancel-button:hover {
+  background-color: #dedede;
+}
+
+.input-error-message {
+  color: red;
+  font-size: 10px;
+  font-style: italic;
+  margin-top: 0px;
+  text-align: left;
+}
+
+/*  View Barangay  */
+.modal-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #eee;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #8696BB;
+  font-weight: 500;
+  position: relative;
+  transition: color 0.3s ease;
+  width: 100%;
+}
+
+.tab-button:hover {
+  color: #374856;
+}
+
+.tab-button.active {
+  color: #006FFD;
+  font-weight: 600;
+}
+
+/* Content Layout */
+/* Tab Content Base */
+.modal-tab-content {
+  text-align: left;
+  padding: 10px 0;
+  min-height: 200px;
+  position: relative;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Animation classes */
+.modal-tab-content.fade-slide.details {
+  animation: fadeSlideInLeft 0.4s ease;
+}
+
+.modal-tab-content.fade-slide.staff {
+  animation: fadeSlideInRight 0.4s ease;
+}
+
+@keyframes fadeSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+
+
+/* Staff Cards Grid */
+.staff-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 15px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Individual Staff Card */
+.staff-card {
+  border: 1px solid #e0e0e0;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+  background-color: #fff;
+  transition: all 0.25s ease;
+}
+
+.staff-card:hover {
+  border-color: #006FFD;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+/* Optional scroll styling */
+.staff-card-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.staff-card-grid::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
+
+/* Barangay Details */
+.modern-details-card {
+  background: #fff;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 15px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #374856;
+}
+
+.detail-value {
+  color: #374856;
+  text-align: right;
+  max-width: 60%;
+  word-wrap: break-word;
+}
+
+
+
