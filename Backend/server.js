@@ -7,7 +7,10 @@ const { initSocket, getIo } = require('./socket');
 const { checkExpiredPickups } = require('./utils/autoUnclaimed');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'https://alerto-t3cj.onrender.com',
+  credentials: true
+}));
 app.use(express.json());
 
 // Create HTTP server using Express app
