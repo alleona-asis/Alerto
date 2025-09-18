@@ -3,7 +3,6 @@
 
 # Build folders
 **/build
-**/dist
 
 # Logs
 *.log
