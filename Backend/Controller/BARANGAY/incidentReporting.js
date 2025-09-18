@@ -404,9 +404,9 @@ const updateReportStatus = async (req, res) => {
 // ==========================
 // PROOF UPLOAD BASE URL
 // ==========================
-const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
-const PORT = process.env.PORT || 5000;
-const BASE_URL = `http://${LAN_IP}:${PORT}/uploads/proof`;
+// const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
+// const PORT = process.env.PORT || 5000;
+// const BASE_URL = `http://${LAN_IP}:${PORT}/uploads/proof`;
 
 /* 
 // In production, we should use the server's domain or public IP instead of LAN IP

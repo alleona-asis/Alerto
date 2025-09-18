@@ -4,9 +4,9 @@ const fs = require('fs');
 const { getIo } = require('../../socket');
 
 // Replace with your computer's LAN IP so mobile devices can access it
-const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
-const PORT = process.env.PORT || 5000;
-const BASE_URL = `http://${LAN_IP}:${PORT}`;
+// const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
+// const PORT = process.env.PORT || 5000;
+// const BASE_URL = `http://${LAN_IP}:${PORT}`;
 
 // =========================
 // CREATE ANNOUNCEMENT
