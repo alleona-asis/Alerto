@@ -168,7 +168,14 @@ const markNotificationAsRead = async (id) => {
 useEffect(() => {
   if (!BRGYProfile) return;
 
-  const socket = io('http://192.168.1.2:5000');
+  const socket = io(
+  import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
+  {
+    transports: ["websocket", "polling"],
+    withCredentials: true,
+  }
+);
+
 
   const refreshNotifications = async () => {
     try {

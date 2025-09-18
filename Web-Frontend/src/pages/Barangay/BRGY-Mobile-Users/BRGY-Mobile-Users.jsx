@@ -130,7 +130,13 @@ useEffect(() => {
   };
 }, [socket, BRGYProfile]);
 */
-const socket = useMemo(() => io('http://localhost:5000'), []);
+const socket = useMemo(() => 
+  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
+    transports: ["websocket", "polling"],
+    withCredentials: true,
+  }), 
+[]
+);
 
 useEffect(() => {
   if (!BRGYProfile?.barangay) return;

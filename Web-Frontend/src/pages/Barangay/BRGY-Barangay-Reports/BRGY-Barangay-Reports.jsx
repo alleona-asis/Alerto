@@ -46,7 +46,13 @@ export default function ADMINDashboard() {
   const userId = localStorage.getItem('userId');
   const [profile, setProfile] = useState(null);
   const navigate = useNavigate();
-  const socket = useMemo(() => io('http://localhost:5000'), []);
+  const socket = useMemo(() => 
+  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
+    transports: ["websocket", "polling"],
+    withCredentials: true,
+  }), 
+[]
+);
 
   // State hooks
   const [loading, setLoading] = useState(true);

@@ -41,7 +41,13 @@ export default function LGUBarangayReports() {
   const token = localStorage.getItem("token");
   const [profile, setProfile] = useState(null);
 
-  const socket = useMemo(() => io("http://localhost:5000"), []);
+  const socket = useMemo(() => 
+  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
+    transports: ["websocket", "polling"],
+    withCredentials: true,
+  }), 
+[]
+);
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);

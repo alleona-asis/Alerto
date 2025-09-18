@@ -21,7 +21,13 @@ import { io } from 'socket.io-client';
 
 export default function BRGYDashboard() {
 
-  const socket = useMemo(() => io('http://localhost:5000'), []);
+  const socket = useMemo(() => 
+  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
+    transports: ["websocket", "polling"],
+    withCredentials: true,
+  }), 
+[]
+);
 
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
