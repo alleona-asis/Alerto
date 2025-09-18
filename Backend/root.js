@@ -8,6 +8,8 @@ async function seedSuperAdmin() {
     const password = await bcrypt.hash('root@password34', 10);
     const role = 'Super Admin';
 
+   
+
     try {
         const exists = await pool.query('SELECT * FROM admin_accounts WHERE username = $1 AND role = $2', [username, role]);
         if (exists.rows.length === 0) {

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
+require('dotenv').config();
 
 const { initSocket, getIo } = require('./socket');
 const { checkExpiredPickups } = require('./utils/autoUnclaimed');
