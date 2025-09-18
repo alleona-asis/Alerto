@@ -73,7 +73,7 @@ app.use('/uploads/letter', express.static(path.join(__dirname, 'uploads/letter')
 app.use('/uploads/mobile', express.static(path.join(__dirname, 'uploads/mobile')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Use server.listen instead of app.listen for socket.io to work
 server.listen(PORT, '0.0.0.0', () => {
