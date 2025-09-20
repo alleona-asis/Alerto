@@ -4,6 +4,7 @@ const authenticateToken = require('../Middleware/auth');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { uploadWithSupabase } = require('../Middleware/upload');
 
 // =================================================
 // MULTER SETUP FOR REPORTS
@@ -149,10 +150,29 @@ const {
 
 router.use(authenticateToken);
 
+// POST upload front/back ID for mobile user
 router.post(
-  "/mobile-user-profile/:userId/upload-id",
-  upload.array("files", 2),
-  processOCR
+  '/mobile-user-profile/:userId/upload-id',
+  uploadWithSupabase([{ name: 'files', maxCount: 2 }]), // max 2 files (front/back)
+  async (req, res) => {
+    try {
+      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
+
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: 'No ID files uploaded.' });
+      }
+
+      // Get Supabase URLs for processing (OCR, DB, etc.)
+      const idUrls = uploadedFiles.map(f => f.supabaseUrl);
+
+      // Call your existing OCR processor
+      await processOCR(req, res, { idUrls });
+
+    } catch (err) {
+      console.error('[UPLOAD ID] Failed:', err.message);
+      res.status(500).json({ message: 'ID upload failed' });
+    }
+  }
 );
 
 router.get('/mobile-user-registry', getAllMobileUsers);
@@ -178,11 +198,32 @@ const {
     getBarangayReportById
 } = require('../Controller/BARANGAY/incidentReporting');
 
+// POST Incident Report (max 5 files: images/videos)
 router.post(
   '/submit-incident-report',
-  upload.array('media', 5), 
-  submitReport
+  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), // handle up to 5 media files
+  async (req, res) => {
+    try {
+      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'media');
+
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: 'No media files uploaded.' });
+      }
+
+      // Get Supabase private URLs (signed URLs for sensitive incident reports)
+      const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
+
+      // Call your existing report handler, passing mediaUrls
+      await submitReport(req, res, { mediaUrls });
+
+    } catch (err) {
+      console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
+      res.status(500).json({ message: 'Incident report upload failed' });
+    }
+  }
 );
+
+
 router.get('/all-report-pins', getAllPins);
 
 router.get('/barangay-get-all-reports', authenticateToken, getBarangayReports);
@@ -204,10 +245,25 @@ router.patch('/update-barangay-report-status/:id', updateReportStatus);
 
 
 router.post(
-  '/upload-proof/:id', 
-  authenticateToken, 
-  proofUpload.array('proof', 5), 
-  uploadProof
+  '/upload-proof/:id',
+  authenticateToken,
+  uploadWithSupabase([{ name: 'proof', maxCount: 5 }]), // private by default
+  async (req, res) => {
+    try {
+      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'proof');
+
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: 'No proof files uploaded.' });
+      }
+
+      const proofUrls = uploadedFiles.map(f => f.supabaseUrl);
+
+      await uploadProof(req, res, { proofUrls });
+    } catch (err) {
+      console.error('[UPLOAD PROOF] Failed:', err.message);
+      res.status(500).json({ message: 'Proof upload failed' });
+    }
+  }
 );
 
 router.patch('/transfer-report/:id', transferReport);
@@ -253,11 +309,20 @@ const {
   deleteAnnouncement
 } = require('../Controller/BARANGAY/announcements');
 
-//Annoucemment
+// Announcements (always public bucket)
 router.post(
   '/create-announcements',
-  announcementUpload.array('images', 5),
-  createAnnouncement
+  uploadWithSupabase([{ name: 'images', maxCount: 5 }], true),
+  async (req, res) => {
+    try {
+      console.log('Files received:', req.files);
+      console.log('Supabase files:', req.supabaseFiles);
+      await createAnnouncement(req, res);
+    } catch (err) {
+      console.error('[CREATE ANNOUNCEMENT ROUTE ERROR]:', err.stack || err.message || err);
+      res.status(500).json({ message: 'Announcement creation failed', error: err.message });
+    }
+  }
 );
 
 router.delete("/delete-announcement/:id", authenticateToken, deleteAnnouncement);
@@ -281,8 +346,25 @@ router.delete('/delete-comment', deleteComment);
 // Barangay Officials
 router.post(
   "/create-official",
-  officialUpload.single("image"),
-  createOfficial
+  uploadWithSupabase([{ name: "image", maxCount: 1 }]), // private by default
+  async (req, res) => {
+    try {
+      const uploadedFiles = req.supabaseFiles.filter(f => f.field === "image");
+
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: "No official image uploaded." });
+      }
+
+      // Get the signed URL from Supabase
+      const imageUrl = uploadedFiles[0].supabaseUrl;
+
+      // Pass imageUrl into your controller
+      await createOfficial(req, res, { imageUrl });
+    } catch (err) {
+      console.error("[OFFICIAL UPLOAD] Failed:", err.message);
+      res.status(500).json({ message: "Official upload failed" });
+    }
+  }
 );
 
 router.get("/get-officials", getOfficials);

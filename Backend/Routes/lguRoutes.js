@@ -4,6 +4,7 @@ const authenticateToken = require('../Middleware/auth');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer'); 
+const { uploadWithSupabase } = require('../Middleware/upload');
 
 // =================================================
 // MANAGE BARANGAY 
@@ -86,8 +87,25 @@ router.post("/call", callBarangayAssistance);
 // ============= LGU FEEDBACK ==============
 router.post(
   '/submit-feedback',
-  feedbackUpload.array('files', 5), // max 5 items (images + video)
-  submitLGUFeedback
+  uploadWithSupabase([{ name: 'files', maxCount: 5 }]), // private bucket
+  async (req, res) => {
+    try {
+      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
+
+      if (!uploadedFiles.length) {
+        return res.status(400).json({ message: 'No feedback files uploaded.' });
+      }
+
+      // Collect signed URLs for feedback
+      const fileUrls = uploadedFiles.map(f => f.supabaseUrl);
+
+      // Pass fileUrls to your feedback controller
+      await submitLGUFeedback(req, res, { fileUrls });
+    } catch (err) {
+      console.error('[FEEDBACK UPLOAD] Failed:', err.message);
+      res.status(500).json({ message: 'Feedback upload failed' });
+    }
+  }
 );
 
 // GET all LGU feedback

@@ -4,6 +4,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const Authentication = require('../Middleware/auth');
+const { uploadWithSupabase } = require('../Middleware/upload');
 
 // ========== Multer Storage Setup ==========
 const storage = multer.diskStorage({
@@ -68,16 +69,61 @@ const {
 router.post('/check-username', checkUsernameAvailability);
 
 // ✅ OCR Endpoint
-router.post('/ocr', upload.single('image'), processOCR);
+router.post(
+  '/ocr',
+  uploadWithSupabase([{ name: 'image', maxCount: 1 }]),
+  async (req, res) => {
+    try {
+      // Access the uploaded file info
+      const imageFile = req.supabaseFiles.find(f => f.field === 'image');
+
+      if (!imageFile) {
+        return res.status(400).json({ error: 'No image uploaded' });
+      }
+
+      const localPath = imageFile.localPath;      // local copy
+      const supabaseUrl = imageFile.supabaseUrl;  // private signed URL
+
+      // Call your OCR processor
+      const ocrResult = await processOCR(localPath);
+
+      res.json({
+        message: 'OCR processed successfully',
+        ocrResult,
+        localPath,
+        supabaseUrl
+      });
+    } catch (err) {
+      console.error('[OCR] Upload or processing failed:', err.message);
+      res.status(500).json({ error: 'OCR processing failed' });
+    }
+  }
+);
 
 // ✅ LGU Admin Registration
 router.post(
   '/register-lgu-admin',
-  upload.fields([
+  uploadWithSupabase([
     { name: 'idFile', maxCount: 1 },
     { name: 'intentFile', maxCount: 1 }
   ]),
-  registerLguAdmin
+  async (req, res) => {
+    try {
+      // Access Supabase URLs
+      const idFile = req.supabaseFiles.find(f => f.field === 'idFile')?.supabaseUrl || null;
+      const intentFile = req.supabaseFiles.find(f => f.field === 'intentFile')?.supabaseUrl || null;
+
+      // Optional: access local paths too
+      const localId = req.supabaseFiles.find(f => f.field === 'idFile')?.localPath || null;
+      const localIntent = req.supabaseFiles.find(f => f.field === 'intentFile')?.localPath || null;
+
+      // Now you can pass these URLs to your controller or DB
+      await registerLguAdmin(req, res, { idFile, intentFile, localId, localIntent });
+    } catch (err) {
+      console.error('[LGU REGISTER] Upload failed:', err.message);
+      res.status(500).json({ error: 'File upload failed' });
+    }
+  }
 );
 
 // ✅ Admin Login
@@ -90,14 +136,38 @@ router.post('/mobile-user-registration', mobileUserSignUp);
 // Mobile User Verification with multer for ID images and selfie
 router.post(
   '/mobile-users/verify',
-  Authentication, // <-- make sure this is your JWT middleware
-  upload.fields([
-    { name: 'idImage', maxCount: 2 },  // front & back in same field
-    { name: 'selfieTaken', maxCount: 1 }
+  Authentication, // JWT authentication
+  uploadWithSupabase([
+    { name: 'idImage', maxCount: 2 },    // front & back IDs
+    { name: 'selfieTaken', maxCount: 1 } // selfie
   ]),
-  requestMobileUserVerification
-);
+  async (req, res) => {
+    try {
+      // Access uploaded files info
+      const idFiles = req.supabaseFiles.filter(f => f.field === 'idImage');
+      const selfieFile = req.supabaseFiles.find(f => f.field === 'selfieTaken');
 
+      // Local paths (optional)
+      const localIdPaths = idFiles.map(f => f.localPath);
+      const localSelfie = selfieFile?.localPath || null;
+
+      // Supabase URLs (private)
+      const idUrls = idFiles.map(f => f.supabaseUrl);
+      const selfieUrl = selfieFile?.supabaseUrl || null;
+
+      // Pass to your verification controller
+      await requestMobileUserVerification(req, res, {
+        localIdPaths,
+        localSelfie,
+        idUrls,
+        selfieUrl
+      });
+    } catch (err) {
+      console.error('[MOBILE VERIFY] Upload or processing failed:', err.message);
+      res.status(500).json({ error: 'Mobile verification upload failed' });
+    }
+  }
+);
 
 
 
@@ -121,7 +191,31 @@ router.get('/barangay-staff-profile/:id', getBarangayProfile);
 router.get('/mobile-user-profile/:id', getMobileUserProfile);
 
 // POST upload profile picture (matches frontend)
-router.post('/mobile-user-profile/:id/upload-picture', upload.single('picture'), updateMobileUserProfilePicture);
+router.post(
+  '/mobile-user-profile/:id/upload-picture',
+  uploadWithSupabase([{ name: 'picture', maxCount: 1 }]),
+  async (req, res) => {
+    try {
+      // The uploaded file info
+      const profileFile = req.supabaseFiles.find(f => f.field === 'picture');
+
+      if (!profileFile) {
+        return res.status(400).json({ message: 'No picture uploaded.' });
+      }
+
+      const profileUrl = profileFile.supabaseUrl; // private signed URL
+      const localPath = profileFile.localPath;    // local storage path (optional)
+
+      // Call your existing controller to update DB
+      await updateMobileUserProfilePicture(req, res, { profileUrl, localPath });
+
+    } catch (err) {
+      console.error('[UPLOAD PROFILE] Failed:', err.message);
+      res.status(500).json({ message: 'Profile picture upload failed' });
+    }
+  }
+);
+
 
 router.put('/mobile-user-profile/:id/remove-picture', removeMobileUserProfilePicture);
 

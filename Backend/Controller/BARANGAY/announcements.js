@@ -4,151 +4,167 @@ const fs = require('fs');
 const { getIo } = require('../../socket');
 
 // Replace with your computer's LAN IP so mobile devices can access it
-// const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
- const PORT = process.env.PORT || 5000;
-// const BASE_URL = `http://${LAN_IP}:${PORT}`;
+const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
+const PORT = process.env.PORT || 5000;
+
+const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
 
 // =========================
 // CREATE ANNOUNCEMENT
 // =========================
 const createAnnouncement = async (req, res) => {
-    //console.log('📥 Incoming Announcement Creation Request');
-    //console.log('📝 Form Data:', req.body);
-    //console.log('📎 Files:', req.files);
-
+  try {
     const { 
-        title, 
-        text, 
-        posted_by_id, 
-        posted_by_name,
-        region,
-        province,
-        city,
-        barangay 
+      title, 
+      text, 
+      posted_by_id, 
+      posted_by_name,
+      region,
+      province,
+      city,
+      barangay 
     } = req.body;
 
+    console.log("📥 Incoming Request Body:", req.body);
+    console.log("📎 Local Files:", req.files);
+    console.log("🌐 Supabase Files:", req.supabaseFiles);
+
     if (!title || !text) {
-        return res.status(400).json({ message: 'Title and text are required' });
+      return res.status(400).json({ message: 'Title and text are required' });
     }
 
     if (!posted_by_id || !posted_by_name) {
-        return res.status(400).json({ message: 'Poster ID and name are required' });
+      return res.status(400).json({ message: 'Poster ID and name are required' });
     }
 
-    const files = req.files || [];
+    // -----------------------------
+    // Collect uploaded images
+    // -----------------------------
+    const supabaseFiles = req.supabaseFiles?.images || []; // from uploadWithSupabase
+    const localFiles = req.files?.images || []; // from multer
 
-    //const filenames = files.map(f => f.filename);
-    //const urls = files.map(f => `${req.protocol}://${req.get('host')}/uploads/announcements/${f.filename}`);
+    // Safely handle files
+      const filenames = [
+        ...supabaseFiles.map(f => f.localPath),
+        ...localFiles.map(f => f.filename)
+      ].filter(Boolean);
 
-    // Save filenames and generate mobile-accessible URLs
-    const filenames = files.map(f => f.filename);
-    const urls = files.map(f => `${BASE_URL}/uploads/announcements/${f.filename}`);
+      const urls = [
+        ...supabaseFiles.map(f => f.supabaseUrl),
+        ...localFiles.map(f => `${BASE_URL}/uploads/announcements/${f.filename}`)
+      ].filter(Boolean);
 
-    try {
-        const result = await pool.query(
-        `INSERT INTO announcements 
-            (title, text, image_filenames, image_urls, posted_by_id, posted_by_name, region, province, city, barangay)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         RETURNING *;`,
-        [
-            title, 
-            text, 
-            JSON.stringify(filenames), 
-            JSON.stringify(urls), 
-            posted_by_id, 
-            posted_by_name,
-            region || '',
-            province || '',
-            city || '',
-            barangay || ''
-        ]
-      );
+      console.log("✅ Filenames:", filenames);
+      console.log("✅ URLs:", urls);
+    // -----------------------------
+    // Insert into DB
+    // -----------------------------
+      console.log("Local files:", localFiles);
+      console.log("Supabase files:", supabaseFiles);
 
-      const createdAnnouncement = result.rows[0];
+      console.log("Filenames array:", filenames);
+      console.log("URLs array:", urls);
+
+    const result = await pool.query(
+      `INSERT INTO announcements 
+        (title, text, image_filenames, image_urls, posted_by_id, posted_by_name, region, province, city, barangay)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *;`,
+      [
+        title, 
+        text, 
+        JSON.stringify(filenames), 
+        JSON.stringify(urls), 
+        posted_by_id, 
+        posted_by_name,
+        region || '',
+        province || '',
+        city || '',
+        barangay || ''
+      ]
+    );
+
+    const createdAnnouncement = result.rows[0];
 
       // -----------------------------
       // Send notifications to ALL users in the same location
       // -----------------------------
-      try {
-        // 1. Find users in the same location
-        const usersQuery = `
-          SELECT id 
-          FROM mobile_users
-          WHERE region = $1
-            AND province = $2
-            AND city = $3
-            AND barangay = $4
-        `;
+ try {
+      const usersQuery = `
+        SELECT id 
+        FROM mobile_users
+        WHERE region = $1
+          AND province = $2
+          AND city = $3
+          AND barangay = $4
+      `;
 
-        const usersResult = await pool.query(usersQuery, [
-          region || '',
-          province || '',
-          city || '',
-          barangay || ''
+      const usersResult = await pool.query(usersQuery, [
+        region || '',
+        province || '',
+        city || '',
+        barangay || ''
+      ]);
+
+      const userIds = usersResult.rows.map(r => r.id);
+
+      if (userIds.length > 0) {
+        const notificationQuery = `
+        INSERT INTO mobile_notifications (mobile_user_id, type, status, is_read)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `;
+
+      for (const userId of userIds) {
+        await pool.query(notificationQuery, [
+          userId,
+          'broadcast_announcements',
+          'created',
+          false   // 👈 mark unread by default
         ]);
-
-        const userIds = usersResult.rows.map(r => r.id);
-
-        if (userIds.length > 0) {
-          const notificationQuery = `
-            INSERT INTO mobile_notifications (mobile_user_id, type, status)
-            VALUES ($1, $2, $3)
-            RETURNING *
-          `;
-
-          for (const userId of userIds) {
-            await pool.query(notificationQuery, [
-              userId,
-              'broadcast_announcements',
-              'created'
-            ]);
-          }
-
-          console.log(`📲 Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
-        } else {
-          console.log("⚠️ No users found in this location for notification.");
-        }
-
-      } catch (err) {
-        console.error("❌ Failed to save notifications:", err.message);
-        console.error("Full error:", err);
       }
 
-
-      // -----------------------------
-      // Emit to everyone
-      // -----------------------------
-      const io = getIo();
-      console.log("📡 Emitting announcementUpdate:", createdAnnouncement);
-
-      io.emit("announcementUpdate", {
-        id: createdAnnouncement.id,
-        title: createdAnnouncement.title,
-        text: createdAnnouncement.text,
-        posted_by_id: createdAnnouncement.posted_by_id,
-        posted_by_name: createdAnnouncement.posted_by_name,
-        region: createdAnnouncement.region,
-        province: createdAnnouncement.province,
-        city: createdAnnouncement.city,
-        barangay: createdAnnouncement.barangay,
-        created_at: createdAnnouncement.created_at,
-      });
-
-
-
-
-      // -----------------------------
-      // Final response
-      // -----------------------------
-      return res.status(201).json({
-        message: 'Announcement created successfully!',
-        announcement: createdAnnouncement,
-      });
-    } catch (error) {
-        return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
+        console.log(`📲 Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+      } else {
+        console.log("⚠️ No users found in this location for notification.");
+      }
+    } catch (err) {
+      console.error("❌ Failed to save notifications:", err.message);
+      console.error("Full error:", err);
     }
-};
 
+    // -----------------------------
+    // Emit to everyone (socket.io)
+    // -----------------------------
+    const io = getIo();
+    console.log("📡 Emitting announcementUpdate:", createdAnnouncement);
+
+    io.emit("announcementUpdate", {
+      id: createdAnnouncement.id,
+      title: createdAnnouncement.title,
+      text: createdAnnouncement.text,
+      posted_by_id: createdAnnouncement.posted_by_id,
+      posted_by_name: createdAnnouncement.posted_by_name,
+      region: createdAnnouncement.region,
+      province: createdAnnouncement.province,
+      city: createdAnnouncement.city,
+      barangay: createdAnnouncement.barangay,
+      created_at: createdAnnouncement.created_at,
+    });
+
+    // -----------------------------
+    // Final response
+    // -----------------------------
+    return res.status(201).json({
+      message: 'Announcement created successfully!',
+      announcement: createdAnnouncement,
+    });
+
+  } catch (error) {
+    console.error("❌ [CREATE ANNOUNCEMENT ERROR]:", error.message);
+    return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
+  }
+};
 
 // =========================
 // DELETE ANNOUNCEMENT

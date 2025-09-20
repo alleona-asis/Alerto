@@ -10,6 +10,8 @@ import axios from '../../../axios/axiosInstance';
 import defaultProfile from '@/assets/icons/default.png';
 import DefaultIcon from "@/assets/icons/default.png";
 import { ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function BRGYProfile() {
   const [BRGYProfile, setBRGYProfile] = useState(null);
@@ -836,7 +838,7 @@ const handleDeleteAnnouncement = async (id) => {
       <form onSubmit={handlePostAnnouncement}>
         {/* Title */}
         <div className="input-group">
-          <label className="input-label">Title (Optional)</label>
+          <label className="input-label">Title</label>
           <input
             type="text"
             placeholder="Enter title"
