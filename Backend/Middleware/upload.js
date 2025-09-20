@@ -118,7 +118,7 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
 
             if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
             req.supabaseFiles[field.name].push({
-              localPath: `/uploads/${relativePath}`,
+              // localPath: `/uploads/${relativePath}`,
               supabaseUrl: url,
               isPublic
             });
