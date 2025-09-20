@@ -25,9 +25,9 @@ const createAnnouncement = async (req, res) => {
       barangay 
     } = req.body;
 
-    console.log("📥 Incoming Request Body:", req.body);
-    // console.log("📎 Local Files:", req.files);
-    console.log("🌐 Supabase Files:", req.supabaseFiles);
+    // console.log("📥 Incoming Request Body:", req.body);
+    // // console.log("📎 Local Files:", req.files);
+    // console.log("🌐 Supabase Files:", req.supabaseFiles);
 
     if (!title || !text) {
       return res.status(400).json({ message: 'Title and text are required' });
@@ -44,14 +44,9 @@ const createAnnouncement = async (req, res) => {
     const localFiles = req.files?.images || []; // from multer
 
     // Safely handle files
-      const filenames = [
-        localFiles.map(f => f.filename)
-      ].filter(Boolean);
+      const filenames = localFiles.map(f => f.filename).filter(Boolean); //local file names of images
 
-      const urls = [
-        supabaseFiles.map(f => f.supabaseUrl)
-      ].filter(Boolean);
-
+      const urls = supabaseFiles.map(f => f.supabaseUrl).filter(Boolean); //urls of supabase files
     // -----------------------------
     // Insert into DB
     // -----------------------------

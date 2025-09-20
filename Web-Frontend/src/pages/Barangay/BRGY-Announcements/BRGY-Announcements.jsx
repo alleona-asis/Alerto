@@ -109,7 +109,6 @@ const handlePostAnnouncement = async (e) => {
     });
 
     console.log('Announcement created:', response.data);
-    
 
     // ✅ Immediately add new announcement to state
     const newAnnouncement = response.data.announcement || response.data; // depends on backend response
@@ -124,8 +123,6 @@ const handlePostAnnouncement = async (e) => {
       setAnnouncementTitle('');
       setAnnouncementImage(null);
     }, 300);
-
-    alert('Announcement Created!');
 
   } catch (error) {
     console.error('Error posting announcement:', error);
@@ -1211,17 +1208,29 @@ const handleDeleteAnnouncement = async (id) => {
         Posted by {selectedAnnouncement.posted_by_name}
       </p>
       {selectedAnnouncement.image_urls?.length > 0 && (
-        <img
-          src={selectedAnnouncement.image_urls[0]}
-          alt="Announcement"
+        <div
           style={{
-            width: '100%',
-            maxHeight: '250px',
-            objectFit: 'cover',
-            borderRadius: '8px',
+            display: 'flex',
+            gap: '10px',
+            overflowX: 'auto',
             marginBottom: '15px',
           }}
-        />
+        >
+          {selectedAnnouncement.image_urls.map((url, index) => (
+            <img
+              key={index}
+              src={url}
+              alt={`Announcement media ${index + 1}`}
+              style={{
+                flex: '0 0 auto',
+                width: '150px',
+                height: '150px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+              }}
+            />
+          ))}
+        </div>
       )}
       <p>{selectedAnnouncement.text}</p>
 
