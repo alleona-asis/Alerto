@@ -26,7 +26,7 @@ const createAnnouncement = async (req, res) => {
     } = req.body;
 
     console.log("📥 Incoming Request Body:", req.body);
-    console.log("📎 Local Files:", req.files);
+    // console.log("📎 Local Files:", req.files);
     console.log("🌐 Supabase Files:", req.supabaseFiles);
 
     if (!title || !text) {
@@ -41,28 +41,26 @@ const createAnnouncement = async (req, res) => {
     // Collect uploaded images
     // -----------------------------
     const supabaseFiles = req.supabaseFiles?.images || []; // from uploadWithSupabase
-    const localFiles = req.files?.images || []; // from multer
+    // const localFiles = req.files?.images || []; // from multer
 
     // Safely handle files
-      const filenames = [
-        ...supabaseFiles.map(f => f.localPath),
-        ...localFiles.map(f => f.filename)
-      ].filter(Boolean);
+      // const filenames = [
+      //   ...supabaseFiles.map(f => f.localPath),
+      //   ...localFiles.map(f => f.filename)
+      // ].filter(Boolean);
 
       const urls = [
-        ...supabaseFiles.map(f => f.supabaseUrl),
-        ...localFiles.map(f => `${BASE_URL}/uploads/announcements/${f.filename}`)
+        ...supabaseFiles.map(f => f.supabaseUrl)
+        // ...localFiles.map(f => `${BASE_URL}/uploads/announcements/${f.filename}`)
       ].filter(Boolean);
 
-      console.log("✅ Filenames:", filenames);
-      console.log("✅ URLs:", urls);
     // -----------------------------
     // Insert into DB
     // -----------------------------
-      console.log("Local files:", localFiles);
+      // console.log("Local files:", localFiles);
       console.log("Supabase files:", supabaseFiles);
 
-      console.log("Filenames array:", filenames);
+      // console.log("Filenames array:", filenames);
       console.log("URLs array:", urls);
 
     const result = await pool.query(

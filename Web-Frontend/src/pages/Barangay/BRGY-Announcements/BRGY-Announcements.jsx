@@ -109,6 +109,7 @@ const handlePostAnnouncement = async (e) => {
     });
 
     console.log('Announcement created:', response.data);
+    
 
     // ✅ Immediately add new announcement to state
     const newAnnouncement = response.data.announcement || response.data; // depends on backend response
@@ -123,6 +124,8 @@ const handlePostAnnouncement = async (e) => {
       setAnnouncementTitle('');
       setAnnouncementImage(null);
     }, 300);
+
+    alert('Announcement Created!');
 
   } catch (error) {
     console.error('Error posting announcement:', error);
