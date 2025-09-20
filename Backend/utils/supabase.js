@@ -1,7 +1,7 @@
 // utils/supabase.js
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
-const mime = require('mime');
+const mime = require('mime-types');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -27,7 +27,7 @@ const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
   const fileBuffer = await fs.promises.readFile(localPath);
 
   // Detect content type from file extension
-  const contentType = mime.getType(localPath) || undefined;
+  const contentType = mime.lookup(localPath) || undefined;
 
   const { data, error } = await supabase.storage
     .from(bucket)
