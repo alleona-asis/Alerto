@@ -7,6 +7,8 @@ const { uploadToSupabase, deleteLocalFile } = require('../utils/supabase');
 const PUBLIC_BUCKET = process.env.PUBLIC_BUCKET || 'Alerto-public';
 const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET || 'Alerto-private';
 
+const storage = multer.memoryStorage();
+
 // Storage for announcements (public bucket)
 const announcementStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -120,7 +122,8 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
             req.supabaseFiles[field.name].push({
               // localPath: `/uploads/${relativePath}`,
               supabaseUrl: url,
-              isPublic
+              isPublic,
+              relativePath
             });
           }
         }

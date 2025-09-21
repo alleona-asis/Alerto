@@ -110,21 +110,34 @@ router.post(
   async (req, res) => {
     try {
       // Access Supabase URLs
-      const idFile = req.supabaseFiles.find(f => f.field === 'idFile')?.supabaseUrl || null;
-      const intentFile = req.supabaseFiles.find(f => f.field === 'intentFile')?.supabaseUrl || null;
+      const idFileUrl = req.supabaseFiles.idFile?.[0]?.supabaseUrl || null;
+      const intentFileUrl = req.supabaseFiles.intentFile?.[0]?.supabaseUrl || null;
+
 
       // Optional: access local paths too
-      const localId = req.supabaseFiles.find(f => f.field === 'idFile')?.localPath || null;
-      const localIntent = req.supabaseFiles.find(f => f.field === 'intentFile')?.localPath || null;
+      const localId = req.supabaseFiles.idFile?.[0]?.localPath || null;
+      const localIntent = req.supabaseFiles.intentFile?.[0]?.localPath || null;
 
-      // Now you can pass these URLs to your controller or DB
-      await registerLguAdmin(req, res, { idFile, intentFile, localId, localIntent });
+      // IMPORTANT: Also pass file paths (relative paths in Supabase bucket)
+      // You need to modify your uploadWithSupabase middleware to also store relativePath:
+      // Add relativePath to req.supabaseFiles[field.name].push({ relativePath, supabaseUrl, isPublic })
+      const idFilePath = req.supabaseFiles.idFile?.[0]?.relativePath || null;
+      const intentFilePath = req.supabaseFiles.intentFile?.[0]?.relativePath || null;
+
+
+      await registerLguAdmin(req, res, {
+        idFileUrl,
+        intentFileUrl,
+        idFilePath,
+        intentFilePath
+      });
     } catch (err) {
       console.error('[LGU REGISTER] Upload failed:', err.message);
       res.status(500).json({ error: 'File upload failed' });
     }
   }
 );
+
 
 // ✅ Admin Login
 router.post('/login-admin', adminLogin);

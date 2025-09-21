@@ -124,6 +124,7 @@ const registerLguAdmin = async (req, res) => {
     return res.status(400).json({ message: 'All form fields are required' });
   }
 
+  //Extracts uploaded files from req.files
   const govID = req.files?.idFile?.[0] || null;
   const letterOfIntent = req.files?.intentFile?.[0] || null;
 
@@ -132,11 +133,16 @@ const registerLguAdmin = async (req, res) => {
     return res.status(400).json({ message: 'Both Government ID and Letter of Intent are required' });
   }
 
+  //Extracts filenames
   const idFileName = govID?.filename || null;
   const intentFileName = letterOfIntent?.filename || null;
 
-  const idUrl = govID ? `${req.protocol}://${req.get('host')}/uploads/id/${idFileName}` : null;
-  const letterUrl = letterOfIntent ? `${req.protocol}://${req.get('host')}/uploads/letter/${intentFileName}` : null;
+
+  //supabase urls
+  const idFilePath = req.supabaseFiles?.idFile?.[0]?.relativePath || null;
+  const intentFilePath = req.supabaseFiles?.intentFile?.[0]?.relativePath || null;
+  const idFileUrl = req.supabaseFiles?.idFile?.[0]?.supabaseUrl || null;
+  const intentFileUrl = req.supabaseFiles?.intentFile?.[0]?.supabaseUrl || null;
 
   try {
     const existing = await pool.query(
@@ -160,12 +166,13 @@ const registerLguAdmin = async (req, res) => {
         first_name, last_name, position, phone_number,
         email, address, region, province, city,
         upload_id_filename, upload_letter_filename,
+        upload_id_path, upload_letter_path,
         upload_id_url, upload_letter_url
       ) VALUES (
         $1, $2, $3, $4,
         $5, $6, $7, $8,
         $9, $10, $11, $12, $13,
-        $14, $15, $16, $17
+        $14, $15, $16, $17, $18
       )
     `,
       [
@@ -184,8 +191,10 @@ const registerLguAdmin = async (req, res) => {
         city,
         idFileName,
         intentFileName,
-        idUrl,
-        letterUrl,
+        idFilePath,       // relative path in bucket
+        intentFilePath,   // relative path in bucket
+        idFileUrl,
+        intentFileUrl,
       ]
     );
 

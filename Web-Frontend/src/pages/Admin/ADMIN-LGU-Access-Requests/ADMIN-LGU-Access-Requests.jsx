@@ -9,6 +9,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
 import noData from '@/assets/animations/non data found.json';
 import 'react-toastify/dist/ReactToastify.css';
+import AdminFiles from '../../../components/AdminFiles';
 
 export default function ADMIN_LGUAccessRequests() {
   const navigate = useNavigate();
@@ -502,6 +503,13 @@ const renderTable = (accounts, isPending = false) => {
             <p className="sub-title" style={{fontSize: '12px'}}>Access the applicant’s uploaded ID and letter of intent for verification.</p>
 
             <div className="document-container">
+              <AdminFiles
+                uploadIdPath={selectedAccount.upload_id_path}
+                uploadLetterPath={selectedAccount.upload_letter_path}
+              />
+            </div>
+
+            {/* <div className="document-container">
               <div
                 className="document-box"
                 onClick={() => window.open(selectedAccount.upload_id_url, "_blank")}
@@ -525,7 +533,7 @@ const renderTable = (accounts, isPending = false) => {
                 />
                 <p className="doc-label">Letter of Intent</p>
               </div>
-            </div>
+            </div> */}
 
             <div className="approver-info">
                 <p><strong>Office Address:</strong> {selectedAccount.address}</p>

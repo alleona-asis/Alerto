@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -61,11 +62,13 @@ const authRoutes = require('./Routes/authRoutes');
 const adminRoutes = require('./Routes/adminRoutes');
 const lguRoutes = require('./Routes/lguRoutes');
 const brgyRoutes = require('./Routes/brgyRoutes');
+const fileRoutes = require('./Routes/fileRoutes')
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/lgu', lguRoutes);
 app.use('/api/brgy', brgyRoutes);
+app.use('/api/files', fileRoutes);
 
 // Static file serving
 app.use('/uploads/id', express.static(path.join(__dirname, 'uploads/id')));
