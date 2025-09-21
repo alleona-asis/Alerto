@@ -11,7 +11,15 @@ router.get('/signed-url', async (req, res) => {
     if (!filePath) {
       return res.status(400).json({ error: 'filePath query parameter is required' });
     }
+
     const signedUrl = await generateSignedUrl(filePath, 3600); // 1 hour expiry
+
+    // Disable caching for this response
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    
     return res.json({ signedUrl });
   } catch (err) {
     console.error('Signed URL endpoint error:', err);
