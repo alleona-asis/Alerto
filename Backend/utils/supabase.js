@@ -61,4 +61,22 @@ function deleteLocalFile(localPath) {
     if (err) console.error(`Failed to delete local file ${localPath}:`, err);
   });
 }
-module.exports = { uploadToSupabase, deleteLocalFile };
+
+async function generateSignedUrl(relativePath, expiresInSeconds = 3600) {
+  try {
+    const { data, error } = await supabase.storage
+      .from(PRIVATE_BUCKET)
+      .createSignedUrl(relativePath, expiresInSeconds);
+    if (error) {
+      console.error('Supabase createSignedUrl error:', error);
+      throw error;
+    }
+    return data.signedUrl;
+  } catch (err) {
+    console.error('Error generating signed URL:', err);
+    throw err;
+  }
+}
+
+
+module.exports = { uploadToSupabase, deleteLocalFile, generateSignedUrl };

@@ -115,8 +115,8 @@ router.post(
 
 
       // Optional: access local paths too
-      const localId = req.supabaseFiles.idFile?.[0]?.localPath || null;
-      const localIntent = req.supabaseFiles.intentFile?.[0]?.localPath || null;
+      // const localId = req.supabaseFiles.idFile?.[0]?.localPath || null;
+      // const localIntent = req.supabaseFiles.intentFile?.[0]?.localPath || null;
 
       // IMPORTANT: Also pass file paths (relative paths in Supabase bucket)
       // You need to modify your uploadWithSupabase middleware to also store relativePath:
