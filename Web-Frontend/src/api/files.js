@@ -1,5 +1,7 @@
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 export async function fetchSignedUrl(filePath) {
-  const response = await fetch(`/api/files/signed-url?filePath=${encodeURIComponent(filePath)}`, {
+  const response = await fetch(`${backendUrl}/api/files/signed-url?filePath=${encodeURIComponent(filePath)}`, {
     cache: 'no-store' // prevent browser cache
   });
 
