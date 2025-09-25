@@ -5,11 +5,12 @@ require('dotenv').config(); // Load environment variables
 let poolConfig;
 
 if (process.env.DB_ENV === 'supabase') {
-  const url = new URL(process.env.DATABASE_URL);
-    console.log('DATABASE_URL Host:', url.hostname);
-    console.log('DATABASE_URL Port:', url.port);
-    console.log('DATABASE_URL Params:', url.search);  
- poolConfig = {
+  console.log('Connecting to Supabase database...');
+    const url = new URL(process.env.DATABASE_URL);
+      console.log('DATABASE_URL Host:', url.hostname);
+      console.log('DATABASE_URL Port:', url.port);
+      console.log('DATABASE_URL Params:', url.search);  
+    poolConfig = {
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },  // Required for Supabase
   };
