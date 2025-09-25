@@ -95,12 +95,12 @@ const fetchBarangayIncidentReports = async () => {
       params: { region, province, city, barangay },
     });
 
-    console.log("📌 Full Incident Reports Response:", response.data);
+    console.log("Full Incident Reports Response:", response.data);
 
     // Check if response.data is an array and log IDs one by one
     if (Array.isArray(response.data)) {
       response.data.forEach((report, index) => {
-        console.log(`📝 Report ${index + 1} ID:`, report.id || report.report_id);
+        console.log(`Report ${index + 1} ID:`, report.id || report.report_id);
       });
     } else {
       console.warn("⚠️ Expected array but got:", typeof response.data);
@@ -109,7 +109,7 @@ const fetchBarangayIncidentReports = async () => {
     setIncidentReports(response.data);
     setError(null);
   } catch (err) {
-    console.error("❌ Error fetching reports:", err);
+    console.error("Error fetching reports:", err);
     setError("Failed to load mobile users.");
     setIncidentReports([]);
   } finally {

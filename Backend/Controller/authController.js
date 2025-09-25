@@ -354,7 +354,7 @@ const mobileUserSignUp = async (req, res) => {
       password,
     } = req.body;
 
-    console.log('📝 User details:', {
+    console.log('User details:', {
       firstName, lastName, middleName, dateOfBirth, phoneNumber, username, 
       region, province, city, barangay,
     });

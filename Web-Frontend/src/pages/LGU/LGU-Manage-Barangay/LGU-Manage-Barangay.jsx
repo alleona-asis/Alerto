@@ -371,10 +371,10 @@ const handleAddUserAccount = async (e) => {
   e.preventDefault();
 
   console.group('🛠️ handleAddUserAccount triggered');
-  console.log('👤 Current userForm:', JSON.stringify(userForm, null, 2));
-  console.log('🏘️ Selected Barangay:', selectedBarangay);
-  console.log('📜 LGUProfile:', JSON.stringify(LGUProfile, null, 2));
-  console.log('🆔 User ID:', userId);
+  console.log('Current userForm:', JSON.stringify(userForm, null, 2));
+  console.log('Selected Barangay:', selectedBarangay);
+  console.log('LGUProfile:', JSON.stringify(LGUProfile, null, 2));
+  console.log('User ID:', userId);
 
   const payload = {
     username: userForm.username,
@@ -391,7 +391,7 @@ const handleAddUserAccount = async (e) => {
     created_by: LGUProfile.last_name || LGUProfile.first_name,
   };
 
-  console.log('📤 Constructed payload:', JSON.stringify(payload, null, 2));
+  console.log('Constructed payload:', JSON.stringify(payload, null, 2));
 
   const missingFields = Object.entries(payload)
     .filter(([key, value]) => value === undefined || value === null || value === '')
@@ -405,7 +405,7 @@ const handleAddUserAccount = async (e) => {
   }
 
   try {
-    console.log('🚀 Sending POST request to /api/lgu/add-barangay-account...');
+    console.log('Sending POST request to /api/lgu/add-barangay-account...');
     const res = await axios.post('/api/lgu/add-barangay-account', payload);
 
     console.log('Account created:', res.data);
@@ -422,7 +422,7 @@ const handleAddUserAccount = async (e) => {
     });
     setIsAddUserModalOpen(false);
   } catch (error) {
-    console.error('❌ Error creating account:');
+    console.error('Error creating account:');
 
     if (error.response) {
       console.group('📨 Server error response');

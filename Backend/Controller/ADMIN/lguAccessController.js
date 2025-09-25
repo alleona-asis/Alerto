@@ -149,7 +149,7 @@ const deleteLGUAccount = async (req, res) => {
     ].forEach(({ file, folder }) => {
       if (!file) return;
       const filePath = path.join(process.cwd(), 'uploads', folder, file);
-      console.log(`🔍 Deleting: ${filePath}`);
+      console.log(`Deleting: ${filePath}`);
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);

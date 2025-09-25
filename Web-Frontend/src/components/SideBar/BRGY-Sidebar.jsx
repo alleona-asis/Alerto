@@ -82,7 +82,7 @@ useEffect(() => {
   ];
 
   const handleLogout = () => {
-    console.log('🚪 [BRGYSidebar] Logging out...');
+    console.log('[BRGYSidebar] Logging out...');
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');

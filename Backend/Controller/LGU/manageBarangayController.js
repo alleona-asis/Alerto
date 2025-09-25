@@ -46,10 +46,10 @@ const bcrypt = require('bcrypt');
       ]
     );
 
-    console.log('✅ Barangay added:', result.rows[0]);
+    console.log('Barangay added:', result.rows[0]);
     res.status(201).json({ barangay: result.rows[0] });
   } catch (error) {
-    console.error('❌ Error adding barangay:', error.message);
+    console.error('Error adding barangay:', error.message);
     res.status(500).json({ error: 'Failed to add barangay.' });
   }
 };
@@ -261,7 +261,7 @@ const callBarangayAssistance = async (req, res) => {
         WHERE id = $1
       `;
       values = [barangay_id];
-      console.log("📡 Querying by ID:", values);
+      console.log("Querying by ID:", values);
     } else if (region && province && city && barangay) {
       query = `
         SELECT phone_number, barangay_name, city_or_municipality, province, region
@@ -270,13 +270,13 @@ const callBarangayAssistance = async (req, res) => {
         LIMIT 1
       `;
       values = [region, province, city, barangay];
-      console.log("📡 Querying by Location:", values);
+      console.log("Querying by Location:", values);
     } else {
       return res.status(400).json({ message: "Provide either barangay_id or location details." });
     }
 
     const result = await pool.query(query, values);
-    console.log("✅ Query result:", result.rows);
+    console.log("Query result:", result.rows);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Barangay not found.", criteria: values });
@@ -299,7 +299,7 @@ const callBarangayAssistance = async (req, res) => {
       message: `Use this number to call the barangay assistance: ${phone_number}`,
     });
   } catch (error) {
-    console.error("❌ Error fetching barangay info:", error);
+    console.error("Error fetching barangay info:", error);
     return res.status(500).json({ message: "Failed to retrieve barangay information." });
   }
 };

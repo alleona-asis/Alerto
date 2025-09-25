@@ -221,7 +221,7 @@ const handleAddOfficial = async (e) => {
       },
     });
 
-    console.log("✅ Official created:", response.data);
+    console.log("Official created:", response.data);
 
     const officialData = response.data.official;
 
@@ -259,7 +259,7 @@ const handleAddOfficial = async (e) => {
     setAddOfficialsModalOpen(false);
 
   } catch (error) {
-    console.error("❌ Error adding official:", error);
+    console.error("Error adding official:", error);
     alert(error.response?.data?.message || error.message);
   }
 };
@@ -383,15 +383,15 @@ const handleDeleteAnnouncement = async (id) => {
       },
     });
 
-    console.log("✅ Delete response:", res.data);
+    console.log("Delete response:", res.data);
 
     // Update UI
     setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
 
     toast.success("✅ Announcement deleted successfully!");
   } catch (err) {
-    console.error("❌ Failed to delete announcement:", err.response?.data || err.message);
-    toast.error("⚠️ Failed to delete announcement. Please try again.");
+    console.error("Failed to delete announcement:", err.response?.data || err.message);
+    toast.error("Failed to delete announcement. Please try again.");
   }
 };
 

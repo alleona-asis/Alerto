@@ -42,7 +42,7 @@ function AppRoutes({ token, role }) {
   // Redirect to role-specific dashboard on root path
   function DashboardRedirect() {
     const path = window.location.pathname;
-    console.log('🚦 Redirecting from root path:', path);
+    console.log('Redirecting from root path:', path);
 
     switch (role) {
       case 'super admin':

@@ -116,12 +116,12 @@ const createAnnouncement = async (req, res) => {
         ]);
       }
 
-        console.log(`📲 Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+        console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
       } else {
-        console.log("⚠️ No users found in this location for notification.");
+        console.log("No users found in this location for notification.");
       }
     } catch (err) {
-      console.error("❌ Failed to save notifications:", err.message);
+      console.error("Failed to save notifications:", err.message);
       console.error("Full error:", err);
     }
 
@@ -129,7 +129,7 @@ const createAnnouncement = async (req, res) => {
     // Emit to everyone (socket.io)
     // -----------------------------
     const io = getIo();
-    console.log("📡 Emitting announcementUpdate:", createdAnnouncement);
+    console.log("Emitting announcementUpdate:", createdAnnouncement);
 
     io.emit("announcementUpdate", {
       id: createdAnnouncement.id,
@@ -153,7 +153,7 @@ const createAnnouncement = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ [CREATE ANNOUNCEMENT ERROR]:", error.message);
+    console.error("[CREATE ANNOUNCEMENT ERROR]:", error.message);
     return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
   }
 };
@@ -233,7 +233,7 @@ const deleteAnnouncement = async (req, res) => {
 
     // 5. Emit socket event for real-time UI update
     const io = getIo();
-    console.log("📡 Emitting announcementDeleted:", id);
+    console.log("Emitting announcementDeleted:", id);
 
     io.emit("announcementDeleted", { id });
 
@@ -242,7 +242,7 @@ const deleteAnnouncement = async (req, res) => {
       .status(200)
       .json({ message: "Announcement deleted successfully" });
   } catch (error) {
-    console.error("❌ Error deleting announcement:", error.message);
+    console.error("Error deleting announcement:", error.message);
     return res.status(500).json({
       message: "Failed to delete announcement",
       error: error.message,
@@ -623,7 +623,7 @@ if (req.file) {
       official: result.rows[0]
     });
   } catch (error) {
-    console.error("❌ Create official error:", error);
+    console.error("Create official error:", error);
     res.status(500).json({ message: "Failed to create official", error: error.message });
   }
 };
@@ -647,7 +647,7 @@ const getOfficials = async (req, res) => {
 
     res.status(200).json(officials);
   } catch (error) {
-    console.error("❌ Fetch officials error:", error);
+    console.error("Fetch officials error:", error);
     res.status(500).json({ message: "Failed to fetch officials", error: error.message });
   }
 };
@@ -667,7 +667,7 @@ const deleteOfficial = async (req, res) => {
     await pool.query(`DELETE FROM barangay_officials WHERE id = $1`, [officialId]);
     res.json({ message: "✅ Official deleted successfully!" });
   } catch (error) {
-    console.error("❌ Delete official error:", error);
+    console.error("Delete official error:", error);
     res.status(500).json({ message: "Failed to delete official", error: error.message });
   }
 };
@@ -679,7 +679,7 @@ const deleteOfficial = async (req, res) => {
 const getBarangayOfficialsForMobile = async (req, res) => {
   try {
     const { region, province, city, barangay } = req.query;
-    console.log("📌 Incoming query params:", req.query);
+    console.log("Incoming query params:", req.query);
 
     let query = 'SELECT * FROM barangay_officials';
     const params = [];
@@ -708,22 +708,22 @@ const getBarangayOfficialsForMobile = async (req, res) => {
 
     query += ' ORDER BY created_at DESC';
 
-    console.log("📌 Executing query:", query);
-    console.log("📌 With params:", params);
+    console.log("Executing query:", query);
+    console.log("With params:", params);
 
     const result = await pool.query(query, params);
-    console.log("✅ Fetched rows count:", result.rows.length);
+    console.log("Fetched rows count:", result.rows.length);
 
     const officials = result.rows.map(o => ({
       ...o,
       profile_picture: o.profile_picture || null
     }));
 
-    console.log("📌 Officials data:", officials);
+    console.log("Officials data:", officials);
 
     res.status(200).json(officials);
   } catch (error) {
-    console.error("❌ Fetch officials error:", error);
+    console.error("Fetch officials error:", error);
     res.status(500).json({ message: "Failed to fetch officials", error: error.message });
   }
 };
@@ -830,12 +830,12 @@ const sendAlert = async (req, res) => {
           );
         }
 
-        console.log(`📲 Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+        console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
       } else {
-        console.log("⚠️ No users found in this location for notification.");
+        console.log("No users found in this location for notification.");
       }
     } catch (notifErr) {
-      console.error("❌ Failed to save mobile notifications:", notifErr.message);
+      console.error("Failed to save mobile notifications:", notifErr.message);
       console.error("Full error:", notifErr);
     }
 

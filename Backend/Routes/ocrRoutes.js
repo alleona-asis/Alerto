@@ -70,7 +70,7 @@ router.post('/', upload.single('image'), async (req, res) => {
       .toFile(processedPath);
 
     const { data: { text: rawText } } = await Tesseract.recognize(processedPath, 'eng', {
-      logger: m => console.log('🧠 OCR Progress:', m),
+      logger: m => console.log('OCR Progress:', m),
     });
 
     const cleanedText = cleanText(rawText);
@@ -88,7 +88,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ OCR failed:', error);
+    console.error('OCR failed:', error);
     res.status(500).json({ error: 'OCR processing failed' });
   }
 });

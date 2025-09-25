@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
     if (!userId) return;
     const room = `user_${userId}`;
     socket.join(room);
-    console.log(`🏠 ${socket.id} joined ${room}`);
+    console.log(`${socket.id} joined ${room}`);
     console.log("rooms for socket:", Array.from(socket.rooms));
   });
 

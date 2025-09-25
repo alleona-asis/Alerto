@@ -5,18 +5,16 @@ require('dotenv').config(); // Load environment variables
 let poolConfig;
 
 if (process.env.DB_ENV === 'supabase') {
-  console.log('💻 Connecting to Supabase database...');
-  poolConfig = {
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: parseInt(process.env.DB_PORT) || 5432,
+  const url = new URL(process.env.DATABASE_URL);
+    console.log('DATABASE_URL Host:', url.hostname);
+    console.log('DATABASE_URL Port:', url.port);
+    console.log('DATABASE_URL Params:', url.search);  
+ poolConfig = {
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }, // Supabase requires SSL
+    ssl: { rejectUnauthorized: false },  // Required for Supabase
   };
 } else {
-  console.log('💻 Connecting to Local PostgreSQL...');
+  console.log('Connecting to Local PostgreSQL...');
   poolConfig = {
     user: process.env.PG_USER,
     host: process.env.PG_HOST,
@@ -31,7 +29,7 @@ const pool = new Pool(poolConfig);
 
 // for test connection
 pool.connect()
-  .then(() => console.log('✅ Database connected successfully'))
-  .catch(err => console.error('❌ Database connection error:', err.message));
+  .then(() => console.log('Database connected successfully'))
+  .catch(err => console.error('Database connection error:', err.message));
 
 module.exports = pool;
