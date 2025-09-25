@@ -82,6 +82,8 @@ export default function BRGYDashboard() {
   const [barangayDirectory, setBarangayDirectory] = useState([]);
 
 
+  const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
+
   // Helper to capitalize words
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';

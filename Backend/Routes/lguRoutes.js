@@ -78,13 +78,14 @@ router.post('/add-barangay-account', addBarangayUserAccount);
 // ============= VIEW CREATED ACCOUNT ==============
 router.get('/view-created-account/:lguId/:barangay', viewCreatedBarangayAccounts);
 
+// ============= EDIT BARANGAY DETAILS =============
 router.put('/update-barangay/:id', editBarangayDetails);
 
-// Case 2: Fetch by location (using POST with body data)
+// ================ CALL ASSISTANCE ================
 router.post("/call", callBarangayAssistance);
 
 
-// ============= LGU FEEDBACK ==============
+// ============= SUBMIT LGU FEEDBACK ===============
 router.post(
   '/submit-feedback',
   uploadWithSupabase([{ name: 'files', maxCount: 5 }]), // private bucket
@@ -113,9 +114,6 @@ router.get('/all-feedback', getAllLGUFeedback);
 
 
 
-
-
-
 // =================================================
 //  BARANGAY REPORTS
 // =================================================
@@ -131,8 +129,9 @@ router.get('/lgu-get-all-reports', getBarangayReports);
 // ================ GET ALL PINS ===================
 router.get('/lgu-get-all-pins', getAllPins);
 
-// ================ GET TOTAL ===================
+// ================= GET TOTAL =====================
 router.get('/get-all-barangay-reports', getTotalReports);
+
 
 
 // =================================================
@@ -149,8 +148,10 @@ router.get('/lgu-get-all-document-requests', getDocumentRequests);
 // =============== DELETE REQUESTS =================
 router.delete("/document-requests/:id", deleteDocumentRequest);
 
+
+
 // =================================================
-//  DOCUMENT REQUESTS
+//  MOBILE USERS
 // =================================================
 const {  
   getTotalMobileUsers,
