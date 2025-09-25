@@ -16,7 +16,6 @@ const getAllPins = async (req, res) => {
   }
 };
 
-
 const getBarangayReports = async (req, res) => {
   try {
     const { rows: reports } = await pool.query(
@@ -62,11 +61,6 @@ const getTotalReports = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-
-
 
 
 

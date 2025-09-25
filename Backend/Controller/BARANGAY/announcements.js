@@ -4,7 +4,7 @@ const fs = require('fs');
 const { getIo } = require('../../socket');
 
 // Replace with your computer's LAN IP so mobile devices can access it
-const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
+const LAN_IP = process.env.LAN_IP || "192.168.1.3"; 
 const PORT = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
@@ -30,11 +30,11 @@ const createAnnouncement = async (req, res) => {
     // console.log("🌐 Supabase Files:", req.supabaseFiles);
 
     if (!title || !text) {
-      return res.status(400).json({ message: 'Title and text are required' });
+        return res.status(400).json({ message: 'Title and text are required' });
     }
 
     if (!posted_by_id || !posted_by_name) {
-      return res.status(400).json({ message: 'Poster ID and name are required' });
+        return res.status(400).json({ message: 'Poster ID and name are required' });
     }
 
     // -----------------------------
@@ -56,55 +56,56 @@ const createAnnouncement = async (req, res) => {
       // console.log("Filenames array:", filenames);
       console.log("URLs array:", urls);
 
-    const result = await pool.query(
-      `INSERT INTO announcements 
-        (title, text, image_filenames, image_urls, posted_by_id, posted_by_name, region, province, city, barangay)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *;`,
-      [
-        title, 
-        text, 
-        JSON.stringify(filenames), 
-        JSON.stringify(urls), 
-        posted_by_id, 
-        posted_by_name,
-        region || '',
-        province || '',
-        city || '',
-        barangay || ''
-      ]
-    );
+        const result = await pool.query(
+        `INSERT INTO announcements 
+            (title, text, image_filenames, image_urls, posted_by_id, posted_by_name, region, province, city, barangay)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *;`,
+        [
+            title, 
+            text, 
+            JSON.stringify(filenames), 
+            JSON.stringify(urls), 
+            posted_by_id, 
+            posted_by_name,
+            region || '',
+            province || '',
+            city || '',
+            barangay || ''
+        ]
+      );
 
-    const createdAnnouncement = result.rows[0];
+      const createdAnnouncement = result.rows[0];
 
       // -----------------------------
       // Send notifications to ALL users in the same location
       // -----------------------------
- try {
-      const usersQuery = `
-        SELECT id 
-        FROM mobile_users
-        WHERE region = $1
-          AND province = $2
-          AND city = $3
-          AND barangay = $4
-      `;
+      try {
+        // 1. Find users in the same location
+        const usersQuery = `
+          SELECT id 
+          FROM mobile_users
+          WHERE region = $1
+            AND province = $2
+            AND city = $3
+            AND barangay = $4
+        `;
 
-      const usersResult = await pool.query(usersQuery, [
-        region || '',
-        province || '',
-        city || '',
-        barangay || ''
-      ]);
+        const usersResult = await pool.query(usersQuery, [
+          region || '',
+          province || '',
+          city || '',
+          barangay || ''
+        ]);
 
-      const userIds = usersResult.rows.map(r => r.id);
+        const userIds = usersResult.rows.map(r => r.id);
 
-      if (userIds.length > 0) {
-        const notificationQuery = `
-        INSERT INTO mobile_notifications (mobile_user_id, type, status, is_read)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-      `;
+        if (userIds.length > 0) {
+          const notificationQuery = `
+           INSERT INTO mobile_notifications (mobile_user_id, type, status, is_read)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+          `;
 
       for (const userId of userIds) {
         await pool.query(notificationQuery, [
@@ -781,8 +782,85 @@ const unfollowBarangay = async (req, res) => {
 
 
 
+const sendAlert = async (req, res) => {
+  const {
+    title,
+    message,
+    sent_by_id,
+    sent_by_name,
+    region,
+    province,
+    city,
+    barangay
+  } = req.body;
 
+  if (!title && !message) {
+    return res.status(400).json({ message: 'Title or message is required' });
+  }
 
+  try {
+    // 1️⃣ Save alert in web table
+    const result = await pool.query(
+      `INSERT INTO alerts
+        (title, message, sent_by_id, sent_by_name, region, province, city, barangay)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING *`,
+      [title, message, sent_by_id, sent_by_name, region, province, city, barangay]
+    );
+
+    const createdAlert = result.rows[0];
+
+    // 2️⃣ Send mobile notifications
+    try {
+      const usersResult = await pool.query(
+        `SELECT id FROM mobile_users
+         WHERE region = $1 AND province = $2 AND city = $3 AND barangay = $4`,
+        [region || '', province || '', city || '', barangay || '']
+      );
+
+      const userIds = usersResult.rows.map(r => r.id);
+
+      if (userIds.length > 0) {
+        // Loop insert to ensure title and text are correct
+        for (const userId of userIds) {
+          await pool.query(
+            `INSERT INTO mobile_notifications (mobile_user_id, type, status, title, text)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [userId, 'send_alert_updates', 'created', title, message]
+          );
+        }
+
+        console.log(`📲 Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+      } else {
+        console.log("⚠️ No users found in this location for notification.");
+      }
+    } catch (notifErr) {
+      console.error("❌ Failed to save mobile notifications:", notifErr.message);
+      console.error("Full error:", notifErr);
+    }
+
+    // 3️⃣ Emit to all clients (web/mobile)
+    const io = getIo();
+    io.emit("alertUpdate", {
+      id: createdAlert.id,
+      title: createdAlert.title,
+      text: createdAlert.message,
+      sent_by_id: createdAlert.sent_by_id,
+      sent_by_name: createdAlert.sent_by_name,
+      region: createdAlert.region,
+      province: createdAlert.province,
+      city: createdAlert.city,
+      barangay: createdAlert.barangay,
+      created_at: createdAlert.created_at,
+    });
+
+    // 4️⃣ Final response
+    res.status(201).json({ message: 'Alert sent successfully!', alert: createdAlert });
+  } catch (error) {
+    console.error('Send alert error:', error);
+    res.status(500).json({ message: 'Failed to send alert', error: error.message });
+  }
+};
 
 
 
@@ -803,5 +881,6 @@ module.exports = {
     deleteOfficial,
     getBarangayOfficialsForMobile,
     unfollowBarangay,
-    deleteAnnouncement
+    deleteAnnouncement,
+    sendAlert
 }

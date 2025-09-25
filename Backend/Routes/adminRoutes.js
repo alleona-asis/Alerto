@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../Middleware/auth');
 
+
+
 // =================================================
 //  MANAGE LOCAL GOVERNMENT UNIT
 // =================================================
@@ -36,6 +38,7 @@ router.get('/lgu-accounts', getLGUAccounts);
 // ============== DELETE LGU ACCOUNT ===============
 router.delete('/delete-account/:id', deleteLGUAccount);
 
+// =============== TOTAL LGU ACCOUNT ===============
 router.get("/total-LGU-Accounts", getTotalLGUAccounts);
 
 
@@ -55,7 +58,9 @@ router.get('/admin-get-all-reports', getBarangayReports);
 // ================ GET ALL PINS ===================
 router.get('/admin-get-all-pins', getAllPins);
 
+// ============ TOTAL BARANGAY REPORTS==============
 router.get("/total-barangay-reports", getTotalReports);
+
 
 
 // =================================================
@@ -70,6 +75,7 @@ const {
 // =============== GET ALL REPORTS =================
 router.get('/admin-get-all-document-requests', getDocumentRequests);
 
+// ============ TOTAL DOCUMENT REQUESTS ============
 router.get("/total-barangay-document-requests", getTotalRequests);
 
 
@@ -84,8 +90,14 @@ const {
 
 // =============== GET ALL MOBILE USERS =================
 router.get('/admin-get-all-mobile-users', getMobileUsers);
+
+// ================ DELETE MOBILE USER ==================
 router.delete("/delete-mobile-user/:id", deleteMobileUser);
+
+// ================ TOTAL MOBILE USERS ==================
 router.get("/total-mobile-users", getTotalMobileUsers);
+
+
 
 // =================================================
 //  ANNOUNCEMENTS
@@ -97,6 +109,8 @@ const {
 
 // =============== GET ALL MOBILE USERS =================
 router.get("/total-announcements", getTotalAnnouncements);
+
+// =============== GET ALL ANNOUNCEMENTS ================
 router.get('/get-all-announcements', getAllAnnouncements);
 
 

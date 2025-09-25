@@ -1,4 +1,3 @@
-/*
 const express = require('express');
 const multer = require('multer');
 const Tesseract = require('tesseract.js');
@@ -95,4 +94,3 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 module.exports = router;
-*/

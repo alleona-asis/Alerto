@@ -5,7 +5,7 @@ require('dotenv').config();
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT),
-  secure: false, // change to true if using port 465
+  secure: false,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Debug SMTP config
-console.log('📦 Setting up transporter with SMTP config...');
+console.log('Setting up transporter with SMTP config...');
 console.log(`SMTP_HOST: ${process.env.SMTP_HOST}`);
 console.log(`SMTP_PORT: ${process.env.SMTP_PORT}`);
 console.log(`SMTP_USER: ${process.env.SMTP_USER}`);
@@ -21,15 +21,15 @@ console.log(`SMTP_USER: ${process.env.SMTP_USER}`);
 // Verify connection config
 transporter.verify((error, success) => {
   if (error) {
-    console.error('❌ SMTP transporter not ready:', error.message);
+    console.error('SMTP transporter not ready:', error.message);
   } else {
-    console.log('✅ SMTP transporter is ready to send emails');
+    console.log('SMTP transporter is ready to send emails');
   }
 });
 
 // Email sending function
 const sendStatusEmail = async (toEmail, status) => {
-  console.log(`📧 Preparing to send ${status} email to: ${toEmail}`);
+  console.log(`Preparing to send ${status} email to: ${toEmail}`);
 
   const subject = 'Account Status Notification';
   const html = `
@@ -48,9 +48,9 @@ const sendStatusEmail = async (toEmail, status) => {
       html,
     });
 
-    console.log(`✅ Email sent successfully to ${toEmail}`);
+    console.log(`Email sent successfully to ${toEmail}`);
   } catch (err) {
-    console.error(`❌ Failed to send email to ${toEmail}:`, err.message);
+    console.error(`Failed to send email to ${toEmail}:`, err.message);
   }
 };
 

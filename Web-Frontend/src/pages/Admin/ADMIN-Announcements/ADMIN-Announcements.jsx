@@ -45,7 +45,6 @@ export default function ADMINBarangayReports() {
     return images;
   };
 
-
   return (
     <div className="wrapper">
       <div className="navbar">

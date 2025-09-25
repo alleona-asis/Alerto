@@ -8,7 +8,7 @@ const getDocumentRequests = async (req, res) => {
     const { rows: reports } = await pool.query(
       `SELECT *
        FROM document_requests
-       ORDER BY created_at DESC` // latest first
+       ORDER BY created_at DESC`
     );
 
     res.status(200).json(reports);
@@ -40,11 +40,6 @@ const getTotalRequests = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-
-
 
 
 module.exports = {

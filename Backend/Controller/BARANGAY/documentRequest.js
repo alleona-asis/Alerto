@@ -56,42 +56,42 @@ const createDocumentRequest = async (req, res) => {
       civil_status
     ];
 
-const { rows } = await pool.query(query, values);
-const savedReport = rows[0]; // <-- THIS replaces result.rows[0]
+    const { rows } = await pool.query(query, values);
+    const savedReport = rows[0];
 
-const mobileUserId = req.body.mobile_user_id || req.user?.id;
+    const mobileUserId = req.body.mobile_user_id || req.user?.id;
 
-if (mobileUserId) {
-  try {
-    await pool.query(
-      `INSERT INTO notifications 
-       (mobile_user_id, region, province, city, barangay, type, document_type, is_read, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, NOW())`,
-      [
-        mobileUserId,             // $1
-        savedReport.region,       // $2
-        savedReport.province,     // $3
-        savedReport.city,         // $4
-        savedReport.barangay,     // $5
-        'newDocumentRequest',     // $6
-        savedReport.document_type // $7
-      ]
-    );
+    if (mobileUserId) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications 
+          (mobile_user_id, region, province, city, barangay, type, document_type, is_read, created_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, NOW())`,
+          [
+            mobileUserId,
+            savedReport.region,
+            savedReport.province,
+            savedReport.city,
+            savedReport.barangay,
+            'newDocumentRequest',
+            savedReport.document_type
+          ]
+        );
 
-    console.log(`Notification created for mobile user ID ${mobileUserId}`);
-  } catch (notifErr) {
-    console.error('Failed to create notification:', notifErr.message);
-  }
-} else {
-  console.warn('⚠️ No mobile_user_id provided; skipping notification creation.');
-}
+        console.log(`Notification created for mobile user ID ${mobileUserId}`);
+      } catch (notifErr) {
+        console.error('Failed to create notification:', notifErr.message);
+      }
+    } else {
+      console.warn('No mobile_user_id provided; skipping notification creation.');
+    }
 
     // Emit via socket.io
     try {
       const io = getIo();
       io.emit('newDocumentRequest', rows[0]);
     } catch (err) {
-      console.warn('⚠️ Socket.io not initialized:', err.message);
+      console.warn('Socket.io not initialized:', err.message);
     }
 
     res.status(201).json({
@@ -200,10 +200,9 @@ const getRequestsByLocation = async (req, res) => {
 const updateDocumentRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    //const { status, first_name, last_name } = req.body;
     const { status, first_name, last_name, new_date } = req.body;
 
-    console.log("🔹 Incoming status update:", { id, status, first_name, last_name, new_date });
+    console.log("Incoming status update:", { id, status, first_name, last_name, new_date });
 
     const updatedBy =
       `${first_name || req.user?.first_name || ''} ${last_name || req.user?.last_name || ''}`.trim() || "Unknown";
@@ -240,65 +239,70 @@ const updateDocumentRequestStatus = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-// ===== PICKUP DEADLINE =====
-let pickupDeadline = null;
-let finalNewDate = null;
+    // ===== PICKUP DEADLINE =====
+    let pickupDeadline = null;
+    let finalNewDate = null;
 
-if (status.toLowerCase() === "ready for pick-up") {
-  // 5 minutes from now
-  pickupDeadline = new Date(Date.now() + 5 * 60 * 1000);
-}
+    if (status.toLowerCase() === "ready for pick-up") {
+      pickupDeadline = new Date(Date.now() + 5 * 60 * 1000); // Test 5 minutes
 
-// Only for reschedule
-if (status.toLowerCase() === "reschedule" && new_date) {
-  finalNewDate = new Date(new_date); // make sure it's a Date object
-  pickupDeadline = new Date(finalNewDate.getTime() + 5 * 60 * 1000); // 5 minutes after newDate
+      // 3 Working Days
+      /*
+        let daysToAdd = 3;
+        let pickupDate = new Date();
 
-  console.log(`📝 Status updated to: "${status}" by ${updatedBy}`);
-  console.log(`📅 Rescheduled date: ${finalNewDate}`);
-  console.log(`⏰ Pickup deadline: ${pickupDeadline}`);
-  console.log(`🔹 Updated status history:`, updatedHistory);
-}
+        while (daysToAdd > 0) {
+          pickupDate.setDate(pickupDate.getDate() + 1);
+          const day = pickupDate.getDay();
+          if (day !== 0 && day !== 6) daysToAdd--;
+        }
 
-// Logs
-console.log(`📝 Status updated to: "${status}" by ${updatedBy}`);
-if (finalNewDate) console.log(`📅 Rescheduled date set to: ${finalNewDate}`);
-if (pickupDeadline) console.log(`⏰ Pickup deadline: ${pickupDeadline}`);
-console.log(`🔹 Updated status history:`, updatedHistory);
+        pickupDeadline = pickupDate;
+      */
+    }
 
+    if (status.toLowerCase() === "reschedule" && new_date) {
+      finalNewDate = new Date(new_date);
+      pickupDeadline = new Date(finalNewDate.getTime() + 5 * 60 * 1000); // Test 5 minutes
 
-// Update document request
-const updateResult = await pool.query(
-  `UPDATE document_requests
-   SET status = $1,
-       updated_by = $2,
-       updated_at = NOW(),
-       status_history = $3::jsonb,
-       pickup_deadline = $4,
-       new_date = $5
-   WHERE id = $6
-   RETURNING *`,
-  [status.toLowerCase(), updatedBy, JSON.stringify(updatedHistory), pickupDeadline, finalNewDate, id]
-);
+      console.log(`Status updated to: "${status}" by ${updatedBy}`);
+      console.log(`Rescheduled date: ${finalNewDate}`);
+      console.log(`Pickup deadline: ${pickupDeadline}`);
+      console.log(`Updated status history:`, updatedHistory);
+    }
+
+    // TRACKER LOGS
+    console.log(`Status updated to: "${status}" by ${updatedBy}`);
+    if (finalNewDate) console.log(`Rescheduled date set to: ${finalNewDate}`);
+    if (pickupDeadline) console.log(`Pickup deadline: ${pickupDeadline}`);
+    console.log(`Updated status history:`, updatedHistory);
+
+    const updateResult = await pool.query(
+      `UPDATE document_requests
+      SET status = $1,
+          updated_by = $2,
+          updated_at = NOW(),
+          status_history = $3::jsonb,
+          pickup_deadline = $4,
+          new_date = $5
+      WHERE id = $6
+      RETURNING *`,
+      [status.toLowerCase(), updatedBy, JSON.stringify(updatedHistory), pickupDeadline, finalNewDate, id]
+    );
 
 
     const updatedRequest = updateResult.rows[0];
     
-// 🔹 Log the new date and pickup deadline clearly
-console.log(`📝 Status updated to: "${updatedRequest.status}" by ${updatedBy}`);
-if (updatedRequest.new_date) {
-  console.log(`📅 Rescheduled date (new_date): ${updatedRequest.new_date}`);
-}
-if (updatedRequest.pickup_deadline) {
-  console.log(`⏰ Pickup deadline: ${updatedRequest.pickup_deadline}`);
-}
-console.log(`🔹 Updated status history:`, updatedRequest.status_history);
+    // Log the new date and pickup deadline clearly
+    console.log(`Status updated to: "${updatedRequest.status}" by ${updatedBy}`);
+    if (updatedRequest.new_date) {
+      console.log(`Rescheduled date (new_date): ${updatedRequest.new_date}`);
+    }
+    if (updatedRequest.pickup_deadline) {
+      console.log(`Pickup deadline: ${updatedRequest.pickup_deadline}`);
+    }
+    console.log(`Updated status history:`, updatedRequest.status_history);
 
-
-
-
-
-    // 4️⃣ Save notification
     const notificationQuery = `
       INSERT INTO mobile_notifications
         (mobile_user_id, type, status)
@@ -309,7 +313,7 @@ console.log(`🔹 Updated status history:`, updatedRequest.status_history);
     const notificationValues = [
       updatedRequest.mobile_user_id,
       'document_request_status',
-      status.toLowerCase(),  // ← use the actual updated status
+      status.toLowerCase(),
     ];
 
     let notification = null;
@@ -319,15 +323,12 @@ console.log(`🔹 Updated status history:`, updatedRequest.status_history);
         notificationValues
       );
       notification = notificationResult.rows[0];
-      console.log(
-        "📲 Notification saved successfully:",
-        notification
-      );
+      console.log("Notification saved successfully:", notification);
     } catch (err) {
-      console.error("❌ Failed to save notification:", err);
+      console.error("Failed to save notification:", err);
     }
 
-        // --- Emit notification ONLY to the mobile user ---
+    // Emit notification ONLY to the mobile user
     if (notification) {
       const io = getIo();
       io.to(`user_${updatedRequest.mobile_user_id}`).emit(
@@ -388,7 +389,6 @@ const getRequestsByUserId = async (req, res) => {
           ]
         );
 
-        // Update the object in memory for response
         request.status = "unclaimed";
         request.status_history = [
           ...(request.status_history || []),
@@ -399,7 +399,7 @@ const getRequestsByUserId = async (req, res) => {
           },
         ];
         
-        // 🔹 Emit update to frontend
+        // Emit via socket.io
         io.emit("documentRequestUpdate", {
           requestId: request.id,
           status: "unclaimed",
@@ -461,7 +461,8 @@ const getRequestsByLocation = async (req, res) => {
             updated_at: now.toISOString(),
           },
         ];
-        // 🔹 Emit update to frontend
+
+        // Emit via socket.io
         io.emit("documentRequestUpdate", {
           requestId: request.id,
           status: "unclaimed",
@@ -477,12 +478,6 @@ const getRequestsByLocation = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
-
-
-
-
-
-
 
 
 // =========================
@@ -501,7 +496,6 @@ const rejectDocumentRequest = async (req, res) => {
       `${first_name || req.user?.first_name || ''} ${last_name || req.user?.last_name || ''}`.trim() || "Unknown";
 
 
-    // Fetch current request and status history
     const { rows } = await pool.query(
       `SELECT status_history FROM document_requests WHERE id = $1`,
       [requestId]
@@ -513,7 +507,6 @@ const rejectDocumentRequest = async (req, res) => {
 
     const currentHistory = rows[0].status_history || [];
 
-    // Append new history item
     const newHistoryItem = {
       label: "rejected",
       reason,
@@ -522,7 +515,6 @@ const rejectDocumentRequest = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    // Update the request
     const updateResult = await pool.query(
       `UPDATE document_requests
        SET status = 'rejected',
@@ -537,9 +529,6 @@ const rejectDocumentRequest = async (req, res) => {
 
     const updatedRequest = updateResult.rows[0];
 
-    // -----------------------------
-    // Save verification status notification to database
-    // -----------------------------
     const notificationQuery = `
       INSERT INTO mobile_notifications
         (mobile_user_id, type, status)
@@ -547,20 +536,19 @@ const rejectDocumentRequest = async (req, res) => {
       RETURNING *
     `;
 
-    // DEBUG: Check what values we are inserting
     const notificationValues = [
-      req.user?.id || null, // whoever is logged in
+      req.user?.id || null,
       'document_request_status',
       status.toLowerCase(),
     ];
-    console.log("🔹 Attempting to save notification with values:", notificationValues);
+    console.log("Attempting to save notification with values:", notificationValues);
 
     try {
       const notificationResult = await pool.query(notificationQuery, notificationValues);
       const notification = notificationResult.rows[0];
-      console.log("📲 Notification saved successfully:", notification);
+      console.log("Notification saved successfully:", notification);
     } catch (err) {
-      console.error("❌ Failed to save notification:", err.message);
+      console.error("Failed to save notification:", err.message);
       console.error("Full error:", err);
     }
 
@@ -578,7 +566,7 @@ const rejectDocumentRequest = async (req, res) => {
       report: updatedRequest
     });
   } catch (error) {
-    console.error("❌ Reject document request error:", error);
+    console.error("Reject document request error:", error);
     return res.status(500).json({ message: "Failed to reject document request", error: error.message });
   }
 };

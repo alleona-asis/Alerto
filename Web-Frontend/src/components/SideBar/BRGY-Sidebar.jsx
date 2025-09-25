@@ -137,14 +137,6 @@ useEffect(() => {
 
             <div
                 className="menu-item"
-                onClick={() => navigate('/barangay/support-tickets', '_blank')}
-                >
-                <img src="/icons/help-center.png" alt="Settings" className="icon" />
-                {!isCollapsed && <span>Support Tickets</span>}
-            </div>
-
-            <div
-                className="menu-item"
                 onClick={() => navigate('/barangay/settings', '_blank')}
                 >
                 <img src="/icons/settings.png" alt="Settings" className="icon" />

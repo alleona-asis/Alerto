@@ -779,66 +779,9 @@ const renderTable = (barangay = []) => {
       )}
 
       {/* DELETE MODAL */}
-{showDeleteConfirm && barangayToDelete && (
-  <div
-    className="modal-overlay"
-    onClick={() => {
-      setIsClosing(true);
-      setTimeout(() => {
-        setShowDeleteConfirm(false);
-        setIsClosing(false);
-      }, 200);
-    }}
-  >
-    <div
-      className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
-      style={{ maxWidth: '350px' }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => {
-          setIsClosing(true);
-          setTimeout(() => {
-            setShowDeleteConfirm(false);
-            setIsClosing(false);
-          }, 200);
-        }}
-      />
-
-      <div className="icon-container">
-        <img
-          src="/icons/delete.png"
-          alt="Delete"
-          className="icon-delete"
-        />
-      </div>
-
-      <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
-      <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginBottom: '20px',
-          paddingLeft: '18px',
-          paddingRight: '18px',
-          textAlign: 'center'
-        }}
-      >
-        <span className="location-text">
-          Barangay {barangayToDelete?.barangay_name ? capitalizeWords(barangayToDelete.barangay_name) : 'N/A'}
-        </span>
-      </div>
-
-
-      <div className="button-container">
-        <button
-          className="cancel-button"
+      {showDeleteConfirm && barangayToDelete && (
+        <div
+          className="modal-overlay"
           onClick={() => {
             setIsClosing(true);
             setTimeout(() => {
@@ -847,19 +790,75 @@ const renderTable = (barangay = []) => {
             }, 200);
           }}
         >
-          Cancel
-        </button>
-        <button
-          className="confirm-button"
-          onClick={() => deleteBarangay(barangayToDelete.id)}
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '350px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowDeleteConfirm(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            />
 
+           <div className="icon-container">
+              <img
+                src="/icons/delete.png"
+                alt="Delete"
+                className="icon-delete"
+              />
+            </div>
+
+           <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
+           <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: '20px',
+                paddingLeft: '18px',
+                paddingRight: '18px',
+                textAlign: 'center'
+              }}
+            >
+              <span className="location-text">
+                Barangay {barangayToDelete?.barangay_name ? capitalizeWords(barangayToDelete.barangay_name) : 'N/A'}
+              </span>
+            </div>
+
+
+            <div className="button-container">
+              <button
+                className="cancel-button"
+                onClick={() => {
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowDeleteConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button"
+                onClick={() => deleteBarangay(barangayToDelete.id)}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD BARANGAY USER MODAL */}
       {isAddUserModalOpen && (
@@ -1008,96 +1007,94 @@ const renderTable = (barangay = []) => {
         </div>
       )}
 
+      {isViewAccountModalOpen && selectedAccount && (
+        <div className="modal-overlay">
+          <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={closeViewAccountModal}
+            />
 
+            {/* Mini Nav Bar */}
+            <div className="modal-tabs">
+              <button
+                className={`tab-button ${activeTab === 'details' ? 'active' : ''}`}
+                onClick={() => setActiveTab('details')}
+              >
+                Barangay Details
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'staff' ? 'active' : ''}`}
+                onClick={() => setActiveTab('staff')}
+              >
+                Barangay Staff
+              </button>
+            </div>
 
-{isViewAccountModalOpen && selectedAccount && (
-  <div className="modal-overlay">
-    <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={closeViewAccountModal}
-      />
-
-      {/* Mini Nav Bar */}
-      <div className="modal-tabs">
-        <button
-          className={`tab-button ${activeTab === 'details' ? 'active' : ''}`}
-          onClick={() => setActiveTab('details')}
-        >
-          Barangay Details
-        </button>
-        <button
-          className={`tab-button ${activeTab === 'staff' ? 'active' : ''}`}
-          onClick={() => setActiveTab('staff')}
-        >
-          Barangay Staff
-        </button>
-      </div>
-
-      {/* Content Switch with Animation */}
-      <div className={`modal-tab-content fade-slide ${activeTab}`}>
-        {activeTab === 'details' ? (
-          <div className="modern-details-card">
-            <div className="detail-row">
-              <span className="detail-label">Barangay Name</span>
-              <span className="detail-value">{selectedAccount.barangay_name}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Barangay Captain</span>
-              <span className="detail-value">{selectedAccount.barangay_captain}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Phone Number</span>
-              <span className="detail-value">{selectedAccount.phone_number}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Barangay Address</span>
-              <span className="detail-value">{selectedAccount.barangay_address}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Added By</span>
-              <span className="detail-value">{selectedAccount.created_by}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Date Added</span>
-              <span className="detail-value">
-                {selectedAccount.created_at
-                  ? new Date(selectedAccount.created_at).toLocaleDateString()
-                  : '—'}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="barangay-staff">
-            <h4>Created User Accounts:</h4>
-            <div className="staff-card-grid">
-              {barangayAccounts.length > 0 ? (
-                barangayAccounts.map((user, index) => (
-                  <div className="staff-card" key={index}>
-                    <p><strong>Username:</strong> {user.username}</p>
-                    <p><strong>Full Name:</strong> {user.first_name} {user.last_name}</p>
-                    <p><strong>Position:</strong> {user.position}</p>
-                    <p><strong>Phone:</strong> {user.phone_number}</p>
+            {/* Content Switch with Animation */}
+            <div className={`modal-tab-content fade-slide ${activeTab}`}>
+              {activeTab === 'details' ? (
+                <div className="modern-details-card">
+                  <div className="detail-row">
+                    <span className="detail-label">Barangay Name</span>
+                    <span className="detail-value">{selectedAccount.barangay_name}</span>
                   </div>
-                ))
+                  <div className="detail-row">
+                    <span className="detail-label">Barangay Captain</span>
+                    <span className="detail-value">{selectedAccount.barangay_captain}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Phone Number</span>
+                    <span className="detail-value">{selectedAccount.phone_number}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Barangay Address</span>
+                    <span className="detail-value">{selectedAccount.barangay_address}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Added By</span>
+                    <span className="detail-value">{selectedAccount.created_by}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date Added</span>
+                    <span className="detail-value">
+                      {selectedAccount.created_at
+                        ? new Date(selectedAccount.created_at).toLocaleDateString()
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <p style={{ textAlign: 'center', marginTop: '20px' }}>No accounts found.</p>
+                <div className="barangay-staff">
+                  <h4>Created User Accounts:</h4>
+                  <div className="staff-card-grid">
+                    {barangayAccounts.length > 0 ? (
+                      barangayAccounts.map((user, index) => (
+                        <div className="staff-card" key={index}>
+                          <p><strong>Username:</strong> {user.username}</p>
+                          <p><strong>Full Name:</strong> {user.first_name} {user.last_name}</p>
+                          <p><strong>Position:</strong> {user.position}</p>
+                          <p><strong>Phone:</strong> {user.phone_number}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ textAlign: 'center', marginTop: '20px' }}>No accounts found.</p>
+                    )}
+                  </div>
+                </div>
               )}
+            </div>             
+
+           <div className="modal-button-row">
+              <button onClick={closeViewAccountModal} className="modal-cancel-button">
+                Close
+              </button>
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="modal-button-row">
-        <button onClick={closeViewAccountModal} className="modal-cancel-button">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
 
 
 
@@ -1108,7 +1105,6 @@ const renderTable = (barangay = []) => {
     </>
   );
 }
-
 
 const dropdownStyles = {
   control: (base, state) => ({

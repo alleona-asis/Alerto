@@ -43,7 +43,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// ========== Controllers ==========
 const {
   mobileUserSignUp,
   requestMobileUserVerification,
@@ -63,12 +62,10 @@ const {
   removeMobileUserProfilePicture
 } = require('../Controller/authController');
 
-// ========== ROUTES ==========
-
-// ✅ Username Availability
+// ================ CHECK USERNAME =================
 router.post('/check-username', checkUsernameAvailability);
 
-// ✅ OCR Endpoint
+// ================ OCR PROCESSING =================
 router.post(
   '/ocr',
   uploadWithSupabase([{ name: 'image', maxCount: 1 }]),
@@ -100,7 +97,7 @@ router.post(
   }
 );
 
-// ✅ LGU Admin Registration
+// ============ LGU ADMIN REGISTRATION =============
 router.post(
   '/register-lgu-admin',
   uploadWithSupabase([
@@ -139,14 +136,16 @@ router.post(
 );
 
 
-// ✅ Admin Login
+// ================== ADMIN LOGIN ==================
 router.post('/login-admin', adminLogin);
 
-// ✅ Mobile User Registration
+// =========== MOBILE USER REGISTRATION ============
 router.post('/mobile-user-registration', mobileUserSignUp);
 
+// ================ BARANGAY STAFF LOGIN ==================
+router.post('/barangay-staff-login', barangayStaffLogin);
 
-// Mobile User Verification with multer for ID images and selfie
+// =========== MOBILE USER VERIFICATION ============
 router.post(
   '/mobile-users/verify',
   Authentication, // JWT authentication
@@ -192,7 +191,7 @@ router.post('/send-otp', sendOTP);
 router.post('/verify-otp', verifyOTP);
 router.post('/mobile-user-login', mobileUserLogin);
 
-// ✅ Admin & LGU Profiles
+// ================ USER PROFILES ==================
 router.get('/super-admin-profile/:id', getAdminProfile);
 router.get('/lgu-admin-profile/:id', getLGUProfile);
 
