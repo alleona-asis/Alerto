@@ -651,7 +651,7 @@ const mobileUserLogin = async (req, res) => {
 };
 
 
-console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID);
+console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Loaded' : 'Missing');
 console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Loaded' : 'Missing');
 console.log('TWILIO_SERVICE_SID:', process.env.TWILIO_SERVICE_SID);
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
