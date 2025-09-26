@@ -1,6 +1,7 @@
 // controllers/lguFeedbackController.js
 const pool = require('../../PostgreSQL/database');
 const path = require('path');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // Submit LGU Feedback
 const submitLGUFeedback = async (req, res) => {

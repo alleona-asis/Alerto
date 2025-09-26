@@ -1,5 +1,6 @@
 const pool = require('../../PostgreSQL/database');
 const bcrypt = require('bcrypt'); 
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // =================================================
 //  ADDING BARANGAY

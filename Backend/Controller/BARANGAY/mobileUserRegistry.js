@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 const { getIo } = require('../../socket'); 
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // Keywords for validation
 const ID_KEYWORDS = {

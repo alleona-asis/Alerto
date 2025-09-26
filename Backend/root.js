@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt');
 const pool = require('./PostgreSQL/database');
 
+const {supabase} = require('./PostgreSQL/supabaseClient');
+
 async function seedSuperAdmin() {
     const username = 'root@admin34';
     const firstName = 'Rico';
@@ -9,9 +11,9 @@ async function seedSuperAdmin() {
     const role = 'Super Admin';
 
     try {
-        const exists = await pool.query('SELECT * FROM admin_accounts WHERE username = $1 AND role = $2', [username, role]);
+        const exists = await supabase('SELECT * FROM admin_accounts WHERE username = $1 AND role = $2', [username, role]);
         if (exists.rows.length === 0) {
-            await pool.query(
+            await supabase(
                 `INSERT INTO admin_accounts (username, first_name, last_name, password, role, status)
                 VALUES ($1, $2, $3, $4, $5, $6)`,
                 [username, firstName, lastName, password, role, 'approved']

@@ -1,4 +1,5 @@
 const pool = require('../../PostgreSQL/database');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 const allMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 

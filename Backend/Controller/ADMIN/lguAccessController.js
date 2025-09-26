@@ -1,6 +1,8 @@
 const pool = require('../../PostgreSQL/database');
 const fs = require('fs');
 const path = require('path');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 // =================================================
 // GET ALL PENDING ACCOUNTS

@@ -1,4 +1,5 @@
 const pool = require('../../PostgreSQL/database');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // =================================================
 //  GET ALL MOBILE USERS

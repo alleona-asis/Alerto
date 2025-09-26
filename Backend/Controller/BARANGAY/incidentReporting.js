@@ -2,6 +2,7 @@ const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 
 // =================================================

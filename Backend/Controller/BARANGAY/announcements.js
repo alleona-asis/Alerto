@@ -2,6 +2,8 @@ const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 // Replace with your computer's LAN IP so mobile devices can access it
 const LAN_IP = process.env.LAN_IP || "192.168.1.3"; 
