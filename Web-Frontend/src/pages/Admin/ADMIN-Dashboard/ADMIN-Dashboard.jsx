@@ -34,8 +34,6 @@ import SuspiciousIcon from '@/assets/pins/Suspicious.png';
 import TheftIcon from '@/assets/pins/Theft.png';
 import VehicularaccidentsIcon from '@/assets/pins/Vehicular-accidents.png';
 
-
-
 export default function ADMINDashboard() {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);

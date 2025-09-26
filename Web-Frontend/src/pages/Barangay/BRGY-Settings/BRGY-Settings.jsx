@@ -41,33 +41,32 @@ export default function ADMINDashboard() {
             <h2 className="page-title">BRGY Settings</h2>
           </div>
 
-{isDevelopmentOngoing && (
-  <div className="development-container">
-    <div className="animation-card">
-      <div className="animation-content">
-                <Player
-          autoplay
-          loop
-          src={developmentAnimation}
-          style={{
-            width: 'clamp(250px, 50vw, 350px)',
-            height: 'auto',
-            maxWidth: '100%',
-          }}
-        />
-        <h2 className="animation-title">Under Development</h2>
-        <p className="animation-text">
-          We're actively building this section to give you the best experience. Please check back soon.
-        </p>
+          {isDevelopmentOngoing && (
+            <div className="development-container">
+              <div className="animation-card">
+                <div className="animation-content">
+                          <Player
+                    autoplay
+                    loop
+                    src={developmentAnimation}
+                    style={{
+                      width: 'clamp(250px, 50vw, 350px)',
+                      height: 'auto',
+                      maxWidth: '100%',
+                    }}
+                  />
+                  <h2 className="animation-title">Under Development</h2>
+                  <p className="animation-text">
+                    We're actively building this section to give you the best experience. Please check back soon.
+                  </p>
 
-      </div>
-    </div>
-  </div>
-)}
+               </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
     </div>
-    //</motion.div>
   );
 }
