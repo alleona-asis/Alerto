@@ -4,6 +4,10 @@ const fs = require('fs');
 const { getIo } = require('../../socket');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
 
+
+// =================================================
+//  GET ALL DOCUMENT REQUESTS
+// =================================================
 const getDocumentRequests = async (req, res) => {
   try {
     const { province, region, city } = req.query;
@@ -30,8 +34,9 @@ const getDocumentRequests = async (req, res) => {
 };
 
 
-
-// ✅ Delete Document Request
+// =================================================
+//  DELETE DOCUMENT REQUESTS
+// =================================================
 const deleteDocumentRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -63,7 +68,7 @@ const deleteDocumentRequest = async (req, res) => {
     // Delete from DB
     await pool.query(`DELETE FROM document_requests WHERE id = $1`, [id]);
 
-    // Emit socket update if needed
+    // Emit via Socket.io
     const io = getIo();
     io.emit("documentRequestDeleted", { id });
 

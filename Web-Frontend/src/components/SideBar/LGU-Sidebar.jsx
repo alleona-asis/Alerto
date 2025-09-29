@@ -66,12 +66,6 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
             path: '/lgu/document-requests',
             isActive: pathname === '/lgu/document-requests',
         },
-        {
-            label: 'Announcements',
-            icon: '/icons/announcements.png',
-            path: '/lgu/announcements',
-            isActive: pathname === '/lgu/announcements',
-        },
     ];
 
     // =================================================

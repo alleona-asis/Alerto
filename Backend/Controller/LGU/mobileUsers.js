@@ -3,9 +3,11 @@ const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 const allMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// ==============================
+//  GET TOTAL MOBILE USERS
+// ==============================
 const getTotalMobileUsers = async (req, res) => {
   try {
-    // Accept filters from req.user or query params
     const city = req.user?.city || req.query.city;
     const province = req.user?.province || req.query.province;
     const region = req.user?.region || req.query.region;
@@ -25,7 +27,6 @@ const getTotalMobileUsers = async (req, res) => {
     );
     const total = totalResult.rows[0].total;
 
-    // Generate monthly data with 0 for months with no users
     const graphResult = await pool.query(
       `WITH months AS (
          SELECT generate_series(1, 12) AS month

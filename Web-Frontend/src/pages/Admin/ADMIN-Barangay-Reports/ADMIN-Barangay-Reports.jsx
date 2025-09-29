@@ -379,7 +379,6 @@ export default function ADMINBarangayReports() {
     );
   };
 
-
   return (
     <>
       <div className="wrapper">

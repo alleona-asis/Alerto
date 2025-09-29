@@ -1,12 +1,11 @@
 const pool = require('../PostgreSQL/database');
 const { getIo } = require('../socket');
-const {supabase} = require('../PostgreSQL/supabaseClient');
 
 async function checkExpiredPickups() {
   try {
     const now = new Date();
 
-    const result = await supabase(
+    const result = await pool.query(
       `SELECT * FROM document_requests 
        WHERE status = 'ready for pick-up' 
        AND pickup_deadline IS NOT NULL`
@@ -26,7 +25,7 @@ async function checkExpiredPickups() {
         };
         const updatedHistory = [...(request.status_history || []), newHistoryItem];
 
-        const updateResult = await supabase(
+        const updateResult = await pool.query(
           `UPDATE document_requests
            SET status = 'unclaimed',
                updated_at = NOW(),
@@ -38,6 +37,7 @@ async function checkExpiredPickups() {
 
         const updatedRequest = updateResult.rows[0];
 
+        // Emit via Socket.io
         try {
           const io = getIo();
           io.emit("documentRequestUpdate", {

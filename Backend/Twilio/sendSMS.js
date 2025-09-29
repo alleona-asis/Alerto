@@ -16,7 +16,7 @@ const sendSMS = async (to, body) => {
   try {
     const message = await client.messages.create({
       body,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: process.env.TWILIO_PHONE_NUMBER, // Verified Twilio number
       to,
     });
 

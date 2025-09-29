@@ -6,26 +6,7 @@ const fs = require('fs');
 const multer = require('multer'); 
 const { uploadWithSupabase } = require('../Middleware/upload');
 
-// =================================================
-// MANAGE BARANGAY 
-// =================================================
-const {
-  addBarangay,
-  getAllBarangays,
-  deleteBarangay,
-  addBarangayUserAccount,
-  viewCreatedBarangayAccounts,
-  editBarangayDetails,
-  callBarangayAssistance
-} = require('../Controller/LGU/manageBarangayController')
 
-// =================================================
-// LGU FEEDBACKS
-// =================================================
-const { 
-  submitLGUFeedback, 
-  getAllLGUFeedback 
-} = require('../Controller/LGU/supportHelp')
 
 // =================================================
 // MULTER SETUP FOR LGU FEEDBACK
@@ -60,6 +41,19 @@ const feedbackUpload = multer({
   fileFilter: feedbackFileFilter
 });
 
+// =================================================
+// MANAGE BARANGAY 
+// =================================================
+const {
+  addBarangay,
+  getAllBarangays,
+  deleteBarangay,
+  addBarangayUserAccount,
+  viewCreatedBarangayAccounts,
+  editBarangayDetails,
+  callBarangayAssistance
+} = require('../Controller/LGU/manageBarangayController')
+
 // =============== PROTECTED ROUTES ================
 router.use(authenticateToken);
 
@@ -85,6 +79,16 @@ router.put('/update-barangay/:id', editBarangayDetails);
 router.post("/call", callBarangayAssistance);
 
 
+
+// =================================================
+// LGU FEEDBACKS
+// =================================================
+const { 
+  submitLGUFeedback, 
+  getAllLGUFeedback,
+  deleteLGUFeedback
+} = require('../Controller/LGU/supportHelp')
+
 // ============= SUBMIT LGU FEEDBACK ===============
 router.post(
   '/submit-feedback',
@@ -109,8 +113,10 @@ router.post(
   }
 );
 
-// GET all LGU feedback
+// ============= GET ALL LGU FEEDBACK ==============
 router.get('/all-feedback', getAllLGUFeedback);
+
+router.delete('/feedback/:id', deleteLGUFeedback);
 
 
 

@@ -621,7 +621,7 @@ export default function BRGYDashboard() {
   };
 
 
- const openReportModal = (user) => {
+  const openReportModal = (user) => {
 
     const logs = Array.isArray(user.status_history) ? user.status_history : [];
 
@@ -692,71 +692,77 @@ export default function BRGYDashboard() {
                 style={{ cursor: "pointer" }}
                 onClick={() => openReportModal(user)}
               >
-                <td className="table-cell">{`Report-${String(user.id).padStart(5, '0')}`}</td>
+                <td className="table-cell">{`Report-${String(user.id).padStart(5, "0")}`}</td>
                 <td className="table-cell">{user.incident_type}</td>
 
                 <td className="table-cell">
-                {user.incident_date
+                  {user.incident_date
                     ? format(new Date(user.incident_date), "EEEE, MMMM dd, yyyy")
                     : ""}
                 </td>
 
                 <td className="table-cell">
-                  {user.incident_time ? format(new Date(`1970-01-01T${user.incident_time}`), "hh:mm a") : ""}
+                  {user.incident_time
+                    ? format(new Date(`1970-01-01T${user.incident_time}`), "hh:mm a")
+                    : ""}
                 </td>
 
+                {/* Status dropdown */}
                 <td className="table-cell" style={{ minWidth: 160 }}>
-                    <div
+                  <div
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <Select
-                    value={statusOptions.find(opt => opt.value === (user.status || 'pending'))}
-                    onChange={(selected) => handleStatusChange(user.id, selected.value)}
-                    options={getNextStatusOptions(user.status || 'pending')}
-                    styles={updateStatusStyles(user.status || 'pending')}
-                    isSearchable={false}
-                    isDisabled={getNextStatusOptions(user.status || 'pending').length === 0}
+                      value={statusOptions.find(
+                        (opt) => opt.value === (user.status || "pending")
+                      )}
+                      onChange={(selected) =>
+                        handleStatusChange(user.id, selected.value)
+                      }
+                      options={getNextStatusOptions(user.status || "pending")}
+                      styles={updateStatusStyles(user.status || "pending")}
+                      isSearchable={false}
+                      isDisabled={
+                        getNextStatusOptions(user.status || "pending").length === 0
+                      }
                     />
                   </div>
                 </td>
 
+                {/* Action buttons */}
                 <td className="table-cell" style={styles.cell}>
-                  <div
-                    style={styles.row}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
+                  <div style={styles.row}>
                     {[
-                        /*
-                          {
-                            src: "/icons/delete-row.png",
-                            alt: "Delete",
-                            action: () => {
-                              setReportToDelete(user);
-                              setShowDeleteConfirm(true);
-                              },
+                      /*
+                        {
+                          src: "/icons/delete-row.png",
+                          alt: "Delete",
+                          action: () => {
+                            setReportToDelete(user);
+                            setShowDeleteConfirm(true);
                           },
-                        */
-                        { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
-                        { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
-                        ].map((icon, idx) => (
-                          <img
-                            key={idx}
-                            src={icon.src}
-                            alt={icon.alt}
-                            style={styles.icon}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              icon.action();
-                            }}
-                            onMouseEnter={(e) => bounceEffect(e.currentTarget)}
-                          />
-                        ))}
-                 </div>
+                        },
+                      */
+                      { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
+                      { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
+                    ].map((icon, idx) => (
+                      <img
+                        key={idx}
+                        src={icon.src}
+                        alt={icon.alt}
+                        style={styles.icon}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          icon.action();
+                        }}
+                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
+                      />
+                    ))}
+                  </div>
                 </td>
+              </tr>
 
-                </tr>
               ))}
           </tbody>
         </table>
@@ -844,163 +850,167 @@ export default function BRGYDashboard() {
         <div
           className="modal-overlay"
           onClick={closeModal}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
         >
           <div
-            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '500px' }}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "10px",
-              width: "450px",
-              maxHeight: "70vh",
-              display: "flex",
-              flexDirection: "column",
-              position: "relative",
-              boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-            }}
           >
-            {/* Header */}
-            <h2
-              style={{
-                margin: "0 0 15px 0",
-                fontSize: "20px",
-                fontWeight: "bold",
-                textAlign: "center",
-              }}
-            >
-              {modalUser.incident_type}
-            </h2>
-
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={closeModal}
+            />
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>{modalUser.incident_type}</h3>
+           
+           
             {/* Details Text */}
             <div
+              className="modal-body"
               style={{
-                flex: 1,
-                textAlign: "left",
-                fontSize: "15px",
-                lineHeight: "1.6",
-                color: "#333",
-                overflowY: "auto",
+                padding: '20px 25px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                fontFamily: 'Poppins, sans-serif',
+                fontSize: '14px',
+                color: '#374856',
               }}
             >
 
-              <p>
-                <strong>Reported By:</strong>{" "}
-                {modalUser.reported_by}
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Reported By:</span>
+                <span className="modal-value"><b>{modalUser.reported_by}</b></span>
+              </div>
 
-              <p>
-                <strong>Date & Time:</strong>{" "}
-                {modalUser.incident_date && modalUser.incident_time ? (() => {
-                  const cleanDate = modalUser.incident_date.replace("Z", "");
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Date & Time:</span>
+                <span className="modal-value">
+                  <b>
+                    {modalUser.incident_date && modalUser.incident_time ? (() => {
+                      try {
+                        const datePart = modalUser.incident_date.split("T")[0];
+                        const combined = `${datePart}T${modalUser.incident_time}`;
+                        const dateObj = new Date(combined);
 
-                  const dateObj = new Date(`${cleanDate.split("T")[0]}T${modalUser.incident_time}`);
+                        return dateObj.toLocaleString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        });
+                      } catch (err) {
+                        console.error("Failed to format date & time:", err);
+                        return "Invalid date/time";
+                      }
+                    })() : "Not specified"}
+                  </b>
+                </span>
+              </div>
 
-                  const formatted = dateObj.toLocaleString("en-US", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  });
-
-                  console.log("Formatted incident datetime:", formatted, {
-                    rawDate: modalUser.incident_date,
-                    rawTime: modalUser.incident_time,
-                    dateObj,
-                  });
-
-                  return formatted;
-                })() : "Not specified"}
-              </p>
-
-              <p>
-                <strong>Report Description:</strong>{" "}
-                {modalUser.description}
-              </p>
-
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span 
+                  className="modal-label" 
+                  style={{ marginBottom: '5px' }}
+                >
+                  Report Description:
+                </span>
+                <div className="modal-value">
+                  <b>{modalUser.description}</b>
+                </div>
+              </div>
 
               {/* Status History */}
               {modalUser.statusLogs && modalUser.statusLogs.length > 0 && (
-                <div style={{ marginTop: "15px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "10px" }}>
+                <div style={{ marginTop: "20px" }}>
+                  <h3
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                      borderBottom: "1px solid #eee",
+                      paddingBottom: "4px",
+                      color: "#333",
+                    }}
+                  >
                     Status History
                   </h3>
+
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {modalUser.statusLogs.map((log, idx) => (
                       <div
                         key={idx}
                         style={{
                           display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "8px 12px",
+                          flexDirection: "column",
+                          padding: "10px 14px",
                           border: "1px solid #eee",
-                          borderRadius: "6px",
+                          borderRadius: "8px",
                         }}
                       >
-                        {/* Left side: Status label */}
-                        <span style={{ fontWeight: "bold", color: "#000", textTransform: "capitalize" }}>
+                        {/* Status */}
+                        <span
+                          style={{
+                            fontWeight: "bold",
+                            fontSize: "14px",
+                            color: "#111",
+                            marginBottom: "4px",
+                            textTransform: "capitalize",
+                          }}
+                        >
                           {log.label}
                         </span>
 
-
-                        {/* Right side: who + date */}
-                        <span style={{ fontSize: "13px", color: "#666", textAlign: "right" }}>
-                          {new Date(log.updated_at).toLocaleString()} <br />
+                        {/* Date + Updated By */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "13px",
+                            color: "#555",
+                          }}
+                        >
+                          <span>{new Date(log.updated_at).toLocaleString()}</span>
                           <em>{log.updated_by}</em>
-                        </span>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <p style={{ marginTop: "10px" }}>
-                <strong>Date Reported:</strong>{" "}
-                {modalUser.created_at ? (() => {
-                  const dateObj = new Date(modalUser.created_at);
 
-                  const formatted = dateObj.toLocaleString("en-US", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  });
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Date Reported:</span>
+                <div className="modal-value">
+                  <b>
+                    {modalUser.created_at ? (() => {
+                      try {
+                        const dateObj = new Date(modalUser.created_at);
 
-                  console.log("Formatted created_at:", formatted, {
-                    raw: modalUser.created_at,
-                    dateObj,
-                  });
+                        return dateObj.toLocaleString("en-US", {
+                          month: "long",   // e.g., September
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        });
+                      } catch (err) {
+                        console.error("Failed to format created_at:", err);
+                        return "Invalid date";
+                      }
+                    })() : "Not specified"}
+                  </b>
+                </div>
+              </div>
 
-                  return formatted;
-                })() : "Not specified"}
-              </p>
 
             </div>
 
-            <button
-              onClick={closeModal}
-              className="modal-cancel-button"
-              style={{ marginBottom: "10px", marginTop: "10px" }}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
@@ -1144,7 +1154,7 @@ export default function BRGYDashboard() {
               backgroundColor: "#fff",
               padding: "20px",
               borderRadius: "8px",
-              width: "500px",
+              width: "600px",
               height: "600px",
               overflow: "hidden",
               textAlign: "center",
@@ -1538,6 +1548,7 @@ export default function BRGYDashboard() {
           </div>
         </div>
       )}
+
 
 
     </>

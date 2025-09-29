@@ -21,6 +21,20 @@ export default function LGUManageFeedback() {
   const [sortOption, setSortOption] = useState('date-desc');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const [showImagesModal, setShowImagesModal] = useState(false);
+  const [modalUser, setModalUser] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+
+  // Helper to capitalize words
+  const capitalizeWords = (str) =>
+    str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
+
+
   // Fetch LGU Profile
   useEffect(() => {
     if (!userId || !token) return;
@@ -39,8 +53,6 @@ export default function LGUManageFeedback() {
     fetchProfile();
   }, [userId, token]);
 
-  // Fetch Feedbacks by LGU Location
-// Fetch Feedbacks by LGU Location
 // Fetch Feedbacks by LGU Location
 const fetchFeedbacks = async () => {
   if (!LGUProfile) return;
@@ -100,6 +112,43 @@ const filteredFeedbacks = useMemo(() => {
   return result;
 }, [feedbacks, searchQuery, sortOption]);
 
+const deleteIncidentReport = async (id) => {
+  if (!id) return;
+
+  try {
+    // Call backend API to delete feedback
+    const res = await axios.delete(`/api/lgu/feedback/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    console.log('Deleted feedback:', res.data);
+
+    // Remove deleted feedback from state
+    setFeedbacks(prev => prev.filter(fb => fb.id !== id));
+
+    // Close modal
+    setShowDeleteConfirm(false);
+    setReportToDelete(null);
+
+    // Optional: show a toast notification
+    // toast.success('Feedback deleted successfully!');
+  } catch (err) {
+    console.error('Failed to delete feedback:', err);
+    // Optional: show a toast notification
+    // toast.error('Failed to delete feedback.');
+  }
+};
+
+const closeModal = () => {
+  setIsClosing(true);
+  setTimeout(() => {
+    setShowImagesModal(false);
+    setIsClosing(false);
+    setModalUser(null);
+    setCurrentImageIndex(0);
+  }, 200);
+};
+
 
   // Render Table
   const renderTable = () => {
@@ -132,8 +181,8 @@ const filteredFeedbacks = useMemo(() => {
                 <th className="table-header">Type</th>
                 <th className="table-header">Messages</th>
                 <th className="table-header">Barangay</th>
-                <th className="table-header">Submitted At</th>
                 <th className="table-header">Images / Video</th>
+                <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -143,22 +192,44 @@ const filteredFeedbacks = useMemo(() => {
                   <td className="table-cell">{fb.feedback_type}</td>
                   <td className="table-cell">{fb.messages}</td>
                   <td className="table-cell">{fb.concerned_barangay}</td>
-                  <td className="table-cell">{new Date(fb.submitted_at).toLocaleString()}</td>
                   <td className="table-cell">
-                    {fb.images?.length > 0 && fb.images.map((img, i) => (
+                    {(fb.images?.length > 0 || fb.video) && (
                       <img
-                        key={i}
-                        src={img.url}
-                        alt="feedback"
-                        style={{ width: 50, height: 50, marginRight: 4, borderRadius: 4 }}
+                        src="/icons/view.png"
+                        alt="View"
+                        style={{ width: 20, height: 16, cursor: 'pointer' }}
+                        onClick={() => {
+                          setModalUser({
+                            ...fb,
+                            media_urls: [
+                              ...(fb.images?.map(img => img.url) || []),
+                              ...(fb.video ? [fb.video.url] : [])
+                            ]
+                          });
+                          setCurrentImageIndex(0);
+                          setShowImagesModal(true);
+                        }}
+                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
                       />
-                    ))}
-                    {fb.video && (
-                      <video width="80" height="50" controls>
-                        <source src={fb.video.url} type="video/mp4" />
-                      </video>
                     )}
                   </td>
+
+                  <td className="table-cell" style={styles.cell}>
+                    <div style={styles.row}>
+                      <img
+                        src="/icons/delete-row.png"
+                        alt="Delete"
+                        style={{ width: 18, height: 20, cursor: 'pointer' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReportToDelete(fb);
+                          setShowDeleteConfirm(true);
+                        }}
+                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
+                      />
+                    </div>
+                  </td>
+
                 </tr>
               ))}
             </tbody>
@@ -169,66 +240,293 @@ const filteredFeedbacks = useMemo(() => {
   };
 
   return (
-    <div className="wrapper">
-      <LGUNavbar userId={userId} />
-      <div className="layout">
-        <LGUSidebar
-          isCollapsed={isSidebarCollapsed}
-          toggleSidebar={() => setSidebarCollapsed(!isSidebarCollapsed)}
-        />
-        <div
-          className="main-content mainContent-slide-right"
-          style={{
-            marginLeft: isSidebarCollapsed ? 80 : 270,
-            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)'
-          }}
-        >
-          <ToastContainer />
-          <div className="header-row">
-            <h2 className="page-title">Support Tickets</h2>
-            <div>
-              <input
-                type="text"
-                placeholder="Search..."
-                className="search-box"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {/* Optional button for future actions */}
-            </div>
-          </div>
-
-          <div className="section-wrapper">
-            <div className="table-section">
-              <div className="header-table">
-                <h3 className="section-title">Support Tickets</h3>
-                <Select
-                  options={[
-                    { value: 'date-desc', label: 'Sort by Date (Newest)' },
-                    { value: 'date-asc', label: 'Sort by Date (Oldest)' },
-                    { value: 'barangay-asc', label: 'Sort by Barangay A-Z' },
-                    { value: 'barangay-desc', label: 'Sort by Barangay Z-A' },
-                  ]}
-                  value={{
-                    value: sortOption,
-                    label: sortOption.includes('date')
-                      ? sortOption === 'date-desc' ? 'Sort by Date (Newest)' : 'Sort by Date (Oldest)'
-                      : sortOption === 'barangay-asc' ? 'Sort by Barangay A-Z' : 'Sort by Barangay Z-A'
-                  }}
-                  onChange={(option) => setSortOption(option.value)}
-                  isSearchable={false}
-                  styles={sortDropdownStyles}
+    <>
+      <div className="wrapper">
+        <LGUNavbar userId={userId} />
+        <div className="layout">
+          <LGUSidebar
+            isCollapsed={isSidebarCollapsed}
+            toggleSidebar={() => setSidebarCollapsed(!isSidebarCollapsed)}
+          />
+          <div
+            className="main-content mainContent-slide-right"
+            style={{
+              marginLeft: isSidebarCollapsed ? 80 : 270,
+              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)'
+            }}
+          >
+            <ToastContainer />
+            <div className="header-row">
+              <h2 className="page-title">Support Tickets</h2>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="search-box"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                {/* Optional button for future actions */}
               </div>
-              {renderTable()}
+            </div>
+
+            <div className="section-wrapper">
+              <div className="table-section">
+                <div className="header-table">
+                  <h3 className="section-title">Support Tickets</h3>
+                  <Select
+                    options={[
+                      { value: 'date-desc', label: 'Sort by Date (Newest)' },
+                      { value: 'date-asc', label: 'Sort by Date (Oldest)' },
+                      { value: 'barangay-asc', label: 'Sort by Barangay A-Z' },
+                      { value: 'barangay-desc', label: 'Sort by Barangay Z-A' },
+                    ]}
+                    value={{
+                      value: sortOption,
+                      label: sortOption.includes('date')
+                        ? sortOption === 'date-desc' ? 'Sort by Date (Newest)' : 'Sort by Date (Oldest)'
+                        : sortOption === 'barangay-asc' ? 'Sort by Barangay A-Z' : 'Sort by Barangay Z-A'
+                    }}
+                    onChange={(option) => setSortOption(option.value)}
+                    isSearchable={false}
+                    styles={sortDropdownStyles}
+                  />
+                </div>
+                {renderTable()}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteConfirm && reportToDelete && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsClosing(true);
+            setTimeout(() => {
+              setShowDeleteConfirm(false);
+              setIsClosing(false);
+            }, 200);
+          }}
+        >
+          <div
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '350px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowDeleteConfirm(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            />
+
+            <div className="icon-container">
+              <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
+            </div>
+
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
+            <p className="sub-title" style={{ textAlign: 'center' }}>
+              Are you sure you want to delete this feedback?
+            </p>
+
+            <div className="location-text" style={{ textAlign: 'center', marginBottom: "12px" }}>
+              {reportToDelete?.feedback_type
+                ? capitalizeWords(reportToDelete.feedback_type)
+                : 'N/A'}
+            </div>
+
+            <div className="button-container">
+              <button
+                className="cancel-button"
+                onClick={() => {
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowDeleteConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button"
+                onClick={() => deleteIncidentReport(reportToDelete.id)}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW IMAGES MODAL */}
+      {showImagesModal && modalUser && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div
+            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#fff",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "500px",
+              height: "600px",
+              overflow: "hidden",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              position: "relative",
+            }}
+          >
+            <h2 className="modal-title">{modalUser.incident_type}</h2>
+            <div
+              style={{
+                width: "100%",
+                height: "400px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                position: "relative",
+                margin: "20px 0",
+                overflow: "hidden",
+              }}
+            >
+            {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+              <>
+                {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                  <img
+                    src={modalUser.media_urls[currentImageIndex]}
+                    alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      borderRadius: "12px",
+                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                      objectFit: "contain",
+                      cursor: "zoom-in",
+                      transition: "transform 0.3s ease",
+                    }}
+                    onClick={() =>
+                      window.open(modalUser.media_urls[currentImageIndex], "_blank")
+                    }
+                  />
+                ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
+                  <video
+                    controls
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      borderRadius: "12px",
+                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                      objectFit: "contain",
+                    }}
+                  >
+                    <source
+                      src={modalUser.media_urls[currentImageIndex]}
+                      type="video/mp4"
+                    />
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
+                )}
+
+                {/* Left arrow */}
+                {currentImageIndex > 0 && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex(currentImageIndex - 1);
+                    }}
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: "24px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      padding: "5px",
+                    }}
+                  >
+                    &#8592;
+                  </div>
+                )}
+
+                {/* Right arrow */}
+                {currentImageIndex < modalUser.media_urls.length - 1 && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex(currentImageIndex + 1);
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: "24px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      padding: "5px",
+                    }}
+                  >
+                    &#8594;
+                  </div>
+                )}
+              </>
+            ) : (
+              <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
+            )}
+            </div>
+            <button
+              onClick={closeModal}
+              className="modal-cancel-button"
+              style={{ marginBottom: "10px" }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+    </>
   );
 }
 
+const styles = {
+  cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
+  row: { display: "flex", alignItems: "center", gap: "15px" },
+  icon: {
+    width: "20px",
+    height: "20px",
+    cursor: "pointer",
+    transition: "transform 0.15s ease",
+  },
+};
+
+const bounceEffect = (el) => {
+  el.style.transform = "translateY(-6px)";
+  setTimeout(() => (el.style.transform = "translateY(2px)"), 150);
+  setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
+  setTimeout(() => (el.style.transform = "translateY(0)"), 450);
+};
 
 const dropdownStyles = {
   control: (base, state) => ({

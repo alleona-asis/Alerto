@@ -199,7 +199,7 @@ const userBlocking = async (user, id, io) => {
   const now = new Date();
   let statusChanged = false;
 
-    console.log(`Checking block status for user ${user.id}`);
+  console.log(`Checking block status for user ${user.id}`);
   console.log(`invalid_count: ${user.invalid_count}`);
   console.log(`permanently_blocked: ${user.permanently_blocked}`);
   console.log(`blocked_until: ${user.blocked_until}`);
@@ -657,6 +657,7 @@ const transferReport = async (req, res) => {
   }
 };
 
+
 // =================================================
 //  DELETE INCIDENT REPORT
 // =================================================
@@ -714,9 +715,6 @@ const getBarangayReportById = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
-
-
 
 
 

@@ -43,6 +43,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+
 const {
   mobileUserSignUp,
   requestMobileUserVerification,
@@ -194,15 +195,12 @@ router.post('/mobile-user-login', mobileUserLogin);
 // ================ USER PROFILES ==================
 router.get('/super-admin-profile/:id', getAdminProfile);
 router.get('/lgu-admin-profile/:id', getLGUProfile);
-
-// ✅ Barangay Staff
-router.post('/barangay-staff-login', barangayStaffLogin);
+// // ✅ Barangay Staff
+// router.post('/barangay-staff-login', barangayStaffLogin);
 router.get('/barangay-staff-profile/:id', getBarangayProfile);
-
-// GET user profile by ID (matches frontend)
 router.get('/mobile-user-profile/:id', getMobileUserProfile);
 
-// POST upload profile picture (matches frontend)
+// ======== UPDATE OR ADD PROFILE PICTURE ===========
 router.post(
   '/mobile-user-profile/:id/upload-picture',
   uploadWithSupabase([{ name: 'picture', maxCount: 1 }]),
@@ -230,7 +228,6 @@ router.post(
 
 
 router.put('/mobile-user-profile/:id/remove-picture', removeMobileUserProfilePicture);
-
 
 
 module.exports = router;

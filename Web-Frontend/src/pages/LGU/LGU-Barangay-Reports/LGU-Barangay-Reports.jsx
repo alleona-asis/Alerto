@@ -343,9 +343,6 @@ export default function LGUBarangayReports() {
                 <th className="table-header" style={{ width: '300px' }}>Incident Type</th>
                 <th className="table-header" style={{ width: '300px' }}>Incident Date</th>
                 <th className="table-header" style={{ width: '100px' }}>Incident Time</th>
-                <th className="table-header" style={{ width: '200px' }}>Region</th>
-                <th className="table-header" style={{ width: '200px' }}>Province</th>
-                <th className="table-header" style={{ width: '200px' }}>City</th>
                 <th className="table-header" style={{ width: '200px' }}>Barangay</th>
                 <th className="table-header" style={{ width: '200px' }}>Reported By</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
@@ -375,9 +372,6 @@ export default function LGUBarangayReports() {
                     : ""}
                 </td>
 
-                <td className="table-cell">{capitalizeWords(user.region)}</td>
-                <td className="table-cell">{capitalizeWords(user.province)}</td>
-                <td className="table-cell">{capitalizeWords(user.city)}</td>
                 <td className="table-cell">{capitalizeWords(user.barangay)}</td>
                 <td className="table-cell">{capitalizeWords(user.reported_by)}</td>
 

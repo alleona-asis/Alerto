@@ -79,6 +79,7 @@ router.get('/admin-get-all-document-requests', getDocumentRequests);
 router.get("/total-barangay-document-requests", getTotalRequests);
 
 
+
 // =================================================
 //  MOBILE USERS
 // =================================================

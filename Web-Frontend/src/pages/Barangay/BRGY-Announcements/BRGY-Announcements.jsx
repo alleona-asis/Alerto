@@ -8,10 +8,10 @@ import '../../../components/SideBar/styles.css';
 import { motion } from 'framer-motion';
 import axios from '../../../axios/axiosInstance';
 import defaultProfile from '@/assets/icons/default.png';
-import DefaultIcon from "@/assets/icons/default.png";
+// import DefaultIcon from "@/assets/icons/default.png";
 import { ToastContainer } from "react-toastify";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+// import { toast } from "react-toastify";
+// import "react-toastify/dist/ReactToastify.css";
 
 export default function BRGYProfile() {
   const [BRGYProfile, setBRGYProfile] = useState(null);
@@ -230,7 +230,7 @@ const handleAddOfficial = async (e) => {
       ? URL.createObjectURL(officialImage) // <-- instant preview
       : officialData.image
       ? `/uploads/officials/${officialData.image}`
-      : DefaultIcon;
+      : "/public/icons/default.png";
 
     const newOfficial = {
       id: officialData.id,
@@ -412,7 +412,7 @@ const handleSendAlert = async (e) => {
     // Prepare payload (JSON instead of FormData since no files)
     const payload = {
       title: alertTitle,
-      message: alertMessage,
+      text: alertMessage,
       sent_by_id: localStorage.getItem('userId'),
       sent_by_name: `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim(),
       region: BRGYProfile?.region || '',
@@ -449,6 +449,7 @@ const handleSendAlert = async (e) => {
     alert(error.response?.data?.message || error.message);
   }
 };
+
 
 
 
@@ -532,22 +533,29 @@ const handleSendAlert = async (e) => {
               {/* 2nd row: Announcement button, Edit button */}
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
+                  onClick={() => setAnnouncementModalOpen(true)}
+                  onMouseEnter={() => setHovered('announcement')}
+                  onMouseLeave={() => setHovered(null)}
                   style={{
                     padding: '10px 20px',
                     borderRadius: '5px',
                     border: '1px solid #4894FE',
-                    backgroundColor: '#4894FE',
+                    backgroundColor: hovered === 'announcement' ? '#4894FE' : '#4894FE',
                     color: '#fff',
                     cursor: 'pointer',
                     fontWeight: 'bold',
-                    width: 150
+                    width: 150,
+                    transform: hovered === 'announcement' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'all 0.3s ease',
                   }}
-                  onClick={() => setAnnouncementModalOpen(true)}
                 >
                   Create Announcement
                 </button>
 
                 <button
+                  onClick={() => setIsSendAlertModalOpen(true)}
+                  onMouseEnter={() => setHovered('alert')}
+                  onMouseLeave={() => setHovered(null)}
                   style={{
                     padding: '10px 20px',
                     borderRadius: '5px',
@@ -556,9 +564,10 @@ const handleSendAlert = async (e) => {
                     color: '#4894FE',
                     cursor: 'pointer',
                     fontWeight: 'bold',
-                    width: 150
+                    width: 150,
+                    transform: hovered === 'alert' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'all 0.3s ease',
                   }}
-                 onClick={() => setIsSendAlertModalOpen(true)}
                 >
                   Send Alert
                 </button>
@@ -637,7 +646,7 @@ const handleSendAlert = async (e) => {
                             boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
                           }}
                         >
-                          {/* Image */}
+                          {/* Image*/}
                           <img
                             src={imageUrl}
                             alt="announcement-image"
@@ -664,7 +673,6 @@ const handleSendAlert = async (e) => {
                           >
                             {ann.text}
                           </p>
-
                           <div
                             style={{
                               position: "relative",
@@ -713,7 +721,7 @@ const handleSendAlert = async (e) => {
                       marginBottom: "15px",
                     }}
                   >
-                    <h3 style={{ margin: 0 }}>Barangay Officials</h3>
+                    <h3 style={{ margin: 0 }}>Emergency Hotlines</h3>
                     <button
                       onClick={() => setAddOfficialsModalOpen(true)}
                       style={{
@@ -867,7 +875,7 @@ const handleSendAlert = async (e) => {
                 </div>
               )}
               
-               {/*
+              {/*
               {activeTab === 'About' && (
                 <p>Information about the barangay will appear here.</p>
               )}
@@ -901,7 +909,7 @@ const handleSendAlert = async (e) => {
                     />
                   </div>
 
-                         {/* Alert Message */}
+                  {/* Alert Message */}
                   <div className="input-group">
                     <textarea
                       className="modal-input"
@@ -1010,7 +1018,7 @@ const handleSendAlert = async (e) => {
                     />
                   </div>
 
-{/* Image Previews */}
+                  {/* Image Previews */}
                   {announcementImage && announcementImage.length > 0 && (
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
                       {announcementImage.map((file, index) => (
@@ -1050,7 +1058,7 @@ const handleSendAlert = async (e) => {
                     </div>
                   )}
 
-                 {/* Buttons */}
+                  {/* Buttons */}
                   <div className="modal-button-row">
                     <button type="submit" className="modal-add-button">
                       Post
@@ -1124,7 +1132,7 @@ const handleSendAlert = async (e) => {
                     />
                   </div>
 
-         {/* Profile Picture */}
+          {/* Profile Picture */}
           {/* Profile Picture */}
           <div className="input-group">
             <label className="input-label">Upload a Photo</label>
@@ -1163,7 +1171,7 @@ const handleSendAlert = async (e) => {
             </div>
 
             <input
-               id="officialImageInput"
+              id="officialImageInput"
               type="file"
               accept="image/*"
               style={{ display: 'none' }}
@@ -1177,7 +1185,8 @@ const handleSendAlert = async (e) => {
 
 
 
-                 {/* Buttons */}
+
+                  {/* Buttons */}
                   <div className="modal-button-row">
                     <button type="submit" className="modal-add-button">
                       Save
@@ -1228,7 +1237,6 @@ const handleSendAlert = async (e) => {
                     }, 200);
                   }}
                 />
-
 
                 {/* Icon */}
                 <div className="icon-container">
@@ -1309,37 +1317,25 @@ const handleSendAlert = async (e) => {
                   }}
                 />
 
-            {/* Announcement */}
-            <h3 className="modal-title">{selectedAnnouncement.title || 'No Title'}</h3>
-            <p style={{ color: '#888', marginBottom: '10px' }}>
-              Posted by {selectedAnnouncement.posted_by_name}
-            </p>
-            {selectedAnnouncement.image_urls?.length > 0 && (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  overflowX: 'auto',
-                  marginBottom: '15px',
-                }}
-              >
-                {selectedAnnouncement.image_urls.map((url, index) => (
+                {/* Announcement */}
+                <h3 className="modal-title">{selectedAnnouncement.title || 'No Title'}</h3>
+                <p style={{ color: '#888', marginBottom: '10px' }}>
+                  Posted by {selectedAnnouncement.posted_by_name}
+                </p>
+                {selectedAnnouncement.image_urls?.length > 0 && (
                   <img
-                    key={index}
-                    src={url}
-                    alt={`Announcement media ${index + 1}`}
+                    src={selectedAnnouncement.image_urls[0]}
+                    alt="Announcement"
                     style={{
-                      flex: '0 0 auto',
-                      width: '150px',
-                      height: '150px',
+                      width: '100%',
+                      maxHeight: '250px',
                       objectFit: 'cover',
                       borderRadius: '8px',
+                      marginBottom: '15px',
                     }}
                   />
-                ))}
-              </div>
-            )}
-            <p>{selectedAnnouncement.text}</p>
+                )}
+                <p>{selectedAnnouncement.text}</p>
 
                 {/* Comments Section */}
                 <div
@@ -1371,7 +1367,6 @@ const handleSendAlert = async (e) => {
                     </div>
                   ))}
                 </div>
-
 
                 {/* Add Comment 
                 <div style={{ display: 'flex', marginTop: '10px', gap: '5px' }}>
@@ -1444,7 +1439,7 @@ const handleSendAlert = async (e) => {
                   <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
                 </div>
 
-                 {/* Title */}
+                {/* Title */}
                 <h3 className="modal-title" style={{ textAlign: "center" }}>
                   Delete Announcement
                 </h3>
@@ -1452,7 +1447,7 @@ const handleSendAlert = async (e) => {
                   Are you sure you want to delete this announcement?
                 </p>
 
-{/* Announcement Title */}
+                {/* Announcement Title */}
                 <div
                   className="location-text"
                   style={{ textAlign: "center", marginBottom: "12px" }}
@@ -1490,9 +1485,8 @@ const handleSendAlert = async (e) => {
             </div>
           )}
 
+        </div>
       </div>
     </div>
-  </div>  
- );
+  );
 }
-

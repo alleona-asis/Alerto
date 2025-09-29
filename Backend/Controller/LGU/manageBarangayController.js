@@ -88,7 +88,6 @@ const deleteBarangay = async (req, res) => {
   }
 
   try {
-    // Step 1: Get the barangay name before deleting it
     const barangayResult = await pool.query('SELECT barangay_name FROM barangays WHERE id = $1', [id]);
     
     if (barangayResult.rowCount === 0) {
@@ -97,10 +96,8 @@ const deleteBarangay = async (req, res) => {
 
     const barangayName = barangayResult.rows[0].barangay_name;
 
-    // Step 2: Delete barangay user accounts first
     await pool.query('DELETE FROM barangay_accounts WHERE barangay = $1', [barangayName]);
 
-    // Step 3: Delete the barangay itself
     const deleteResult = await pool.query('DELETE FROM barangays WHERE id = $1 RETURNING *', [id]);
 
     res.status(200).json({ message: 'Barangay and its user accounts deleted successfully' });
@@ -131,7 +128,6 @@ const addBarangayUserAccount = async (req, res) => {
     created_by,
   } = req.body;
 
-  // Basic validation
   if (
     !username || !firstName || !lastName || !password || !phonenumber || !position ||
     !lguId || !region || !province || !city || !barangay || !created_by
@@ -140,7 +136,6 @@ const addBarangayUserAccount = async (req, res) => {
   }
 
   try {
-    // Check if username already exists
     const existing = await pool.query(
       'SELECT * FROM barangay_accounts WHERE username = $1',
       [username]
@@ -149,10 +144,8 @@ const addBarangayUserAccount = async (req, res) => {
       return res.status(409).json({ error: 'Username already exists.' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert into database
     const result = await pool.query(
       `INSERT INTO barangay_accounts (
         username, first_name, last_name, password, phone_number, position, lgu_id,
@@ -161,7 +154,7 @@ const addBarangayUserAccount = async (req, res) => {
       [
         username,
         firstName,
-                lastName,
+        lastName,
         hashedPassword,
         phonenumber,
         position,
@@ -185,28 +178,29 @@ const addBarangayUserAccount = async (req, res) => {
 };
 
 
-
 // ==============================
 // VIEW CREATED ACCOUNTS BY LGU
 // ==============================
 const viewCreatedBarangayAccounts = async (req, res) => {
   const { lguId, barangay } = req.params;
-  console.log('[DEBUG] Received params:', { lguId, barangay });
+  console.log('Received params:', { lguId, barangay });
 
   try {
     const query = `SELECT * FROM barangay_accounts WHERE lgu_id = $1 AND barangay = $2`;
-    console.log('[DEBUG] Executing SQL:', query);
+    console.log('Executing SQL:', query);
     const result = await pool.query(query, [lguId, barangay]);
 
-    console.log('[DEBUG] Query result:', result.rows);
+    console.log('Query result:', result.rows);
     res.json(result.rows);
   } catch (err) {
-    console.error('[ERROR] Error fetching barangay accounts:', err);
+    console.error('Error fetching barangay accounts:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-
+// ==============================
+//  EDIT BARANGAY DETAILS
+// ==============================
 const editBarangayDetails = async (req, res) => {
   const { id } = req.params;
   const {
@@ -247,7 +241,7 @@ const editBarangayDetails = async (req, res) => {
 
 
 // =================================================
-//  CALL BARANGAY ASSISTANCE (BY ID or LOCATION)
+//  BARANGAY CALL ASSISTANCE
 // =================================================
 const callBarangayAssistance = async (req, res) => {
   const { barangay_id, region, province, city, barangay } = req.body;
@@ -262,7 +256,7 @@ const callBarangayAssistance = async (req, res) => {
         WHERE id = $1
       `;
       values = [barangay_id];
-      console.log("Querying by ID:", values);
+      // console.log("Querying by ID:", values);
     } else if (region && province && city && barangay) {
       query = `
         SELECT phone_number, barangay_name, city_or_municipality, province, region
@@ -271,13 +265,13 @@ const callBarangayAssistance = async (req, res) => {
         LIMIT 1
       `;
       values = [region, province, city, barangay];
-      console.log("Querying by Location:", values);
+      // console.log("Querying by Location:", values);
     } else {
       return res.status(400).json({ message: "Provide either barangay_id or location details." });
     }
 
     const result = await pool.query(query, values);
-    console.log("Query result:", result.rows);
+    // console.log("Query result:", result.rows);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Barangay not found.", criteria: values });
@@ -304,8 +298,6 @@ const callBarangayAssistance = async (req, res) => {
     return res.status(500).json({ message: "Failed to retrieve barangay information." });
   }
 };
-
-
 
 
 

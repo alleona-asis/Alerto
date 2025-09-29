@@ -13,12 +13,6 @@ export default function ADMINDashboard() {
   const [isDevelopmentOngoing, setIsDevelopmentOngoing] = useState(true);
 
   return (
-  //<motion.div
-    //initial={{ y: 100, opacity: 0 }}
-    //animate={{ y: 0, opacity: 1 }}
-    //exit={{ y: -50, opacity: 0 }}
-    //transition={{ duration: 0.6, ease: [0.6, -0.05, 0.01, 0.99] }}
-  //>
     <div className="wrapper">
       <div className="navbar">
         <BRGYNavbar />
@@ -60,7 +54,7 @@ export default function ADMINDashboard() {
                     We're actively building this section to give you the best experience. Please check back soon.
                   </p>
 
-               </div>
+                </div>
               </div>
             </div>
           )}

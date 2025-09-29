@@ -8,7 +8,6 @@ const sharp = require('sharp');
 const { cleanText, fuzzyMatchKeywords, ID_KEYWORDS } = require('../utils/ocr');
 const { getIo } = require('../socket');
 const twilio = require('twilio');
-const { supabase } = require('../PostgreSQL/supabaseClient');
 
 
 // =================================================
@@ -22,7 +21,7 @@ const checkUsernameAvailability = async (req, res) => {
       return res.status(400).json({ error: 'Username is required' });
     }
 
-    const result = await supabase(
+    const result = await pool.query(
       'SELECT * FROM admin_accounts WHERE username = $1',
       [username]
     );
@@ -140,7 +139,7 @@ const registerLguAdmin = async (req, res) => {
   const intentFileUrl = req.supabaseFiles?.intentFile?.[0]?.supabaseUrl || null;
 
   try {
-    const existing = await supabase(
+    const existing = await pool.query(
       'SELECT * FROM admin_accounts WHERE username = $1 AND role = $2',
       [username, role]
     );
@@ -154,7 +153,7 @@ const registerLguAdmin = async (req, res) => {
 
     const status = role === 'Local Government Unit' ? 'pending' : 'approved';
 
-    await supabase(
+    await pool.query(
       `
       INSERT INTO admin_accounts (
         username, password, role, status,
@@ -219,7 +218,7 @@ const adminLogin = async (req, res) => {
   }
 
   try {
-    const result = await supabase(
+    const result = await pool.query(
       'SELECT * FROM admin_accounts WHERE username = $1 AND role = $2',
       [username, role]
     );
@@ -285,7 +284,7 @@ const barangayStaffLogin = async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const result = await supabase('SELECT * FROM barangay_accounts WHERE username = $1', [username]);
+    const result = await pool.query('SELECT * FROM barangay_accounts WHERE username = $1', [username]);
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid username or password' });
@@ -374,7 +373,7 @@ const mobileUserSignUp = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields.' });
     }
 
-    const existingUser = await supabase(
+    const existingUser = await pool.query(
       'SELECT id FROM mobile_users WHERE username = $1',
       [username.trim()]
     );
@@ -408,12 +407,12 @@ const mobileUserSignUp = async (req, res) => {
     ];
 
 
-    const result = await supabase(insertQuery, insertValues);
+    const result = await pool.query(insertQuery, insertValues);
     const user = result.rows[0];
 
 
     try {
-      await supabase(
+      await pool.query(
         `INSERT INTO notifications 
         (mobile_user_id, region, province, city, barangay, type, is_read, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())`,
@@ -477,11 +476,8 @@ const requestMobileUserVerification = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: No user ID in token" });
     }
 
-
-    // ===========================
     // Check verification attempts & cooldown
-    // ===========================
-    const userQuery = await supabase(
+    const userQuery = await pool.query(
       `SELECT id, region, province, city, barangay, 
               verification_attempts, last_verification_request, status 
       FROM mobile_users 
@@ -507,9 +503,7 @@ const requestMobileUserVerification = async (req, res) => {
       }
     }
 
-    // ===========================
     // Handle form fields & files
-    // ===========================
     const { civil_status, sex, home_address, id_type } = req.body;
 
     const idImages = req.files?.idImage || [];
@@ -526,7 +520,7 @@ const requestMobileUserVerification = async (req, res) => {
     const idBackUrl  = `${baseUrl}/${idBackFile.path.replace(/\\/g, '/')}`;
     const selfieUrl  = `${baseUrl}/${selfieFile.path.replace(/\\/g, '/')}`;
 
-    const result = await supabase(
+    const result = await pool.query(
       `UPDATE mobile_users SET
         civil_status=$1,
         sex=$2,
@@ -563,7 +557,7 @@ const requestMobileUserVerification = async (req, res) => {
     }
 
     try {
-    await supabase(
+    await pool.query(
       `INSERT INTO notifications 
       (mobile_user_id, region, province, city, barangay, first_name, last_name, type, is_read, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, NOW())`,
@@ -585,6 +579,7 @@ const requestMobileUserVerification = async (req, res) => {
       console.error('Failed to create notification:', notifErr);
     }
 
+    // Emit via Socket.io
     const io = getIo();
     io.emit('newVerificationRequest', result.rows[0]);
     console.log('Emitted newVerificationRequest event to web clients');
@@ -608,7 +603,7 @@ const mobileUserLogin = async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required.' });
     }
 
-    const result = await supabase(
+    const result = await pool.query(
       'SELECT * FROM mobile_users WHERE username = $1',
       [username]
     );
@@ -714,7 +709,7 @@ const getAdminProfile = async (req, res) => {
     const role = req.query.role || 'Super Admin';
 
     try {
-        const result = await supabase(
+        const result = await pool.query(
         'SELECT * FROM admin_accounts WHERE id = $1 AND role = $2',
         [id, role]
     );
@@ -738,7 +733,7 @@ const getLGUProfile = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const result = await supabase(
+    const result = await pool.query(
       'SELECT * FROM admin_accounts WHERE id = $1 AND role = $2',
       [id, 'Local Government Unit']
     );
@@ -762,7 +757,7 @@ const getBarangayProfile = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const result = await supabase(
+    const result = await pool.query(
       `SELECT * FROM barangay_accounts WHERE id = $1`,
       [id]
     );
@@ -780,7 +775,7 @@ const getBarangayProfile = async (req, res) => {
 const getMobileUserProfile = async (req, res) => {
   try {
 
-    const result = await supabase("SELECT * FROM mobile_users WHERE id=$1", [req.params.id]);
+    const result = await pool.query("SELECT * FROM mobile_users WHERE id=$1", [req.params.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
@@ -822,7 +817,7 @@ const updateMobileUserProfilePicture = async (req, res) => {
 
   try {
     console.log('Executing DB update for user ID:', id);
-    const updateResult = await supabase(
+    const updateResult = await pool.query(
       `UPDATE mobile_users SET profile_picture = $1 WHERE id = $2 RETURNING *`,
       [filePath, id]
     );
@@ -853,7 +848,7 @@ const removeMobileUserProfilePicture = async (req, res) => {
   const { id } = req.params;
 
   try {
-    await supabase(
+    await pool.query(
       `UPDATE mobile_users
        SET profile_picture = NULL
        WHERE id = $1`,

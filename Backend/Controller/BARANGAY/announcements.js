@@ -6,7 +6,7 @@ const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 
 // Replace with your computer's LAN IP so mobile devices can access it
-const LAN_IP = process.env.LAN_IP || "192.168.1.3"; 
+const LAN_IP = process.env.LAN_IP; 
 const PORT = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
@@ -17,14 +17,14 @@ const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
 const createAnnouncement = async (req, res) => {
   try {
     const { 
-      title, 
-      text, 
-      posted_by_id, 
-      posted_by_name,
-      region,
-      province,
-      city,
-      barangay 
+        title, 
+        text, 
+        posted_by_id, 
+        posted_by_name,
+        region,
+        province,
+        city,
+        barangay 
     } = req.body;
 
     // console.log("📥 Incoming Request Body:", req.body);
@@ -104,61 +104,66 @@ const createAnnouncement = async (req, res) => {
 
         if (userIds.length > 0) {
           const notificationQuery = `
-           INSERT INTO mobile_notifications (mobile_user_id, type, status, is_read)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO mobile_notifications (mobile_user_id, type, status, title, text)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *
           `;
 
-      for (const userId of userIds) {
-        await pool.query(notificationQuery, [
-          userId,
-          'broadcast_announcements',
-          'created',
-          false   // 👈 mark unread by default
-        ]);
+          for (const userId of userIds) {
+            await pool.query(notificationQuery, [
+              userId,
+              'broadcast_announcements',
+              'created',
+              title,
+              text
+            ]);
+          }
+
+          console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+        } else {
+          console.log("No users found in this location for notification.");
+        }
+
+      } catch (err) {
+        console.error("Failed to save notifications:", err.message);
+        console.error("Full error:", err);
       }
 
-        console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
-      } else {
-        console.log("No users found in this location for notification.");
-      }
-    } catch (err) {
-      console.error("Failed to save notifications:", err.message);
-      console.error("Full error:", err);
+
+      // -----------------------------
+      // Emit to everyone (socket.io)
+      // -----------------------------
+      const io = getIo();
+      console.log("Emitting announcementUpdate:", createdAnnouncement);
+
+      io.emit("announcementUpdate", {
+        id: createdAnnouncement.id,
+        title: createdAnnouncement.title,
+        text: createdAnnouncement.text,
+        posted_by_id: createdAnnouncement.posted_by_id,
+        posted_by_name: createdAnnouncement.posted_by_name,
+        region: createdAnnouncement.region,
+        province: createdAnnouncement.province,
+        city: createdAnnouncement.city,
+        barangay: createdAnnouncement.barangay,
+        created_at: createdAnnouncement.created_at,
+      });
+
+
+
+      // -----------------------------
+      // Final response
+      // -----------------------------
+      return res.status(201).json({
+        message: 'Announcement created successfully!',
+        announcement: createdAnnouncement,
+      });
+    } catch (error) {
+      console.error("[CREATE ANNOUNCEMENT ERROR]:", error.message);
+        return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
     }
-
-    // -----------------------------
-    // Emit to everyone (socket.io)
-    // -----------------------------
-    const io = getIo();
-    console.log("Emitting announcementUpdate:", createdAnnouncement);
-
-    io.emit("announcementUpdate", {
-      id: createdAnnouncement.id,
-      title: createdAnnouncement.title,
-      text: createdAnnouncement.text,
-      posted_by_id: createdAnnouncement.posted_by_id,
-      posted_by_name: createdAnnouncement.posted_by_name,
-      region: createdAnnouncement.region,
-      province: createdAnnouncement.province,
-      city: createdAnnouncement.city,
-      barangay: createdAnnouncement.barangay,
-      created_at: createdAnnouncement.created_at,
-    });
-
-    // -----------------------------
-    // Final response
-    // -----------------------------
-    return res.status(201).json({
-      message: 'Announcement created successfully!',
-      announcement: createdAnnouncement,
-    });
-
-  } catch (error) {
-    console.error("[CREATE ANNOUNCEMENT ERROR]:", error.message);
-    return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
-  }
 };
+
 
 // =========================
 // DELETE ANNOUNCEMENT
@@ -784,10 +789,11 @@ const unfollowBarangay = async (req, res) => {
 
 
 
+
 const sendAlert = async (req, res) => {
   const {
     title,
-    message,
+    text,
     sent_by_id,
     sent_by_name,
     region,
@@ -796,21 +802,27 @@ const sendAlert = async (req, res) => {
     barangay
   } = req.body;
 
-  if (!title && !message) {
-    return res.status(400).json({ message: 'Title or message is required' });
+  // Debug: log incoming request body
+  console.log("📥 Incoming sendAlert request:", { title, text, sent_by_id, sent_by_name, region, province, city, barangay });
+
+  if (!title && !text) {
+    return res.status(400).json({ text: 'Title or message is required' });
   }
 
   try {
     // 1️⃣ Save alert in web table
     const result = await pool.query(
       `INSERT INTO alerts
-        (title, message, sent_by_id, sent_by_name, region, province, city, barangay)
+        (title, text, sent_by_id, sent_by_name, region, province, city, barangay)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING *`,
-      [title, message, sent_by_id, sent_by_name, region, province, city, barangay]
+      [title, text, sent_by_id, sent_by_name, region, province, city, barangay]
     );
 
     const createdAlert = result.rows[0];
+
+    // Debug: log what was saved in DB
+    console.log("✅ Alert saved in DB:", { id: createdAlert.id, title: createdAlert.title, text: createdAlert.text });
 
     // 2️⃣ Send mobile notifications
     try {
@@ -823,13 +835,16 @@ const sendAlert = async (req, res) => {
       const userIds = usersResult.rows.map(r => r.id);
 
       if (userIds.length > 0) {
-        // Loop insert to ensure title and text are correct
         for (const userId of userIds) {
-          await pool.query(
+          const notifResult = await pool.query(
             `INSERT INTO mobile_notifications (mobile_user_id, type, status, title, text)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [userId, 'send_alert_updates', 'created', title, message]
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [userId, 'send_alert_updates', 'created', title, text]
           );
+
+          // Debug: log each notification inserted
+          console.log("📲 Notification saved:", { userId, title: notifResult.rows[0].title, text: notifResult.rows[0].text });
         }
 
         console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
@@ -846,7 +861,7 @@ const sendAlert = async (req, res) => {
     io.emit("alertUpdate", {
       id: createdAlert.id,
       title: createdAlert.title,
-      text: createdAlert.message,
+      text: createdAlert.text,
       sent_by_id: createdAlert.sent_by_id,
       sent_by_name: createdAlert.sent_by_name,
       region: createdAlert.region,
@@ -863,6 +878,77 @@ const sendAlert = async (req, res) => {
     res.status(500).json({ message: 'Failed to send alert', error: error.message });
   }
 };
+
+
+
+const getMobileNotifications = async (req, res) => {
+  const userId = req.params.userId; // must match your route param
+
+  console.log("🚀 getMobileNotifications called with userId:", userId);
+
+  if (!userId) {
+    console.warn("⚠️ No userId provided in request!");
+    return res.status(400).json({ message: "Missing userId" });
+  }
+
+  try {
+    console.log("📡 Running SQL query...");
+    const result = await pool.query(
+      `SELECT *
+       FROM mobile_notifications
+       WHERE mobile_user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    console.log("✅ Query executed successfully");
+    console.log(`📲 Fetched ${result.rows.length} notifications for userId ${userId}`);
+
+    // Only log notifications of type 'send_alert_updates'
+    result.rows.forEach((notif, i) => {
+      // Only type 'send_alert_updates' AND title/text not null
+      if (
+        notif.type === "send_alert_updates" &&
+        (notif.title !== null || notif.text !== null)
+      ) {
+        console.group(`🔍 Notification ${i} (ID: ${notif.id ?? "[no ID]"})`);
+        console.log("ID:", notif.id);
+        console.log("Mobile User ID:", notif.mobile_user_id);
+        console.log("Type:", notif.type);
+        console.log("Status:", notif.status);
+        console.log("Reason for Rejection:", notif.reason_for_rejection);
+        console.log("Last Verification Request:", notif.last_verification_request);
+        console.log("Is Read:", notif.is_read);
+        console.log("Created At:", notif.created_at);
+        console.log("Title:", notif.title);
+        console.log("Text:", notif.text);
+        console.groupEnd();
+      }
+    });
+
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("❌ Error fetching mobile notifications:", error);
+    res.status(500).json({
+      message: "Failed to fetch notifications",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -884,5 +970,6 @@ module.exports = {
     getBarangayOfficialsForMobile,
     unfollowBarangay,
     deleteAnnouncement,
-    sendAlert
+    sendAlert,
+    getMobileNotifications
 }

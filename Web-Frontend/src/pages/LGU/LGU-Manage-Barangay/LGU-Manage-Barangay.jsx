@@ -507,7 +507,7 @@ const renderTable = (barangay = []) => {
               <th className="table-header">Barangay Name</th>
               <th className="table-header">Contact Number</th>
               <th className="table-header">Barangay Address</th>
-              <th className="table-header">Action</th>
+              <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -517,53 +517,62 @@ const renderTable = (barangay = []) => {
                 <td className="table-cell">{acc.barangay_name}</td>
                 <td className="table-cell">{acc.phone_number}</td>
                 <td className="table-cell">{acc.barangay_address}</td>
-                <td className="table-cell">
-                  <img
-                    src="/icons/add-user-row.png"
-                    alt="Add"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBarangay(acc.barangay_name);
-                      setIsAddUserModalOpen(true);
-                    }}
-                  />
-                  <img
-                    src="/icons/edit-row.png"
-                    alt="Edit"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBarangay(acc.barangay_name);
-                      setBarangayCaptain(acc.barangay_captain);
-                      setPhoneNumber(acc.phone_number);
-                      setAddress(acc.barangay_address);
-                      setEditingBarangayId(acc.id);
-                      setIsEditMode(true);
-                      setIsAddBarangayModalOpen(true);
-                    }}
-                  />
-                  <img
-                    src="/icons/delete-row.png"
-                    alt="Delete"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBarangayToDelete(acc);
-                      setShowDeleteConfirm(true);
-                    }}
-                  />
-                  <img
-                    src="/icons/dashboard.png"
-                    alt="Dashboard"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      //e.stopPropagation();
-                      //setBarangayToDelete(acc);
-                      //setShowDeleteConfirm(true);
-                    }}
-                  />
-                </td>
+
+<td className="table-cell" style={styles.cell}>
+  <div style={styles.row}>
+    {[
+      {
+        src: "/icons/add-user-row.png",
+        alt: "Add",
+        action: () => {
+          setSelectedBarangay(acc.barangay_name);
+          setIsAddUserModalOpen(true);
+        },
+      },
+      {
+        src: "/icons/edit-row.png",
+        alt: "Edit",
+        action: () => {
+          setSelectedBarangay(acc.barangay_name);
+          setBarangayCaptain(acc.barangay_captain);
+          setPhoneNumber(acc.phone_number);
+          setAddress(acc.barangay_address);
+          setEditingBarangayId(acc.id);
+          setIsEditMode(true);
+          setIsAddBarangayModalOpen(true);
+        },
+      },
+      {
+        src: "/icons/delete-row.png",
+        alt: "Delete",
+        action: () => {
+          setBarangayToDelete(acc);
+          setShowDeleteConfirm(true);
+        },
+      },
+      {
+        src: "/icons/dashboard.png",
+        alt: "Dashboard",
+        action: () => {
+          // Optional: add dashboard action here
+        },
+      },
+    ].map((icon, idx) => (
+      <img
+        key={idx}
+        src={icon.src}
+        alt={icon.alt}
+        style={styles.icon}
+        onClick={(e) => {
+          e.stopPropagation();
+          icon.action();
+        }}
+        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
+      />
+    ))}
+  </div>
+</td>
+
               </tr>
             ))}
           </tbody>
@@ -808,7 +817,7 @@ const renderTable = (barangay = []) => {
               }}
             />
 
-           <div className="icon-container">
+            <div className="icon-container">
               <img
                 src="/icons/delete.png"
                 alt="Delete"
@@ -816,8 +825,8 @@ const renderTable = (barangay = []) => {
               />
             </div>
 
-           <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
-           <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
+            <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
 
             <div
               style={{
@@ -1085,9 +1094,9 @@ const renderTable = (barangay = []) => {
                   </div>
                 </div>
               )}
-            </div>             
+            </div>
 
-           <div className="modal-button-row">
+            <div className="modal-button-row">
               <button onClick={closeViewAccountModal} className="modal-cancel-button">
                 Close
               </button>
@@ -1105,6 +1114,24 @@ const renderTable = (barangay = []) => {
     </>
   );
 }
+
+const styles = {
+  cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
+  row: { display: "flex", alignItems: "center", gap: "15px" },
+  icon: {
+    width: "20px",
+    height: "20px",
+    cursor: "pointer",
+    transition: "transform 0.15s ease",
+  },
+};
+
+const bounceEffect = (el) => {
+  el.style.transform = "translateY(-6px)";
+  setTimeout(() => (el.style.transform = "translateY(2px)"), 150);
+  setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
+  setTimeout(() => (el.style.transform = "translateY(0)"), 450);
+};
 
 const dropdownStyles = {
   control: (base, state) => ({

@@ -149,8 +149,6 @@ const {
 } = require('../Controller/BARANGAY/mobileUserRegistry');
 
 router.use(authenticateToken);
-
-// POST upload front/back ID for mobile user
 router.post(
   '/mobile-user-profile/:userId/upload-id',
   uploadWithSupabase([{ name: 'files', maxCount: 2 }]), // max 2 files (front/back)
@@ -184,6 +182,7 @@ router.get('/notifications', getNotificationsByLocation);
 router.delete('/notifications/:id', deleteNotification);
 router.get('/mobile-notifications/:userId', getMobileUserNotifications);
 router.patch('/notifications/:notificationId/read', markMobileNotificationAsRead);
+
 // =================================================
 //  INCIDENT REPORTING
 // =================================================
@@ -193,8 +192,6 @@ const {
     getAllPins,
     getBarangayReports,
     getBarangayReportsForMobile,
-
-    // Web
     getReportsByLocation,
     deleteIncidentReport,
     updateReportStatus,
@@ -230,25 +227,13 @@ router.post(
 
 
 router.get('/all-report-pins', getAllPins);
-
 router.get('/barangay-get-all-reports', authenticateToken, getBarangayReports);
 router.get('/all-barangay-reports', authenticateToken, getBarangayReportsForMobile);
 
-// GET proof files for a report
-//router.get('/proof-files-report/:id', fetchProofFilesBackend);
-
-
-
-
-// Blockings
-router.get('/reports/:id', getBarangayReportById);
-
-//Web
+// Web
 router.get('/barangay-incident-reports', getReportsByLocation);
 router.delete('/barangay-delete-incident-report/:id', deleteIncidentReport);
 router.patch('/update-barangay-report-status/:id', updateReportStatus);
-
-
 router.post(
   '/upload-proof/:id',
   authenticateToken,
@@ -272,6 +257,8 @@ router.post(
 );
 
 router.patch('/transfer-report/:id', transferReport);
+router.get('/reports/:id', getBarangayReportById);
+
 
 // =================================================
 //  DOCUMENT REQUEST
@@ -312,6 +299,7 @@ const {
   unfollowBarangay,
   deleteAnnouncement,
   sendAlert,
+  getMobileNotifications
 } = require('../Controller/BARANGAY/announcements');
 
 // Announcements (always public bucket)
@@ -373,52 +361,14 @@ router.post(
 );
 
 router.get("/get-officials", getOfficials);
-
-// Using DELETE method
 router.delete("/delete-official/:id", deleteOfficial);
-
-
-
-
-// ================= GET ALL MOBILE USERS BY LOCATION ==================
-
-
-
-// Get all notifications
-router.get('/notifications', getNotificationsByLocation);
-
-// ================= DELETE NOTIFICATION ==================
-router.delete('/notifications/:id', deleteNotification);
-
-
-// ================= MARK AS READ ==================
-router.put('/notifications/:id/mark-read', markAsRead);
-
-
-
-
-
-
-
-
-
-
-router.get('/mobile-notifications/:userId', getMobileUserNotifications);
-
-router.patch('/notifications/:notificationId/read', markMobileNotificationAsRead);
-
-
-
-
-
-// =================================================
 router.get('/officials/mobile', getBarangayOfficialsForMobile);
-
-
 router.post('/unfollow-barangay', unfollowBarangay);
 
 // Send Alert
 router.post('/send-alert', authenticateToken, sendAlert);
+router.get('/alert-notifications/:userId', getMobileNotifications);
+
 
 
 // =================================================
