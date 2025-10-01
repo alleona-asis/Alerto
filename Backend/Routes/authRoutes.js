@@ -195,8 +195,6 @@ router.post('/mobile-user-login', mobileUserLogin);
 // ================ USER PROFILES ==================
 router.get('/super-admin-profile/:id', getAdminProfile);
 router.get('/lgu-admin-profile/:id', getLGUProfile);
-// // ✅ Barangay Staff
-// router.post('/barangay-staff-login', barangayStaffLogin);
 router.get('/barangay-staff-profile/:id', getBarangayProfile);
 router.get('/mobile-user-profile/:id', getMobileUserProfile);
 

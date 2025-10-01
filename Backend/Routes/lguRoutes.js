@@ -41,6 +41,7 @@ const feedbackUpload = multer({
   fileFilter: feedbackFileFilter
 });
 
+
 // =================================================
 // MANAGE BARANGAY 
 // =================================================
@@ -88,6 +89,7 @@ const {
   getAllLGUFeedback,
   deleteLGUFeedback
 } = require('../Controller/LGU/supportHelp')
+
 
 // ============= SUBMIT LGU FEEDBACK ===============
 router.post(
@@ -161,10 +163,14 @@ router.delete("/document-requests/:id", deleteDocumentRequest);
 // =================================================
 const {  
   getTotalMobileUsers,
+  getMobileUsers,
+  deleteMobileUser
 } = require('../Controller/LGU/mobileUsers', )
 
-// =============== GET ALL REQUESTS ================
+
 router.get('/total-mobile-users', getTotalMobileUsers);
+router.get('/get-lgu-mobile-users', getMobileUsers);
+router.delete('/delete-mobile-user/:id', deleteMobileUser);
 
 
 

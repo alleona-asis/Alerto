@@ -59,6 +59,81 @@ const getTotalMobileUsers = async (req, res) => {
   }
 };
 
+
+// =================================================
+//  GET ALL MOBILE USERS
+// =================================================
+const getMobileUsers = async (req, res) => {
+  try {
+    const { province, region, city } = req.query;
+
+    if (!province || !region || !city) {
+      return res.status(400).json({ message: "User location not found" });
+    }
+
+    const { rows: reports } = await pool.query(
+      `SELECT *
+       FROM mobile_users
+       WHERE province = $1
+         AND region = $2
+         AND city = $3`,
+      [province, region, city]
+    );
+
+    res.status(200).json(reports);
+  } catch (error) {
+    console.error("Error fetching incident reports:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =================================================
+//  DELETE MOBILE USER
+// =================================================
+const deleteMobileUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Mobile user ID is required" });
+    }
+
+    // Start a transaction
+    await pool.query('BEGIN');
+
+    // Delete notifications related to the mobile user
+    await pool.query(
+      `DELETE FROM notifications WHERE mobile_user_id = $1`,
+      [id]
+    );
+
+    // Delete the mobile user
+    const result = await pool.query(
+      `DELETE FROM mobile_users
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      await pool.query('ROLLBACK');
+      return res.status(404).json({ message: "Mobile user not found" });
+    }
+
+    await pool.query('COMMIT');
+    res.status(200).json({ message: "Mobile user deleted successfully", deletedUser: result.rows[0] });
+
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error("Error deleting mobile user:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
 module.exports = {
-  getTotalMobileUsers
+  getTotalMobileUsers,
+  getMobileUsers,
+  deleteMobileUser
 };

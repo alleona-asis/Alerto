@@ -401,7 +401,6 @@ const updateMobileUserStatus = async (req, res) => {
   }
 };
 
-// GET /api/mobile/notifications/:userId
 
 // =================================================
 //  GET MOBILE USER NOTIFICATIONS

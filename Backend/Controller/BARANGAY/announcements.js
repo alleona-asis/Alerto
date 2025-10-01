@@ -131,7 +131,7 @@ const createAnnouncement = async (req, res) => {
 
 
       // -----------------------------
-      // Emit to everyone (socket.io)
+      // Emit to everyone
       // -----------------------------
       const io = getIo();
       console.log("Emitting announcementUpdate:", createdAnnouncement);
@@ -151,6 +151,7 @@ const createAnnouncement = async (req, res) => {
 
 
 
+
       // -----------------------------
       // Final response
       // -----------------------------
@@ -159,7 +160,6 @@ const createAnnouncement = async (req, res) => {
         announcement: createdAnnouncement,
       });
     } catch (error) {
-      console.error("[CREATE ANNOUNCEMENT ERROR]:", error.message);
         return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
     }
 };
@@ -858,7 +858,9 @@ const sendAlert = async (req, res) => {
 
     // 3️⃣ Emit to all clients (web/mobile)
     const io = getIo();
+    console.log("📡 Emitting alertUpdate with title/text:", { title: createdAlert.title, text: createdAlert.text });
     io.emit("alertUpdate", {
+        type: "send_alert_updates",
       id: createdAlert.id,
       title: createdAlert.title,
       text: createdAlert.text,
@@ -881,8 +883,10 @@ const sendAlert = async (req, res) => {
 
 
 
+
+
 const getMobileNotifications = async (req, res) => {
-  const userId = req.params.userId; // must match your route param
+  const userId = req.params.userId;
 
   console.log("🚀 getMobileNotifications called with userId:", userId);
 
@@ -892,7 +896,6 @@ const getMobileNotifications = async (req, res) => {
   }
 
   try {
-    console.log("📡 Running SQL query...");
     const result = await pool.query(
       `SELECT *
        FROM mobile_notifications
@@ -901,33 +904,31 @@ const getMobileNotifications = async (req, res) => {
       [userId]
     );
 
-    console.log("✅ Query executed successfully");
     console.log(`📲 Fetched ${result.rows.length} notifications for userId ${userId}`);
 
-    // Only log notifications of type 'send_alert_updates'
-    result.rows.forEach((notif, i) => {
-      // Only type 'send_alert_updates' AND title/text not null
-      if (
-        notif.type === "send_alert_updates" &&
-        (notif.title !== null || notif.text !== null)
-      ) {
-        console.group(`🔍 Notification ${i} (ID: ${notif.id ?? "[no ID]"})`);
-        console.log("ID:", notif.id);
-        console.log("Mobile User ID:", notif.mobile_user_id);
-        console.log("Type:", notif.type);
-        console.log("Status:", notif.status);
-        console.log("Reason for Rejection:", notif.reason_for_rejection);
-        console.log("Last Verification Request:", notif.last_verification_request);
-        console.log("Is Read:", notif.is_read);
-        console.log("Created At:", notif.created_at);
-        console.log("Title:", notif.title);
-        console.log("Text:", notif.text);
-        console.groupEnd();
-      }
+    // 👉 Emit newest notification via socket in the same format
+    if (result.rows.length > 0) {
+      const latest = result.rows[0];
+
+      const io = getIo();
+      io.to(`user_${userId}`).emit("alertUpdate", {
+        id: latest.id,
+        type: latest.type || "send_alert_updates",
+        title: latest.title,
+        text: latest.text,
+        status: latest.status,
+        reason_for_rejection: latest.reason_for_rejection,
+        created_at: latest.created_at,
+        is_read: latest.is_read,
+      });
+
+      console.log("📡 Emitted alertUpdate to user:", userId, latest);
+    }
+
+    res.status(200).json({
+      success: true,
+      notifications: result.rows,
     });
-
-
-    res.status(200).json(result.rows);
   } catch (error) {
     console.error("❌ Error fetching mobile notifications:", error);
     res.status(500).json({
@@ -936,6 +937,7 @@ const getMobileNotifications = async (req, res) => {
     });
   }
 };
+
 
 
 

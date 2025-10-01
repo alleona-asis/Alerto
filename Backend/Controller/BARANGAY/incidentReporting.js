@@ -705,10 +705,6 @@ const getBarangayReportById = async (req, res) => {
     `;
     const result = await pool.query(query, [userId]);
 
-    // result.rows.forEach((report, index) => {
-    //   console.log(`[getBarangayReportById] Report ${index + 1} proof_files:`, report.proof_files);
-    // });
-
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching user reports:", err);

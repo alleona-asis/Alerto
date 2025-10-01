@@ -256,7 +256,6 @@ const callBarangayAssistance = async (req, res) => {
         WHERE id = $1
       `;
       values = [barangay_id];
-      // console.log("Querying by ID:", values);
     } else if (region && province && city && barangay) {
       query = `
         SELECT phone_number, barangay_name, city_or_municipality, province, region
@@ -265,13 +264,11 @@ const callBarangayAssistance = async (req, res) => {
         LIMIT 1
       `;
       values = [region, province, city, barangay];
-      // console.log("Querying by Location:", values);
     } else {
       return res.status(400).json({ message: "Provide either barangay_id or location details." });
     }
 
     const result = await pool.query(query, values);
-    // console.log("Query result:", result.rows);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Barangay not found.", criteria: values });

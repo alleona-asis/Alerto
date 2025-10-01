@@ -49,6 +49,12 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
             isActive: pathname === '/LGUDashboard' || pathname === '/admin',
         },
         {
+            label: 'Mobile Users',
+            icon: '/icons/mobile-user.png',
+            path: '/lgu/mobile-users',
+            isActive: pathname === '/lgu/mobile-users',
+        },
+        {
             label: 'Manage Barangay',
             icon: '/icons/manage-lgu.png',
             path: '/lgu/manage-barangay',
