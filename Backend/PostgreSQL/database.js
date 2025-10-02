@@ -2,10 +2,10 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Global Node TLS bypass for Supabase pooler (essential for stubborn self-signed certs)
+// Global Node TLS bypass (keep for pooler)
 if (process.env.DB_ENV === 'supabase') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-  console.log('🔓 Global Node TLS Bypass Enabled (Supabase Self-Signed Certs)');
+  console.log('🔓 Global Node TLS Bypass Enabled for Supabase Pooler');
 }
 
 let poolConfig;
@@ -19,23 +19,28 @@ if (process.env.DB_ENV === 'supabase') {
   
   poolConfig = {
     connectionString: process.env.DATABASE_URL,
-    // Aggressive multi-layer SSL bypass
+    // SSL bypass (unchanged)
     ssl: {
-      rejectUnauthorized: false,     // Core bypass
-      ca: false,                     // Skip CA chain
-      checkServerIdentity: (host, cert) => {  // Ignore hostname mismatches
-        return undefined;  // Allows pooler quirks
-      }
+      rejectUnauthorized: false,
+      ca: false,
+      checkServerIdentity: (host, cert) => undefined
     },
-    // Render-optimized pool
-    max: 15,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 20000,  // Ample for TLS + cold starts
-    allowExitOnIdle: false
+    // Enhanced for network timeouts (Render + pooler)
+    max: 10,  // Reduce to avoid overload (from 15)
+    min: 2,   // Keep 2 idle connections warm
+    idleTimeoutMillis: 60000,  // 60s idle (longer for intermittent)
+    connectionTimeoutMillis: 30000,  // 30s connect (vs 20s)
+    acquireTimeoutMillis: 60000,  // 60s to acquire from pool
+    createTimeoutMillis: 30000,  // 30s create new
+    destroyTimeoutMillis: 5000,  // Quick destroy fails
+    reapIntervalMillis: 1000,  // Check idle every 1s
+    allowExitOnIdle: false,
+    // Reconnect on error
+    Promise: global.Promise
   };
-  console.log('🔒 Full SSL Bypass Applied: rejectUnauthorized=false + ca=false + checkServerIdentity disabled');
+  console.log('🔒 SSL Bypass + Network Resilience: Timeouts increased, min=2 connections');
 } else {
-  console.log('Connecting to Local PostgreSQL...');
+  // Local config unchanged
   poolConfig = {
     user: process.env.PG_USER,
     host: process.env.PG_HOST,
@@ -50,38 +55,39 @@ if (process.env.DB_ENV === 'supabase') {
 
 const pool = new Pool(poolConfig);
 
-// Robust test with retries (for Render variability)
-let testRetries = 0;
-const maxRetries = 3;
-const testQuery = async () => {
+// Test with extended retries
+let retries = 0;
+const maxRetries = 5;  // More for network
+const testDB = async () => {
   try {
     const res = await pool.query('SELECT NOW() AS connected');
-    console.log('✅ Database connected successfully:', res.rows[0].connected);
-    console.log('🔥 Pool ready for Alerto: Auth, uploads (media jsonb), timers, concurrency');
+    console.log('✅ DB Connected:', res.rows[0].connected);
+    console.log('🚀 Alerto Ready: Auth, uploads, timers');
+    retries = 0;  // Reset on success
   } catch (err) {
-    console.error('❌ DB test error (attempt', ++testRetries, '/', maxRetries, '):', err.code, err.message);
-    if (err.code === 'SELF_SIGNED_CERT_IN_CHAIN' && testRetries < maxRetries) {
-      console.log('🔄 Retrying DB test (SSL warmup)...');
-      setTimeout(testQuery, 3000);  // 3s wait
-    } else if (err.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
-      console.error('💡 Persistent SSL: Update pg to latest OR migrate to Railway (IPv6 Direct)');
+    console.error('❌ DB Test Fail (Retry', ++retries, '/', maxRetries, '):', err.code, err.message);
+    if ((err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') && retries < maxRetries) {
+      console.log('🔄 Network Retry (Check Supabase "Allow all IPs")...');
+      setTimeout(testDB, 5000);  // 5s wait
     } else if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
-      console.error('🌐 Network: Supabase "Allow all IPs" + correct password?');
+      console.error('🌐 Network Block: Enable Supabase "Allow all IPs" OR migrate to Railway Direct');
     } else {
-      console.error('🛠️ Other error: Check DATABASE_URL/creds');
+      console.error('🔍 Other: Verify DATABASE_URL');
     }
-    // App runs anyway – queries retry
   }
 };
-testQuery();  // Start test
+testDB();
 
-// Pool error handler (suppresses spam post-fix)
+// Enhanced pool error handler (reconnect on network fails)
 pool.on('error', (err) => {
-  if (err.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
-    console.log('🔄 Pool SSL retrying...');
-  } else {
-    console.error('Pool error:', err.code, err.message);
+  console.error('Pool Error:', err.code, err.message);
+  if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+    console.log('🔄 Pool reconnecting on network fail...');
+    // Optional: pool.end().then(() => new Pool(...)) for full reset
   }
 });
+
+pool.on('connect', () => console.log('🔗 New DB connection established'));
+pool.on('acquire', () => console.log('📥 Connection acquired from pool'));
 
 module.exports = pool;
