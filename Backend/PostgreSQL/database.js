@@ -1,8 +1,7 @@
-// Backend/Database Connection (database.js)
+// Backend/Database Connection 
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Global Node TLS bypass (keep for pooler)
 if (process.env.DB_ENV === 'supabase') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   console.log('🔓 Global Node TLS Bypass Enabled for Supabase Pooler');
@@ -11,36 +10,33 @@ if (process.env.DB_ENV === 'supabase') {
 let poolConfig;
 
 if (process.env.DB_ENV === 'supabase') {
-  console.log('💻 Connecting to Supabase Session Pooler...');
+  console.log('Connecting to Supabase Session Pooler...');
   const url = new URL(process.env.DATABASE_URL || '');
-  console.log('DATABASE_URL Host:', url.hostname);
-  console.log('DATABASE_URL Port:', url.port);
-  console.log('DATABASE_URL SSL Mode:', url.searchParams.get('sslmode'));
+  // console.log('DATABASE_URL Host:', url.hostname);
+  // console.log('DATABASE_URL Port:', url.port);
+  // console.log('DATABASE_URL SSL Mode:', url.searchParams.get('sslmode'));
   
   poolConfig = {
     connectionString: process.env.DATABASE_URL,
-    // SSL bypass (unchanged)
     ssl: {
       rejectUnauthorized: false,
       ca: false,
-      checkServerIdentity: (host, cert) => undefined
+      checkServerIdentity: (host, cert) => undefined  
     },
-    // Enhanced for network timeouts (Render + pooler)
-    max: 10,  // Reduce to avoid overload (from 15)
-    min: 2,   // Keep 2 idle connections warm
-    idleTimeoutMillis: 60000,  // 60s idle (longer for intermittent)
-    connectionTimeoutMillis: 30000,  // 30s connect (vs 20s)
-    acquireTimeoutMillis: 60000,  // 60s to acquire from pool
-    createTimeoutMillis: 30000,  // 30s create new
-    destroyTimeoutMillis: 5000,  // Quick destroy fails
-    reapIntervalMillis: 1000,  // Check idle every 1s
+    max: 10,                 
+    min: 2,                  
+    idleTimeoutMillis: 60000, 
+    connectionTimeoutMillis: 30000,  
+    acquireTimeoutMillis: 60000,     
+    createTimeoutMillis: 30000,     
+    destroyTimeoutMillis: 5000,     
+    reapIntervalMillis: 1000,        
     allowExitOnIdle: false,
-    // Reconnect on error
-    Promise: global.Promise
+    Promise: global.Promise  
   };
-  console.log('🔒 SSL Bypass + Network Resilience: Timeouts increased, min=2 connections');
+  console.log('SSL Bypass + Network Resilience: Timeouts tuned, min=2 connections');
 } else {
-  // Local config unchanged
+  console.log('Connecting to Local PostgreSQL...');
   poolConfig = {
     user: process.env.PG_USER,
     host: process.env.PG_HOST,
@@ -55,39 +51,45 @@ if (process.env.DB_ENV === 'supabase') {
 
 const pool = new Pool(poolConfig);
 
-// Test with extended retries
-let retries = 0;
-const maxRetries = 5;  // More for network
+// Initial test (silent after first success)
+let testRetries = 0;
+const maxRetries = 5;
+let hasConnected = false;
 const testDB = async () => {
+  if (hasConnected) return;  // Skip if already successful
   try {
     const res = await pool.query('SELECT NOW() AS connected');
     console.log('✅ DB Connected:', res.rows[0].connected);
-    console.log('🚀 Alerto Ready: Auth, uploads, timers');
-    retries = 0;  // Reset on success
+    // console.log('🚀 Alerto Ready: Auth, uploads (media jsonb), timers, concurrency');
+    hasConnected = true;
+    testRetries = 0;
   } catch (err) {
-    console.error('❌ DB Test Fail (Retry', ++retries, '/', maxRetries, '):', err.code, err.message);
-    if ((err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') && retries < maxRetries) {
-      console.log('🔄 Network Retry (Check Supabase "Allow all IPs")...');
-      setTimeout(testDB, 5000);  // 5s wait
+    console.error('❌ DB Test Fail (Retry', ++testRetries, '/', maxRetries, '):', err.code, err.message);
+    if ((err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') && testRetries < maxRetries) {
+      console.log(' Network Retry (Verify Supabase "Allow all IPs")...');
+      setTimeout(testDB, 5000);
     } else if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
-      console.error('🌐 Network Block: Enable Supabase "Allow all IPs" OR migrate to Railway Direct');
+      console.error('Network Issue: Enable Supabase "Allow all IPs" or migrate to Railway (IPv6 Direct)');
     } else {
-      console.error('🔍 Other: Verify DATABASE_URL');
+      console.error('Other Error: Check DATABASE_URL/creds');
     }
   }
 };
 testDB();
 
-// Enhanced pool error handler (reconnect on network fails)
+// Pool event handlers (minimal logging)
 pool.on('error', (err) => {
   console.error('Pool Error:', err.code, err.message);
   if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
-    console.log('🔄 Pool reconnecting on network fail...');
-    // Optional: pool.end().then(() => new Pool(...)) for full reset
+    console.log('🔄 Pool attempting reconnect on network fail...');
+    // Optional full reset (uncomment for aggressive recovery):
+    // pool.end().then(() => {
+    //   console.log('🔄 Pool reset complete');
+    //   const newPool = new Pool(poolConfig);
+    //   Object.keys(newPool).forEach(key => { if (key !== 'config') module.exports[key] = newPool[key]; });
+    // });
   }
 });
 
-pool.on('connect', () => console.log('🔗 New DB connection established'));
-pool.on('acquire', () => console.log('📥 Connection acquired from pool'));
 
 module.exports = pool;

@@ -260,7 +260,7 @@ const deleteMobileUser = async (id) => {
             />
             <h2 className="no-barangay-title">No Mobile Users</h2>
             <p className="no-barangay-subtext">
-              There are currently no barangay reports available. Please add one to get started.
+             There are currently no mobile user records available.
             </p>
           </div>
         </div>

@@ -286,9 +286,9 @@ export default function LGUMobileUsers() {
               src={noBarangayAnim}
               style={{ height: '240px', width: '240px' }}
             />
-            <h2 className="no-barangay-title">No Barangay Reports</h2>
+            <h2 className="no-barangay-title"> No mobile users found</h2>
             <p className="no-barangay-subtext">
-              There are currently no barangay reports available. Please add one to get started.
+             There are currently no mobile user records available.
             </p>
           </div>
         </div>
