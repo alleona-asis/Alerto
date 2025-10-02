@@ -1,4 +1,4 @@
-// Backend/Database Connection (db.js or pool.js)
+// Backend/Database Connection  
 const { Pool } = require('pg');
 require('dotenv').config(); // Load environment variables
 
@@ -13,12 +13,13 @@ if (process.env.DB_ENV === 'supabase') {
     poolConfig = {
     connectionString: process.env.DATABASE_URL,
     ssl: { 
-      rejectUnauthorized: false 
+      rejectUnauthorized: false,
+      ca: false  
     },  // Required for Supabase
         // Pooler tweaks for Alerto concurrency
     max: 15,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,  // Longer for SSL handshake (Render cold starts)
+    connectionTimeoutMillis: 15000,  
     allowExitOnIdle: false
   };
     console.log('SSL Config Applied: rejectUnauthorized = false');
@@ -54,10 +55,10 @@ pool.query('SELECT NOW() AS connected')
     } else if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
       console.error('Network/Auth: Check Supabase network restrictions/password');
     }
-    // App continues – pool retries on next query
+
   });
-// Pool error listener (catches SSL/runtime issues)
-pool.on('error', (err) => {
+
+  pool.on('error', (err) => {
   console.error('Pool error (e.g., SSL or overload):', err.code, err.message);
 });
 
