@@ -24,6 +24,7 @@ export default function BRGYProfile() {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDevelopmentOngoing, setIsDevelopmentOngoing] = useState(true);
   const [activeTab, setActiveTab] = useState('Announcement');
+  const [hovered, setHovered] = useState(null);
 
   const [isAnnouncementModalOpen, setAnnouncementModalOpen] = useState(false);
   const [announcementText, setAnnouncementText] = useState('');
