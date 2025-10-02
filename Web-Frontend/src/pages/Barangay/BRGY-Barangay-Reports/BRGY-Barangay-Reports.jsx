@@ -41,7 +41,7 @@ const getStatusColor = (status) => {
 };
 
 
-export default function ADMINDashboard() {
+export default function BRGYDashboard() {
   const token = localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
   const [profile, setProfile] = useState(null);
@@ -81,6 +81,8 @@ export default function ADMINDashboard() {
   const [selectedReportToTransfer, setSelectedReportToTransfer] = useState(null);
   const [barangayDirectory, setBarangayDirectory] = useState([]);
 
+
+  const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
 
   // Helper to capitalize words
   const capitalizeWords = (str) =>
@@ -273,7 +275,7 @@ export default function ADMINDashboard() {
   // =================================================
   const barangayList = useMemo(() => {
     if (!profile?.region || !profile?.province || !profile?.city) {
-      console.warn("Profile incomplete:", profile);
+      //console.warn("Profile incomplete:", profile);
       return [];
     }
 
@@ -314,7 +316,7 @@ export default function ADMINDashboard() {
     }
 
     const barangays = getBarangayByMun(matchedCity.mun_code);
-    console.log("Barangays fetched:", barangays.map(b => b.name));
+    //console.log("Barangays fetched:", barangays.map(b => b.name));
     return barangays;
   }, [profile]);
 
@@ -324,7 +326,7 @@ export default function ADMINDashboard() {
   // =================================================
   useEffect(() => {
     if (!profile) {
-      console.log("Profile not set.");
+      //console.log("Profile not set.");
       return;
     }
 
@@ -619,6 +621,34 @@ export default function ADMINDashboard() {
   };
 
 
+  const openReportModal = (user) => {
+
+    const logs = Array.isArray(user.status_history) ? user.status_history : [];
+
+    logs.forEach((log, index) => {
+      const date = new Date(log.updated_at).toLocaleString();
+      console.log(
+        `   #${index + 1} → Status: ${log.label}, Updated by: ${log.updated_by}, When: ${date}`
+      );
+    });
+
+    setModalUser({
+      ...user,
+      statusLogs: logs,
+    });
+
+    console.log("modalUser set with logs:", {
+      ...user,
+      statusLogs: logs,
+    });
+
+    setShowBarangayReportDetailsModal(true);
+  };
+
+
+
+
+
 
   // Renders the table or no-data animation
   const renderTable = (incidentReports = []) => {
@@ -657,31 +687,50 @@ export default function ADMINDashboard() {
           </thead>
           <tbody>
             {incidentReports.map((user) => (
-              <tr key={user.id} style={{ cursor: 'pointer' }}>
-                <td className="table-cell">{`Report-${String(user.id).padStart(5, '0')}`}</td>
+              <tr
+                key={user.id}
+                style={{ cursor: "pointer" }}
+                onClick={() => openReportModal(user)}
+              >
+                <td className="table-cell">{`Report-${String(user.id).padStart(5, "0")}`}</td>
                 <td className="table-cell">{user.incident_type}</td>
 
                 <td className="table-cell">
-                {user.incident_date
+                  {user.incident_date
                     ? format(new Date(user.incident_date), "EEEE, MMMM dd, yyyy")
                     : ""}
                 </td>
 
                 <td className="table-cell">
-                  {user.incident_time ? format(new Date(`1970-01-01T${user.incident_time}`), "hh:mm a") : ""}
+                  {user.incident_time
+                    ? format(new Date(`1970-01-01T${user.incident_time}`), "hh:mm a")
+                    : ""}
                 </td>
 
+                {/* Status dropdown */}
                 <td className="table-cell" style={{ minWidth: 160 }}>
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
                     <Select
-                    value={statusOptions.find(opt => opt.value === (user.status || 'pending'))}
-                    onChange={(selected) => handleStatusChange(user.id, selected.value)}
-                    options={getNextStatusOptions(user.status || 'pending')}
-                    styles={updateStatusStyles(user.status || 'pending')}
-                    isSearchable={false}
-                    isDisabled={getNextStatusOptions(user.status || 'pending').length === 0}
+                      value={statusOptions.find(
+                        (opt) => opt.value === (user.status || "pending")
+                      )}
+                      onChange={(selected) =>
+                        handleStatusChange(user.id, selected.value)
+                      }
+                      options={getNextStatusOptions(user.status || "pending")}
+                      styles={updateStatusStyles(user.status || "pending")}
+                      isSearchable={false}
+                      isDisabled={
+                        getNextStatusOptions(user.status || "pending").length === 0
+                      }
                     />
+                  </div>
                 </td>
 
+                {/* Action buttons */}
                 <td className="table-cell" style={styles.cell}>
                   <div style={styles.row}>
                     {[
@@ -690,29 +739,30 @@ export default function ADMINDashboard() {
                           src: "/icons/delete-row.png",
                           alt: "Delete",
                           action: () => {
-                          setReportToDelete(user);
-                          setShowDeleteConfirm(true);
+                            setReportToDelete(user);
+                            setShowDeleteConfirm(true);
+                          },
                         },
-                      },
                       */
                       { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
                       { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
-                        ].map((icon, idx) => (
-                          <img
-                            key={idx}
-                            src={icon.src}
-                            alt={icon.alt}
-                            style={styles.icon}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              icon.action();
-                            }}
-                          onMouseEnter={(e) => bounceEffect(e.currentTarget)}
-                        />
-                      ))}
-                    </div>
-                  </td>
-                </tr>
+                    ].map((icon, idx) => (
+                      <img
+                        key={idx}
+                        src={icon.src}
+                        alt={icon.alt}
+                        style={styles.icon}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          icon.action();
+                        }}
+                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
+                      />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+
               ))}
           </tbody>
         </table>
@@ -793,6 +843,177 @@ export default function ADMINDashboard() {
           </div>
         </div>
       </div>
+
+
+      {/* VIEW BARANGAY REPORT MODAL */}
+      {showBarangayReportDetailsModal && modalUser && (
+        <div
+          className="modal-overlay"
+          onClick={closeModal}
+        >
+          <div
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '500px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={closeModal}
+            />
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>{modalUser.incident_type}</h3>
+           
+           
+            {/* Details Text */}
+            <div
+              className="modal-body"
+              style={{
+                padding: '20px 25px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                fontFamily: 'Poppins, sans-serif',
+                fontSize: '14px',
+                color: '#374856',
+              }}
+            >
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Reported By:</span>
+                <span className="modal-value"><b>{modalUser.reported_by}</b></span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Date & Time:</span>
+                <span className="modal-value">
+                  <b>
+                    {modalUser.incident_date && modalUser.incident_time ? (() => {
+                      try {
+                        const datePart = modalUser.incident_date.split("T")[0];
+                        const combined = `${datePart}T${modalUser.incident_time}`;
+                        const dateObj = new Date(combined);
+
+                        return dateObj.toLocaleString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        });
+                      } catch (err) {
+                        console.error("Failed to format date & time:", err);
+                        return "Invalid date/time";
+                      }
+                    })() : "Not specified"}
+                  </b>
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span 
+                  className="modal-label" 
+                  style={{ marginBottom: '5px' }}
+                >
+                  Report Description:
+                </span>
+                <div className="modal-value">
+                  <b>{modalUser.description}</b>
+                </div>
+              </div>
+
+              {/* Status History */}
+              {modalUser.statusLogs && modalUser.statusLogs.length > 0 && (
+                <div style={{ marginTop: "20px" }}>
+                  <h3
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                      borderBottom: "1px solid #eee",
+                      paddingBottom: "4px",
+                      color: "#333",
+                    }}
+                  >
+                    Status History
+                  </h3>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {modalUser.statusLogs.map((log, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          padding: "10px 14px",
+                          border: "1px solid #eee",
+                          borderRadius: "8px",
+                        }}
+                      >
+                        {/* Status */}
+                        <span
+                          style={{
+                            fontWeight: "bold",
+                            fontSize: "14px",
+                            color: "#111",
+                            marginBottom: "4px",
+                            textTransform: "capitalize",
+                          }}
+                        >
+                          {log.label}
+                        </span>
+
+                        {/* Date + Updated By */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "13px",
+                            color: "#555",
+                          }}
+                        >
+                          <span>{new Date(log.updated_at).toLocaleString()}</span>
+                          <em>{log.updated_by}</em>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Date Reported:</span>
+                <div className="modal-value">
+                  <b>
+                    {modalUser.created_at ? (() => {
+                      try {
+                        const dateObj = new Date(modalUser.created_at);
+
+                        return dateObj.toLocaleString("en-US", {
+                          month: "long",   // e.g., September
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        });
+                      } catch (err) {
+                        console.error("Failed to format created_at:", err);
+                        return "Invalid date";
+                      }
+                    })() : "Not specified"}
+                  </b>
+                </div>
+              </div>
+
+
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* DELETE CONFIRMATION MODAL */}
       {showDeleteConfirm && reportToDelete && (
@@ -933,7 +1154,7 @@ export default function ADMINDashboard() {
               backgroundColor: "#fff",
               padding: "20px",
               borderRadius: "8px",
-              width: "500px",
+              width: "600px",
               height: "600px",
               overflow: "hidden",
               textAlign: "center",
@@ -1327,6 +1548,9 @@ export default function ADMINDashboard() {
           </div>
         </div>
       )}
+
+
+
     </>
   );
 }

@@ -49,6 +49,12 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
             isActive: pathname === '/LGUDashboard' || pathname === '/admin',
         },
         {
+            label: 'Mobile Users',
+            icon: '/icons/mobile-user.png',
+            path: '/lgu/mobile-users',
+            isActive: pathname === '/lgu/mobile-users',
+        },
+        {
             label: 'Manage Barangay',
             icon: '/icons/manage-lgu.png',
             path: '/lgu/manage-barangay',
@@ -65,12 +71,6 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
             icon: '/icons/Requests.png',
             path: '/lgu/document-requests',
             isActive: pathname === '/lgu/document-requests',
-        },
-        {
-            label: 'Announcements',
-            icon: '/icons/announcements.png',
-            path: '/lgu/announcements',
-            isActive: pathname === '/lgu/announcements',
         },
     ];
 

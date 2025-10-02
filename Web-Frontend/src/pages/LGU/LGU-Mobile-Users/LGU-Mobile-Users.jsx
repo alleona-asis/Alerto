@@ -1,14 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
-import ADMINNavbar from '../../../components/NavBar/ADMIN-Navbar';
-import ADMINSidebar from '../../../components/SideBar/ADMIN-Sidebar';
-import axios from '../../../axios/axiosInstance';
+import LGUNavbar from '../../../components/NavBar/LGU-Navbar';
+import LGUSidebar from '../../../components/SideBar/LGU-Sidebar';
 import '../../../components/SideBar/styles.css';
-import './ADMIN-Barangay-Reports.css'
+import Select from 'react-select';
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
-import noBarangayAnim from "@/assets/animations/non data found.json";
-import Select from 'react-select';
+import noBarangayAnim from '@/assets/animations/non data found.json';
+import axios from "../../../axios/axiosInstance";
 import { io } from 'socket.io-client';
 import { format } from "date-fns";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -20,42 +19,36 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
+
 const getStatusColor = (status) => {
   switch (status.toLowerCase()) {
-    case 'pending': return '#FF9800';
-    case 'under review': return '#2196F3';
-    case 'in progress': return '#9C27B0';
-    case 'resolved': return '#4CAF50';
-    case 'invalid': return '#F44336';
-    case 'escalated': return '#E91E63';
-    case 'transferred': return '#795548';
     case 'verified': return '#2E7D32';
     case 'unverified': return '#D32F2F';
     default: return '#000000';
   }
 };
 
-export default function ADMINBarangayReports() {
-  const token = localStorage.getItem("token");
-  const socket = useMemo(() => 
-  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
-    transports: ["websocket", "polling"],
-    withCredentials: true,
-  }), 
-[]
-);
-  const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [incidentReports, setIncidentReports] = useState([]);
+export default function LGUMobileUsers() {
+  const userId = localStorage.getItem("userId");
+  const token = localStorage.getItem("token");
+  const [profile, setProfile] = useState(null);
+
+  const socket = useMemo(
+    () => io(import.meta.env.VITE_SOCKET_URL),
+    []
+  );
+
+  const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [incidentReports, setIncidentReports] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState("incident-type-asc");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [reportToDelete, setReportToDelete] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showImagesModal, setShowImagesModal] = useState(false);
@@ -63,47 +56,17 @@ export default function ADMINBarangayReports() {
   const [isClosing, setIsClosing] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-
   // Helper to capitalize words
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
   // Status options
+  // ✅ Status options trimmed down
   const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'under review', label: 'Under Review' },
-    { value: 'in progress', label: 'In Progress' },
-    { value: 'resolved', label: 'Resolved' },
-    { value: 'invalid', label: 'Invalid' },
-    { value: 'escalated', label: 'Escalated' },
-    { value: 'transferred', label: 'Transferred' },
+    { value: "verified", label: "Verified" },
+    { value: "unverified", label: "Unverified" },
   ];
 
-  // Next status options depending on current
-  const getNextStatusOptions = (currentStatus) => {
-    switch (currentStatus.toLowerCase()) {
-      case "pending":
-        return statusOptions.filter((opt) => opt.value === "under review");
-      case "under review":
-        return statusOptions.filter((opt) =>
-          ["in progress", "invalid", "escalated", "transferred"].includes(
-            opt.value
-          )
-        );
-      case "in progress":
-        return statusOptions.filter((opt) => opt.value === "resolved");
-      case "transferred":
-        return statusOptions.filter((opt) =>
-          ["in progress", "invalid", "escalated"].includes(opt.value)
-        );
-      case "escalated":
-        return statusOptions.filter((opt) =>
-          ["in progress", "invalid"].includes(opt.value)
-        );
-      default:
-        return [];
-    }
-  };
 
   // Sort options
   const sortOptions = [
@@ -155,30 +118,72 @@ export default function ADMINBarangayReports() {
     return sortIncidentReports(filtered, sortOption);
   }, [incidentReports, searchQuery, sortOption]);
 
+
   // =================================================
-  //  FETCH ALL REPORTS
+  //  FETCH LGU PROFILE
   // =================================================
   useEffect(() => {
-    if (!token) {
-      setError("User not logged in.");
-      setLoading(false);
+    if (!userId || !token) {
+      console.warn("Missing userId or token. Cannot fetch profile.");
       return;
     }
-    const fetchReports = async () => {
+    const fetchProfile = async () => {
       try {
-        const response = await axios.get(`/api/admin/admin-get-all-reports`);
-        setIncidentReports(response.data);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch reports:", err);
-        setError("Failed to load reports.");
-        setIncidentReports([]);
-      } finally {
-        setLoading(false);
+        const res = await axios.get(`/api/auth/lgu-admin-profile/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setProfile({
+          region: res.data.region || "",
+          province: res.data.province || "",
+          city: res.data.city || "",
+        });
+
+        console.log("Profile location set:", res.data.region, res.data.province, res.data.city);
+      } catch (error) {
+        console.error("Failed to fetch profile location:", error?.response?.data || error.message);
+        setProfile({ region: "", province: "", city: "" });
       }
     };
-    fetchReports();
-  }, [token]);
+
+    fetchProfile();
+  }, []);
+
+  // =================================================
+  //  FETCH ALL REPORTS BY LOCATION
+  // =================================================
+  const fetchReports = async (region, province, city) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await axios.get("/api/lgu/get-lgu-mobile-users", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { region, province, city },
+      });
+
+      setIncidentReports(res.data || []);
+    } catch (error) {
+      console.error("Failed to fetch reports:", error?.response?.data?.message || error.message);
+      setIncidentReports([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!profile) {
+      console.log("Profile not set.");
+      return;
+    }
+
+    const { region, province, city } = profile;
+    if (region && province && city) {
+      fetchReports(region, province, city);
+    } else {
+      console.warn("Profile missing location. Skipping fetch.");
+    }
+  }, [profile]);
 
 
   // =================================================
@@ -186,28 +191,37 @@ export default function ADMINBarangayReports() {
   // =================================================
   useEffect(() => {
     const handleNewReport = (newReport) => {
-      setIncidentReports((prev) => {
-        if (prev.some((r) => r.id === newReport.id)) return prev;
-        return [newReport, ...prev];
-      });
+      if (
+        newReport.region === profile.region &&
+        newReport.province === profile.province &&
+        newReport.city === profile.city
+      ) {
+        setIncidentReports((prev) => {
+          if (prev.some((r) => r.id === newReport.id)) return prev;
+          return [newReport, ...prev];
+        });
+      } else {
+        console.log("Report ignored due to different location:", newReport.city);
+      }
     };
 
     socket.on("newBarangayReport", handleNewReport);
     return () => socket.off("newBarangayReport", handleNewReport);
-  }, [socket]);
+  }, [socket, profile]);
+
 
 
   // =================================================
   //  DELETE REPORT
   // =================================================
-  const deleteIncidentReport = async (id) => {
+  const deleteMobileUser = async (id) => {
     try {
       const response = await axios.delete(
-        `/api/brgy/barangay-delete-incident-report/${id}`
+        `/api/lgu/delete-mobile-user/${id}`
       );
       setIncidentReports((prev) => prev.filter((r) => r.id !== id));
       setShowDeleteConfirm(false);
-      setReportToDelete(null);
+      setUserToDelete(null);
       toast.success(response.data?.message || "Report successfully deleted.");
     } catch (error) {
       toast.error("Failed to delete report. Please try again.");
@@ -272,9 +286,9 @@ export default function ADMINBarangayReports() {
               src={noBarangayAnim}
               style={{ height: '240px', width: '240px' }}
             />
-            <h2 className="no-barangay-title">No Barangay Reports</h2>
+            <h2 className="no-barangay-title"> No mobile users found</h2>
             <p className="no-barangay-subtext">
-              There are currently no barangay reports available. Please add one to get started.
+             There are currently no mobile user records available.
             </p>
           </div>
         </div>
@@ -287,15 +301,9 @@ export default function ADMINBarangayReports() {
         <table className="scroll" role="table" aria-label="Incident Reports">
           <thead className="table-head">
             <tr>
-                <th className="table-header" style={{ width: '150px' }}>Report ID</th>
-                <th className="table-header" style={{ width: '300px' }}>Incident Type</th>
-                <th className="table-header" style={{ width: '300px' }}>Incident Date</th>
-                <th className="table-header" style={{ width: '100px' }}>Incident Time</th>
-                <th className="table-header" style={{ width: '200px' }}>Region</th>
-                <th className="table-header" style={{ width: '200px' }}>Province</th>
-                <th className="table-header" style={{ width: '200px' }}>City</th>
-                <th className="table-header" style={{ width: '200px' }}>Barangay</th>
-                <th className="table-header" style={{ width: '200px' }}>Reported By</th>
+                <th className="table-header" style={{ width: '150px' }}>User ID</th>
+                <th className="table-header" style={{ width: '300px' }}>Full Name</th>
+                <th className="table-header" style={{ width: '300px' }}>Barangay</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
                 <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
             </tr>
@@ -307,34 +315,19 @@ export default function ADMINBarangayReports() {
                 style={{ cursor: 'pointer' }}
               >
                 <td className="table-cell">
-                  {`Report-${String(user.id).padStart(5, '0')}`}
+                  {`USER-${String(user.id).padStart(5, '0')}`}
                 </td>
-                <td className="table-cell">{user.incident_type}</td>
+                <td className="table-cell">{user.last_name}, {user.first_name} {user.middle_name}</td>
 
-                <td className="table-cell">
-                  {user.incident_date
-                    ? format(new Date(user.incident_date), "EEEE, MMMM dd, yyyy")
-                    : ""}
-                </td>
+                <td className="table-cell">{user.barangay}</td>
 
-                <td className="table-cell">
-                  {user.incident_time
-                    ? format(new Date(`1970-01-01T${user.incident_time}`), "hh:mm a")
-                    : ""}
-                </td>
-
-                <td className="table-cell">{capitalizeWords(user.region)}</td>
-                <td className="table-cell">{capitalizeWords(user.province)}</td>
-                <td className="table-cell">{capitalizeWords(user.city)}</td>
-                <td className="table-cell">{capitalizeWords(user.barangay)}</td>
-                <td className="table-cell">{capitalizeWords(user.reported_by)}</td>
 
                 {/* Status select */}
-                <td className="table-cell" style={{ minWidth: 150 }}>
+                <td className="table-cell" style={{ minWidth: 130 }}>
                   <Select
                     value={statusOptions.find(opt => opt.value === (user.status || 'pending'))}
                     onChange={(selected) => handleStatusChange(user.id, selected.value)}
-                    options={getNextStatusOptions(user.status || 'pending')}
+                    options={(user.status || 'pending')}
                     styles={updateStatusStyles(user.status || 'pending')}
                     isSearchable={false}
                     isDisabled={true}
@@ -349,12 +342,10 @@ export default function ADMINBarangayReports() {
                         src: "/icons/delete-row.png",
                         alt: "Delete",
                         action: () => {
-                          setReportToDelete(user);
+                          setUserToDelete(user);
                           setShowDeleteConfirm(true);
                         },
                       },
-                      { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
-                      { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
                     ].map((icon, idx) => (
                       <img
                         key={idx}
@@ -383,11 +374,11 @@ export default function ADMINBarangayReports() {
     <>
       <div className="wrapper">
         <div className="navbar">
-          <ADMINNavbar />
+          <LGUNavbar />
         </div>
 
         <div className="layout">
-          <ADMINSidebar
+          <LGUSidebar
             isCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setSidebarCollapsed(!isSidebarCollapsed)}
           />
@@ -421,7 +412,7 @@ export default function ADMINBarangayReports() {
               }}
             />
             <div className="header-row">
-              <h2 className="page-title">Barangay Report Management</h2>
+              <h2 className="page-title">Mobile Users</h2>
               <div>
                 <input
                   type="text"
@@ -436,7 +427,7 @@ export default function ADMINBarangayReports() {
             <div className="section-wrapper">
               <div className="table-section">
                 <div className="header-table">
-                  <h3 className="section-title">Report Directory</h3>
+                  <h3 className="section-title">User Directory</h3>
                   <Select
                     options={sortOptions}
                     value={sortOptions.find((option) => option.value === sortOption)}
@@ -454,7 +445,7 @@ export default function ADMINBarangayReports() {
 
 
       {/* DELETE CONFIRMATION MODAL */}
-      {showDeleteConfirm && reportToDelete && (
+      {showDeleteConfirm && userToDelete && (
         <div
           className="modal-overlay"
           onClick={() => {
@@ -489,14 +480,17 @@ export default function ADMINBarangayReports() {
 
             <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
             <p className="sub-title" style={{ textAlign: 'center' }}>
-              Are you sure you want to delete this report?
+              Are you sure you want to delete this user?
             </p>
 
             <div className="location-text" style={{ textAlign: 'center', marginBottom: "12px" }}>
-              {reportToDelete?.incident_type
-                ? capitalizeWords(reportToDelete.incident_type)
+              {userToDelete
+                ? `${userToDelete.first_name ? capitalizeWords(userToDelete.first_name) : ''} 
+                  ${userToDelete.middle_name ? capitalizeWords(userToDelete.middle_name) : ''} 
+                  ${userToDelete.last_name ? capitalizeWords(userToDelete.last_name) : ''}`.trim()
                 : 'N/A'}
             </div>
+
 
             <div className="button-container">
               <button
@@ -513,7 +507,7 @@ export default function ADMINBarangayReports() {
               </button>
               <button
                 className="confirm-button"
-                onClick={() => deleteIncidentReport(reportToDelete.id)}
+                onClick={() => deleteMobileUser(userToDelete.id)}
               >
                 Confirm
               </button>
@@ -522,189 +516,6 @@ export default function ADMINBarangayReports() {
         </div>
       )}
 
-      {/* VIEW LOCATION MODAL */}
-      {showLocationModal && modalUser && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div
-            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              maxWidth: "50%",
-              maxHeight: "90%",
-              overflow: "auto",
-              textAlign: "center",
-            }}
-          >
-            <h2 className="modal-title">
-              {`${modalUser.incident_type}`}
-            </h2>
-
-            {/* OpenStreetMap section */}
-            {modalUser.latitude && modalUser.longitude && (
-              <div style={{ height: "300px", marginTop: "20px", borderRadius: "8px", overflow: "hidden", marginBottom: "20px" }}>
-                <MapContainer
-                  center={[modalUser.latitude, modalUser.longitude]}
-                  zoom={15}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <Marker position={[modalUser.latitude, modalUser.longitude]}>
-                    <Popup>{`${modalUser.first_name} ${modalUser.last_name}'s Report Location`}</Popup>
-                  </Marker>
-                </MapContainer>
-              </div>
-            )}
-
-            <button onClick={closeModal} className="modal-cancel-button">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW IMAGES MODAL */}
-      {showImagesModal && modalUser && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div
-            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "500px",
-              height: "600px",
-              overflow: "hidden",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              position: "relative",
-            }}
-          >
-            <h2 className="modal-title">{modalUser.incident_type}</h2>
-            <div
-              style={{
-                width: "100%",
-                height: "400px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                position: "relative",
-                margin: "20px 0",
-                overflow: "hidden",
-              }}
-            >
-            {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
-              <>
-                {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={modalUser.media_urls[currentImageIndex]}
-                    alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                      cursor: "zoom-in",
-                      transition: "transform 0.3s ease",
-                    }}
-                    onClick={() =>
-                      window.open(modalUser.media_urls[currentImageIndex], "_blank")
-                    }
-                  />
-                ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                  <video
-                    controls
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                    }}
-                  >
-                    <source
-                      src={modalUser.media_urls[currentImageIndex]}
-                      type="video/mp4"
-                    />
-                    Your browser does not support the video tag.
-                  </video>
-                ) : (
-                  <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
-                )}
-
-                {/* Left arrow */}
-                {currentImageIndex > 0 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex - 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8592;
-                  </div>
-                )}
-
-                {/* Right arrow */}
-                {currentImageIndex < modalUser.media_urls.length - 1 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex + 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8594;
-                  </div>
-                )}
-              </>
-            ) : (
-              <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
-            )}
-            </div>
-            <button
-              onClick={closeModal}
-              className="modal-cancel-button"
-              style={{ marginBottom: "10px" }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -829,6 +640,5 @@ const bounceEffect = (el) => {
   setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
   setTimeout(() => (el.style.transform = "translateY(0)"), 450);
 };
-
 
 

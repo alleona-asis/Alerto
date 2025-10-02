@@ -1,14 +1,14 @@
 const bcrypt = require('bcrypt');
 const pool = require('./PostgreSQL/database');
 
+const {supabase} = require('./PostgreSQL/supabaseClient');
+
 async function seedSuperAdmin() {
     const username = 'root@admin34';
     const firstName = 'Rico';
     const lastName = 'Blanco';
     const password = await bcrypt.hash('root@password34', 10);
     const role = 'Super Admin';
-
-   
 
     try {
         const exists = await pool.query('SELECT * FROM admin_accounts WHERE username = $1 AND role = $2', [username, role]);

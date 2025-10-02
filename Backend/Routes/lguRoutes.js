@@ -6,26 +6,7 @@ const fs = require('fs');
 const multer = require('multer'); 
 const { uploadWithSupabase } = require('../Middleware/upload');
 
-// =================================================
-// MANAGE BARANGAY 
-// =================================================
-const {
-  addBarangay,
-  getAllBarangays,
-  deleteBarangay,
-  addBarangayUserAccount,
-  viewCreatedBarangayAccounts,
-  editBarangayDetails,
-  callBarangayAssistance
-} = require('../Controller/LGU/manageBarangayController')
 
-// =================================================
-// LGU FEEDBACKS
-// =================================================
-const { 
-  submitLGUFeedback, 
-  getAllLGUFeedback 
-} = require('../Controller/LGU/supportHelp')
 
 // =================================================
 // MULTER SETUP FOR LGU FEEDBACK
@@ -60,6 +41,20 @@ const feedbackUpload = multer({
   fileFilter: feedbackFileFilter
 });
 
+
+// =================================================
+// MANAGE BARANGAY 
+// =================================================
+const {
+  addBarangay,
+  getAllBarangays,
+  deleteBarangay,
+  addBarangayUserAccount,
+  viewCreatedBarangayAccounts,
+  editBarangayDetails,
+  callBarangayAssistance
+} = require('../Controller/LGU/manageBarangayController')
+
 // =============== PROTECTED ROUTES ================
 router.use(authenticateToken);
 
@@ -78,13 +73,25 @@ router.post('/add-barangay-account', addBarangayUserAccount);
 // ============= VIEW CREATED ACCOUNT ==============
 router.get('/view-created-account/:lguId/:barangay', viewCreatedBarangayAccounts);
 
+// ============= EDIT BARANGAY DETAILS =============
 router.put('/update-barangay/:id', editBarangayDetails);
 
-// Case 2: Fetch by location (using POST with body data)
+// ================ CALL ASSISTANCE ================
 router.post("/call", callBarangayAssistance);
 
 
-// ============= LGU FEEDBACK ==============
+
+// =================================================
+// LGU FEEDBACKS
+// =================================================
+const { 
+  submitLGUFeedback, 
+  getAllLGUFeedback,
+  deleteLGUFeedback
+} = require('../Controller/LGU/supportHelp')
+
+
+// ============= SUBMIT LGU FEEDBACK ===============
 router.post(
   '/submit-feedback',
   uploadWithSupabase([{ name: 'files', maxCount: 5 }]), // private bucket
@@ -108,11 +115,10 @@ router.post(
   }
 );
 
-// GET all LGU feedback
+// ============= GET ALL LGU FEEDBACK ==============
 router.get('/all-feedback', getAllLGUFeedback);
 
-
-
+router.delete('/feedback/:id', deleteLGUFeedback);
 
 
 
@@ -131,8 +137,9 @@ router.get('/lgu-get-all-reports', getBarangayReports);
 // ================ GET ALL PINS ===================
 router.get('/lgu-get-all-pins', getAllPins);
 
-// ================ GET TOTAL ===================
+// ================= GET TOTAL =====================
 router.get('/get-all-barangay-reports', getTotalReports);
+
 
 
 // =================================================
@@ -149,15 +156,21 @@ router.get('/lgu-get-all-document-requests', getDocumentRequests);
 // =============== DELETE REQUESTS =================
 router.delete("/document-requests/:id", deleteDocumentRequest);
 
+
+
 // =================================================
-//  DOCUMENT REQUESTS
+//  MOBILE USERS
 // =================================================
 const {  
   getTotalMobileUsers,
+  getMobileUsers,
+  deleteMobileUser
 } = require('../Controller/LGU/mobileUsers', )
 
-// =============== GET ALL REQUESTS ================
+
 router.get('/total-mobile-users', getTotalMobileUsers);
+router.get('/get-lgu-mobile-users', getMobileUsers);
+router.delete('/delete-mobile-user/:id', deleteMobileUser);
 
 
 

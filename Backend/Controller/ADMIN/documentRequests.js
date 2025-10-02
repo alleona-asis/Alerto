@@ -2,13 +2,15 @@ const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 const getDocumentRequests = async (req, res) => {
   try {
     const { rows: reports } = await pool.query(
       `SELECT *
        FROM document_requests
-       ORDER BY created_at DESC` // latest first
+       ORDER BY created_at DESC`
     );
 
     res.status(200).json(reports);
@@ -40,11 +42,6 @@ const getTotalRequests = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-
-
 
 
 module.exports = {

@@ -98,53 +98,96 @@ const getNextStatusOptions = (currentStatus) => {
 
 
   // Sort options
-  const sortOptions = [
-    { value: 'first-name-asc', label: 'Sort by First Name' },
-    { value: 'last-name-asc', label: 'Sort by Last Name' },
-    { value: 'date-desc', label: 'Sort by Date' },
-    { value: 'status-asc', label: 'Sort by Status' },
-    { value: 'id-asc', label: 'Sort by ID' },
-  ];
+const sortOptions = [
+  { value: 'document-type-asc', label: 'Sort by Document Type' },
+  { value: 'date-time-asc', label: 'Sort by Preferred Date & Time' },
+  { value: 'requested-by-asc', label: 'Sort by Requested By' },
+  { value: 'barangay-asc', label: 'Sort by Barangay' },
+  { value: 'status-asc', label: 'Sort by Status' },
+];
+
+// Define custom status order
+const statusOrder = [
+  'submitted',
+  'processing',
+  'accepted',
+  'rejected',
+  'reschedule',
+  'ready for pick-up',
+  'claimed',
+  'unclaimed',
+];
+
 
   // Sorting function
-  const sortDocumentRequests = (users, option) => {
-    const sorted = [...users];
-    switch (option) {
-      case 'first-name-asc':
-        return sorted.sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
-      case 'last-name-asc':
-        return sorted.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
-      case 'date-desc':
-        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      case 'status-asc':
-        return sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
-      case 'id-asc':
-        return sorted.sort((a, b) => (a.id || 0) - (b.id || 0));
-      default:
-        return sorted;
-    }
-  };
+const sortDocumentRequests = (requests, option) => {
+  const sorted = [...requests];
+
+  switch (option) {
+    case 'document-type-asc':
+      return sorted.sort((a, b) =>
+        (a.document_type || '').localeCompare(b.document_type || '')
+      );
+
+    case 'date-time-asc':
+      return sorted.sort((a, b) => {
+        const dateA = a.date && a.time ? new Date(`${a.date.split('T')[0]}T${a.time}`) : new Date(0);
+        const dateB = b.date && b.time ? new Date(`${b.date.split('T')[0]}T${b.time}`) : new Date(0);
+        return dateA - dateB;
+      });
+
+    case 'requested-by-asc':
+      return sorted.sort((a, b) =>
+        (a.requested_by || '').localeCompare(b.requested_by || '')
+      );
+
+    case 'barangay-asc':
+      return sorted.sort((a, b) =>
+        (a.barangay || '').localeCompare(b.barangay || '')
+      );
+
+    case 'status-asc':
+      return sorted.sort(
+        (a, b) =>
+          statusOrder.indexOf((a.status || '').toLowerCase()) -
+          statusOrder.indexOf((b.status || '').toLowerCase())
+      );
+
+    default:
+      return sorted;
+  }
+};
 
   // Filtering function
-  const filterDocumentRequests = (users) => {
-    const query = searchQuery.toLowerCase();
-    return users.filter(
-      (user) =>
-        (user.first_name?.toLowerCase().includes(query) ||
-          user.last_name?.toLowerCase().includes(query) ||
-          user.province?.toLowerCase().includes(query) ||
-          user.city?.toLowerCase().includes(query) ||
-          user.barangay?.toLowerCase().includes(query) ||
-          user.email?.toLowerCase().includes(query) ||
-          user.phone_number?.toLowerCase().includes(query))
-    );
-  };
+const filterDocumentRequests = (users) => {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return users;
+
+  return users.filter((user) => {
+    return [
+      user.first_name,
+      user.last_name,
+      user.province,
+      user.city,
+      user.barangay,
+      user.email,
+      user.phone_number,
+      user.document_type,
+      user.requested_by,
+      user.status
+    ]
+      .filter(Boolean) // remove undefined/null
+      .some(field => field.toLowerCase().includes(query));
+  });
+};
+
 
   // Memoized filtered and sorted users
-  const displayDocumentRequests = useMemo(() => {
-    const filtered = filterDocumentRequests(documentRequest);
-    return sortDocumentRequests(filtered, sortOption);
-  }, [documentRequest, searchQuery, sortOption]);
+const displayDocumentRequests = useMemo(() => {
+  const filtered = filterDocumentRequests(documentRequest);
+  return sortDocumentRequests(filtered, sortOption);
+}, [documentRequest, searchQuery, sortOption]);
+
 
 
   // =================================================

@@ -1,4 +1,4 @@
-// utils/supabase.js
+// utils/supabase.js, for uploading to supabase
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const mime = require('mime-types');

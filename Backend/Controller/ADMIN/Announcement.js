@@ -1,4 +1,6 @@
 const pool = require('../../PostgreSQL/database');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 const getTotalAnnouncements = async (req, res) => {
   try {

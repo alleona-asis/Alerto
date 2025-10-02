@@ -135,8 +135,8 @@ const socket = useMemo(() =>
     transports: ["websocket", "polling"],
     withCredentials: true,
   }), 
-[]
-);
+    []
+  );
 
 useEffect(() => {
   if (!BRGYProfile?.barangay) return;

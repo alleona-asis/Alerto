@@ -6,28 +6,101 @@ import '../../../components/SideBar/styles.css';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from "../../../axios/axiosInstance";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
-import dayjs from "dayjs"; // for month formatting
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
+
+import dayjs from "dayjs";
 import { io } from 'socket.io-client';
+import Select from 'react-select';
+
+import ActsoflasciviousnessIcon from '@/assets/pins/Acts-of-lasciviousness.png';
+import AnimalIssuesIcon from '@/assets/pins/Animal-Issues.png';
+import BlockedDrainageIcon from '@/assets/pins/Blocked-Drainage.png';
+import BrokenstreetlightIcon from '@/assets/pins/Broken-streetlight.png';
+import DomesticIcon from '@/assets/pins/Domestic.png';
+import FloodingIcon from '@/assets/pins/Flooding.png';
+import GarbageIcon from '@/assets/pins/Garbage.png';
+import IllegalgamblingIcon from '@/assets/pins/Illegal-gambling.png';
+import IllegalParkingIcon from '@/assets/pins/Illegal-Parking.png';
+import MaliciousmischiefIcon from '@/assets/pins/Malicious-mischief.png';
+import MissingpersonIcon from '@/assets/pins/Missing-person.png';
+import MonetaryIssuesIcon from '@/assets/pins/Monetary-Issues.png';
+import NeighborconflictsIcon from '@/assets/pins/Neighbor-conflicts.png';
+import NoiseIcon from '@/assets/pins/Noise.png';
+import otherIcon from '@/assets/pins/other.png';
+import PhysicalinjuriesIcon from '@/assets/pins/Physical-injuries.png';
+import PotholeIcon from '@/assets/pins/Pothole.png';
+import StagnantwaterIcon from '@/assets/pins/Stagnant-water.png';
+import SuspeciouspersonreportIcon from '@/assets/pins/Suspecious-person-report.png';
+import SuspiciousIcon from '@/assets/pins/Suspicious.png';
+import TheftIcon from '@/assets/pins/Theft.png';
+import VehicularaccidentsIcon from '@/assets/pins/Vehicular-accidents.png';
+
+
+const monthOptions = [
+  { value: "All", label: "All Months" },
+  { value: "January", label: "January" },
+  { value: "February", label: "February" },
+  { value: "March", label: "March" },
+  { value: "April", label: "April" },
+  { value: "May", label: "May" },
+  { value: "June", label: "June" },
+  { value: "July", label: "July" },
+  { value: "August", label: "August" },
+  { value: "September", label: "September" },
+  { value: "October", label: "October" },
+  { value: "November", label: "November" },
+  { value: "December", label: "December" },
+];
+
 
 export default function BRGYDashboard() {
+
+
+  // Map incident type to icons
+  const pinIcons = {
+    'Garbage': GarbageIcon,
+    'Stagnant water': StagnantwaterIcon,
+    'Noise': NoiseIcon,
+    'Monetary Issues': MonetaryIssuesIcon,
+    'Theft / Robbery': TheftIcon,
+    'Suspicious Activity ': SuspiciousIcon,
+    'Loitering / Suspicious person report': SuspeciouspersonreportIcon,
+    'Domestic Violence': DomesticIcon,
+    'Acts of lasciviousness': ActsoflasciviousnessIcon,
+    'Physical injuries': PhysicalinjuriesIcon,
+    'Vehicular accidents': VehicularaccidentsIcon,
+    'Missing Persons': MissingpersonIcon,
+    'Malicious Mischief ': MaliciousmischiefIcon,
+    'Illegal Gatherings / Gambling': IllegalgamblingIcon,
+    'Animal issues': AnimalIssuesIcon,
+    'Neighbor Conflicts': NeighborconflictsIcon,
+    'Broken streetlight': BrokenstreetlightIcon,
+    'Pothole': PotholeIcon,
+    'Flooding': FloodingIcon,
+    'Blocked Drainage': BlockedDrainageIcon,
+    'Abandoned Vehicles / Illegal Parking': IllegalParkingIcon,
+    'Any other barangay-relevant concern': otherIcon,
+    'Other': otherIcon,
+    'other': otherIcon
+  };
+
+  const getPinIcon = (type) => {
+    const iconUrl = pinIcons[type] || otherIcon;
+    return L.icon({
+      iconUrl,
+      iconSize: [34, 36],
+      iconAnchor: [17, 36],
+      popupAnchor: [0, -36],
+    });
+  };
 
   const socket = useMemo(() => 
   io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
     transports: ["websocket", "polling"],
     withCredentials: true,
   }), 
-[]
-);
+    []
+  );
 
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -39,20 +112,19 @@ export default function BRGYDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // You should be getting token & userId from your auth context or props
   const userId = localStorage.getItem('userId');
   const token = localStorage.getItem('token');
 
-const stats = [
-  { 
-    title: "Pending Requests", 
-    count: documentRequest.filter(req => req.status !== "resolved" && req.status !== "invalid").length 
-  },
-  { 
-    title: "Unresolved Reports", 
-    count: incidentReports.filter(rep => rep.status !== "resolved" && rep.status !== "invalid").length 
-  },
-];
+  const stats = [
+    { 
+      title: "Pending Requests", 
+      count: documentRequest.filter(req => req.status !== "resolved" && req.status !== "invalid").length 
+    },
+    { 
+      title: "Unresolved Reports", 
+      count: incidentReports.filter(rep => rep.status !== "resolved" && rep.status !== "invalid").length 
+    },
+  ];
 
 
 
@@ -95,12 +167,12 @@ const fetchBarangayIncidentReports = async () => {
       params: { region, province, city, barangay },
     });
 
-    console.log("📌 Full Incident Reports Response:", response.data);
+    console.log("Full Incident Reports Response:", response.data);
 
     // Check if response.data is an array and log IDs one by one
     if (Array.isArray(response.data)) {
       response.data.forEach((report, index) => {
-        console.log(`📝 Report ${index + 1} ID:`, report.id || report.report_id);
+        console.log(`Report ${index + 1} ID:`, report.id || report.report_id);
       });
     } else {
       console.warn("⚠️ Expected array but got:", typeof response.data);
@@ -109,7 +181,7 @@ const fetchBarangayIncidentReports = async () => {
     setIncidentReports(response.data);
     setError(null);
   } catch (err) {
-    console.error("❌ Error fetching reports:", err);
+    console.error("Error fetching reports:", err);
     setError("Failed to load mobile users.");
     setIncidentReports([]);
   } finally {
@@ -211,7 +283,7 @@ useEffect(() => {
 
 
 
-  // Example coordinates: Naga City
+  // Naga City
   const position = [13.6218, 123.1948];
 
 
@@ -225,11 +297,12 @@ useEffect(() => {
   ).sort((a, b) => dayjs(a, "MMM YYYY") - dayjs(b, "MMM YYYY"));
 
   // Filter data by selected month
-  const filteredReports = selectedMonth === "All"
-    ? incidentReports
-    : incidentReports.filter(
-        (r) => dayjs(r.created_at).format("MMM YYYY") === selectedMonth
-      );
+const filteredReports = selectedMonth === "All"
+  ? incidentReports
+  : incidentReports.filter((report) => {
+      const reportMonth = dayjs(report.created_at).format("MMMM"); // full month name
+      return reportMonth === selectedMonth;
+    });
 
   // Group incidents by type
   const groupedData = (() => {
@@ -278,11 +351,11 @@ useEffect(() => {
             }}
           >
 
-  {/* ✅ Left Column */}
+  {/* Left Column */}
   <div
     style={{
       display: "grid",
-      gridTemplateRows: "auto 1fr 1fr", // auto for row1, rest share remaining
+      gridTemplateRows: "auto 1fr 1fr",
       gap: "20px",
       height: "100%",
       overflow: "hidden",
@@ -304,7 +377,18 @@ useEffect(() => {
     {/* Row 2 - 40% */}
 <div style={styles.container}
 >
-  <h3 style={styles.title}>Document Requests</h3>
+
+                  <h3
+                    style={{
+                      textAlign: "left",
+                      marginBottom: "10px",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#374856",
+                    }}
+                  >
+                    Document Requests
+                  </h3>
 
   {documentRequest.length === 0 ? (
     <p>No document requests</p>
@@ -402,7 +486,17 @@ useEffect(() => {
     {/* Row 3 - 40% */}
 {/* Row 3 - 40% */}
 <div style={styles.container}>
-  <h3 style={styles.title}>Latest Incident Reports</h3>
+                  <h3
+                    style={{
+                      textAlign: "left",
+                      marginBottom: "10px",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#374856",
+                    }}
+                  >
+                    Latest Incident Reports
+                  </h3>
 
   {loading && <p>Loading incident reports...</p>}
   {error && <p style={{ color: "red" }}>{error}</p>}
@@ -424,14 +518,10 @@ useEffect(() => {
             .slice()
             .sort((a, b) => {
               const getTimestamp = (report) => {
-                if (!report.incident_date) return 0;
-                const dateObj = new Date(report.incident_date);
-                const [hour = 0, minute = 0] = (report.incident_time || "00:00")
-                  .split(":")
-                  .map(Number);
-                return dateObj.getTime() + hour * 3600000 + minute * 60000;
+                const time = new Date(report.created_at).getTime();
+                return isNaN(time) ? 0 : time;
               };
-              return getTimestamp(b) - getTimestamp(a); // latest first
+              return getTimestamp(b) - getTimestamp(a);
             })
             .slice(0, 15)
             .map((report) => {
@@ -504,13 +594,13 @@ useEffect(() => {
   </div>
 
 
-{/* ✅ Right Column */}
+{/* Right Column */}
 <div
   style={{ 
     display: "flex",
     flexDirection: "column",
     gap: "20px",
-    height: "100%", // full column height
+    height: "100%",
   }}
 >
   {/* Box 5 - Map */}
@@ -523,12 +613,22 @@ useEffect(() => {
     overflow: "hidden",
     padding: 15,
     display: "flex",
-    flexDirection: "column", // make children stack vertically
+    flexDirection: "column",
   }}
 >
-  <h3 style={{...styles.title, marginBottom: 5}}>Pin Dropping</h3>
+                  <h3
+                    style={{
+                      textAlign: "left",
+                      marginBottom: "10px",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#374856",
+                    }}
+                  >
+                    Pin Dropping
+                  </h3>
 
-  <div style={{ flex: 1 }}> {/* wrapper to let the map fill remaining space */}
+  <div style={{ flex: 1 }}>
     <MapContainer
       center={position}
       zoom={13}
@@ -542,6 +642,7 @@ useEffect(() => {
         <Marker
           key={report.id || report.report_id}
           position={[report.latitude, report.longitude]}
+          icon={getPinIcon(report.incident_type)}
         >
           <Popup>
             <strong>Incident:</strong> {report.incident_type || "Unknown"} <br />
@@ -568,42 +669,57 @@ useEffect(() => {
         flexDirection: "column",
       }}
     >
-      <h3 style={{ ...styles.title, marginBottom: 5 }}>Graph</h3>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    textAlign: "center",
+                    width: "100%",
+                  }}
+                >
+                  <h3
+                    style={{
+                      textAlign: "left",
+                      marginBottom: "0px",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#374856",
+                    }}
+                  >
+                    Barangay Report Trends
+                  </h3>
 
       {/* Month Dropdown */}
-      <select
-        value={selectedMonth}
-        onChange={(e) => setSelectedMonth(e.target.value)}
-        style={{ marginBottom: 10, padding: 5, borderRadius: 5 }}
-      >
-        <option value="All">All Months</option>
-        {months.map((month) => (
-          <option key={month} value={month}>
-            {month}
-          </option>
-        ))}
-      </select>
-
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={groupedData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="type" />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
-          <Legend />
-          {incidentTypes.map((type, idx) => (
-            <Bar
-              key={type}
-              dataKey="count"
-              fill={["#4caf50", "#2196f3", "#ff9800", "#f44336", "#9c27b0"][idx % 5]}
-              barSize={20}
-            />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+<Select
+  value={monthOptions.find((o) => o.value === selectedMonth)}
+  onChange={(option) => setSelectedMonth(option.value)}
+  options={monthOptions}  // <-- Make sure to pass options
+  placeholder="Select Month"
+  styles={dropdownStyles}
+/>
+</div>
+<ResponsiveContainer width="100%" height="100%">
+  <LineChart
+    data={groupedData}
+    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="type" />
+    <YAxis allowDecimals={false} />
+    <Tooltip />
+    {incidentTypes.map((type, idx) => (
+      <Line
+        key={type}
+        type="monotone"
+        dataKey="count"
+        stroke={["#2196f3"][idx % 1]}
+        strokeWidth={2}
+        dot={{ r: 3 }}
+      />
+    ))}
+  </LineChart>
+</ResponsiveContainer>
     </div>
 
 </div>
@@ -668,4 +784,46 @@ td: {
   padding: "12px 8px", // 12px vertical, 8px horizontal
   borderBottom: "1px solid #eee",
 },
+};
+
+
+const dropdownStyles = {
+  control: (base, state) => ({
+    ...base,
+    borderRadius: 8,
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(0,111,253,0.2)' : 'none',
+    padding: '4px 3px',
+    paddingLeft: '10px',
+    marginTop: 3,
+    marginBottom: 15,
+    fontSize: 14,
+    fontWeight: 500,
+    minHeight: '38px',
+    border: '1px solid #ccc',
+    alignSelf: 'flex-start',
+    textAlign: 'left',
+  }),
+  option: (base, { isFocused, isSelected }) => ({
+    ...base,
+    backgroundColor: isSelected
+      ? '#8696BB'
+      : isFocused
+      ? '#f3f4f6'
+      : '#ffffff',
+    color: isSelected ? '#ffffff' : '#111827',
+    cursor: 'pointer',
+    fontSize: 14,
+    textAlign: 'left',
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: '#111827',
+    textAlign: 'left',
+  }),
+  menu: (base) => ({
+  ...base,
+  borderRadius: 8,
+  boxShadow: '0 0 0 2px rgba(0,111,253,0.2)',
+  zIndex: 20,
+  }),
 };

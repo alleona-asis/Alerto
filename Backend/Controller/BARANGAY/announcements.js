@@ -2,9 +2,11 @@ const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 // Replace with your computer's LAN IP so mobile devices can access it
-const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
+const LAN_IP = process.env.LAN_IP; 
 const PORT = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
@@ -15,14 +17,14 @@ const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
 const createAnnouncement = async (req, res) => {
   try {
     const { 
-      title, 
-      text, 
-      posted_by_id, 
-      posted_by_name,
-      region,
-      province,
-      city,
-      barangay 
+        title, 
+        text, 
+        posted_by_id, 
+        posted_by_name,
+        region,
+        province,
+        city,
+        barangay 
     } = req.body;
 
     // console.log("📥 Incoming Request Body:", req.body);
@@ -30,11 +32,11 @@ const createAnnouncement = async (req, res) => {
     // console.log("🌐 Supabase Files:", req.supabaseFiles);
 
     if (!title || !text) {
-      return res.status(400).json({ message: 'Title and text are required' });
+        return res.status(400).json({ message: 'Title and text are required' });
     }
 
     if (!posted_by_id || !posted_by_name) {
-      return res.status(400).json({ message: 'Poster ID and name are required' });
+        return res.status(400).json({ message: 'Poster ID and name are required' });
     }
 
     // -----------------------------
@@ -56,106 +58,112 @@ const createAnnouncement = async (req, res) => {
       // console.log("Filenames array:", filenames);
       console.log("URLs array:", urls);
 
-    const result = await pool.query(
-      `INSERT INTO announcements 
-        (title, text, image_filenames, image_urls, posted_by_id, posted_by_name, region, province, city, barangay)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *;`,
-      [
-        title, 
-        text, 
-        JSON.stringify(filenames), 
-        JSON.stringify(urls), 
-        posted_by_id, 
-        posted_by_name,
-        region || '',
-        province || '',
-        city || '',
-        barangay || ''
-      ]
-    );
+        const result = await pool.query(
+        `INSERT INTO announcements 
+            (title, text, image_filenames, image_urls, posted_by_id, posted_by_name, region, province, city, barangay)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *;`,
+        [
+            title, 
+            text, 
+            JSON.stringify(filenames), 
+            JSON.stringify(urls), 
+            posted_by_id, 
+            posted_by_name,
+            region || '',
+            province || '',
+            city || '',
+            barangay || ''
+        ]
+      );
 
-    const createdAnnouncement = result.rows[0];
+      const createdAnnouncement = result.rows[0];
 
       // -----------------------------
       // Send notifications to ALL users in the same location
       // -----------------------------
- try {
-      const usersQuery = `
-        SELECT id 
-        FROM mobile_users
-        WHERE region = $1
-          AND province = $2
-          AND city = $3
-          AND barangay = $4
-      `;
+      try {
+        // 1. Find users in the same location
+        const usersQuery = `
+          SELECT id 
+          FROM mobile_users
+          WHERE region = $1
+            AND province = $2
+            AND city = $3
+            AND barangay = $4
+        `;
 
-      const usersResult = await pool.query(usersQuery, [
-        region || '',
-        province || '',
-        city || '',
-        barangay || ''
-      ]);
-
-      const userIds = usersResult.rows.map(r => r.id);
-
-      if (userIds.length > 0) {
-        const notificationQuery = `
-        INSERT INTO mobile_notifications (mobile_user_id, type, status, is_read)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-      `;
-
-      for (const userId of userIds) {
-        await pool.query(notificationQuery, [
-          userId,
-          'broadcast_announcements',
-          'created',
-          false   // 👈 mark unread by default
+        const usersResult = await pool.query(usersQuery, [
+          region || '',
+          province || '',
+          city || '',
+          barangay || ''
         ]);
+
+        const userIds = usersResult.rows.map(r => r.id);
+
+        if (userIds.length > 0) {
+          const notificationQuery = `
+            INSERT INTO mobile_notifications (mobile_user_id, type, status, title, text)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+          `;
+
+          for (const userId of userIds) {
+            await pool.query(notificationQuery, [
+              userId,
+              'broadcast_announcements',
+              'created',
+              title,
+              text
+            ]);
+          }
+
+          console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+        } else {
+          console.log("No users found in this location for notification.");
+        }
+
+      } catch (err) {
+        console.error("Failed to save notifications:", err.message);
+        console.error("Full error:", err);
       }
 
-        console.log(`📲 Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
-      } else {
-        console.log("⚠️ No users found in this location for notification.");
-      }
-    } catch (err) {
-      console.error("❌ Failed to save notifications:", err.message);
-      console.error("Full error:", err);
+
+      // -----------------------------
+      // Emit to everyone
+      // -----------------------------
+      const io = getIo();
+      console.log("Emitting announcementUpdate:", createdAnnouncement);
+
+      io.emit("announcementUpdate", {
+        id: createdAnnouncement.id,
+        title: createdAnnouncement.title,
+        text: createdAnnouncement.text,
+        posted_by_id: createdAnnouncement.posted_by_id,
+        posted_by_name: createdAnnouncement.posted_by_name,
+        region: createdAnnouncement.region,
+        province: createdAnnouncement.province,
+        city: createdAnnouncement.city,
+        barangay: createdAnnouncement.barangay,
+        created_at: createdAnnouncement.created_at,
+      });
+
+
+
+
+      // -----------------------------
+      // Final response
+      // -----------------------------
+      return res.status(201).json({
+        message: 'Announcement created successfully!',
+        announcement: createdAnnouncement,
+      });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
     }
-
-    // -----------------------------
-    // Emit to everyone (socket.io)
-    // -----------------------------
-    const io = getIo();
-    console.log("📡 Emitting announcementUpdate:", createdAnnouncement);
-
-    io.emit("announcementUpdate", {
-      id: createdAnnouncement.id,
-      title: createdAnnouncement.title,
-      text: createdAnnouncement.text,
-      posted_by_id: createdAnnouncement.posted_by_id,
-      posted_by_name: createdAnnouncement.posted_by_name,
-      region: createdAnnouncement.region,
-      province: createdAnnouncement.province,
-      city: createdAnnouncement.city,
-      barangay: createdAnnouncement.barangay,
-      created_at: createdAnnouncement.created_at,
-    });
-
-    // -----------------------------
-    // Final response
-    // -----------------------------
-    return res.status(201).json({
-      message: 'Announcement created successfully!',
-      announcement: createdAnnouncement,
-    });
-
-  } catch (error) {
-    console.error("❌ [CREATE ANNOUNCEMENT ERROR]:", error.message);
-    return res.status(500).json({ message: 'Failed to create announcement', error: error.message });
-  }
 };
+
 
 // =========================
 // DELETE ANNOUNCEMENT
@@ -232,7 +240,7 @@ const deleteAnnouncement = async (req, res) => {
 
     // 5. Emit socket event for real-time UI update
     const io = getIo();
-    console.log("📡 Emitting announcementDeleted:", id);
+    console.log("Emitting announcementDeleted:", id);
 
     io.emit("announcementDeleted", { id });
 
@@ -241,7 +249,7 @@ const deleteAnnouncement = async (req, res) => {
       .status(200)
       .json({ message: "Announcement deleted successfully" });
   } catch (error) {
-    console.error("❌ Error deleting announcement:", error.message);
+    console.error("Error deleting announcement:", error.message);
     return res.status(500).json({
       message: "Failed to delete announcement",
       error: error.message,
@@ -622,7 +630,7 @@ if (req.file) {
       official: result.rows[0]
     });
   } catch (error) {
-    console.error("❌ Create official error:", error);
+    console.error("Create official error:", error);
     res.status(500).json({ message: "Failed to create official", error: error.message });
   }
 };
@@ -646,7 +654,7 @@ const getOfficials = async (req, res) => {
 
     res.status(200).json(officials);
   } catch (error) {
-    console.error("❌ Fetch officials error:", error);
+    console.error("Fetch officials error:", error);
     res.status(500).json({ message: "Failed to fetch officials", error: error.message });
   }
 };
@@ -666,7 +674,7 @@ const deleteOfficial = async (req, res) => {
     await pool.query(`DELETE FROM barangay_officials WHERE id = $1`, [officialId]);
     res.json({ message: "✅ Official deleted successfully!" });
   } catch (error) {
-    console.error("❌ Delete official error:", error);
+    console.error("Delete official error:", error);
     res.status(500).json({ message: "Failed to delete official", error: error.message });
   }
 };
@@ -678,7 +686,7 @@ const deleteOfficial = async (req, res) => {
 const getBarangayOfficialsForMobile = async (req, res) => {
   try {
     const { region, province, city, barangay } = req.query;
-    console.log("📌 Incoming query params:", req.query);
+    console.log("Incoming query params:", req.query);
 
     let query = 'SELECT * FROM barangay_officials';
     const params = [];
@@ -707,22 +715,22 @@ const getBarangayOfficialsForMobile = async (req, res) => {
 
     query += ' ORDER BY created_at DESC';
 
-    console.log("📌 Executing query:", query);
-    console.log("📌 With params:", params);
+    console.log("Executing query:", query);
+    console.log("With params:", params);
 
     const result = await pool.query(query, params);
-    console.log("✅ Fetched rows count:", result.rows.length);
+    console.log("Fetched rows count:", result.rows.length);
 
     const officials = result.rows.map(o => ({
       ...o,
       profile_picture: o.profile_picture || null
     }));
 
-    console.log("📌 Officials data:", officials);
+    console.log("Officials data:", officials);
 
     res.status(200).json(officials);
   } catch (error) {
-    console.error("❌ Fetch officials error:", error);
+    console.error("Fetch officials error:", error);
     res.status(500).json({ message: "Failed to fetch officials", error: error.message });
   }
 };
@@ -782,6 +790,166 @@ const unfollowBarangay = async (req, res) => {
 
 
 
+const sendAlert = async (req, res) => {
+  const {
+    title,
+    text,
+    sent_by_id,
+    sent_by_name,
+    region,
+    province,
+    city,
+    barangay
+  } = req.body;
+
+  // Debug: log incoming request body
+  console.log("📥 Incoming sendAlert request:", { title, text, sent_by_id, sent_by_name, region, province, city, barangay });
+
+  if (!title && !text) {
+    return res.status(400).json({ text: 'Title or message is required' });
+  }
+
+  try {
+    // 1️⃣ Save alert in web table
+    const result = await pool.query(
+      `INSERT INTO alerts
+        (title, text, sent_by_id, sent_by_name, region, province, city, barangay)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING *`,
+      [title, text, sent_by_id, sent_by_name, region, province, city, barangay]
+    );
+
+    const createdAlert = result.rows[0];
+
+    // Debug: log what was saved in DB
+    console.log("✅ Alert saved in DB:", { id: createdAlert.id, title: createdAlert.title, text: createdAlert.text });
+
+    // 2️⃣ Send mobile notifications
+    try {
+      const usersResult = await pool.query(
+        `SELECT id FROM mobile_users
+         WHERE region = $1 AND province = $2 AND city = $3 AND barangay = $4`,
+        [region || '', province || '', city || '', barangay || '']
+      );
+
+      const userIds = usersResult.rows.map(r => r.id);
+
+      if (userIds.length > 0) {
+        for (const userId of userIds) {
+          const notifResult = await pool.query(
+            `INSERT INTO mobile_notifications (mobile_user_id, type, status, title, text)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [userId, 'send_alert_updates', 'created', title, text]
+          );
+
+          // Debug: log each notification inserted
+          console.log("📲 Notification saved:", { userId, title: notifResult.rows[0].title, text: notifResult.rows[0].text });
+        }
+
+        console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
+      } else {
+        console.log("No users found in this location for notification.");
+      }
+    } catch (notifErr) {
+      console.error("Failed to save mobile notifications:", notifErr.message);
+      console.error("Full error:", notifErr);
+    }
+
+    // 3️⃣ Emit to all clients (web/mobile)
+    const io = getIo();
+    console.log("📡 Emitting alertUpdate with title/text:", { title: createdAlert.title, text: createdAlert.text });
+    io.emit("alertUpdate", {
+        type: "send_alert_updates",
+      id: createdAlert.id,
+      title: createdAlert.title,
+      text: createdAlert.text,
+      sent_by_id: createdAlert.sent_by_id,
+      sent_by_name: createdAlert.sent_by_name,
+      region: createdAlert.region,
+      province: createdAlert.province,
+      city: createdAlert.city,
+      barangay: createdAlert.barangay,
+      created_at: createdAlert.created_at,
+    });
+
+    // 4️⃣ Final response
+    res.status(201).json({ message: 'Alert sent successfully!', alert: createdAlert });
+  } catch (error) {
+    console.error('Send alert error:', error);
+    res.status(500).json({ message: 'Failed to send alert', error: error.message });
+  }
+};
+
+
+
+
+
+const getMobileNotifications = async (req, res) => {
+  const userId = req.params.userId;
+
+  console.log("🚀 getMobileNotifications called with userId:", userId);
+
+  if (!userId) {
+    console.warn("⚠️ No userId provided in request!");
+    return res.status(400).json({ message: "Missing userId" });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT *
+       FROM mobile_notifications
+       WHERE mobile_user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    console.log(`📲 Fetched ${result.rows.length} notifications for userId ${userId}`);
+
+    // 👉 Emit newest notification via socket in the same format
+    if (result.rows.length > 0) {
+      const latest = result.rows[0];
+
+      const io = getIo();
+      io.to(`user_${userId}`).emit("alertUpdate", {
+        id: latest.id,
+        type: latest.type || "send_alert_updates",
+        title: latest.title,
+        text: latest.text,
+        status: latest.status,
+        reason_for_rejection: latest.reason_for_rejection,
+        created_at: latest.created_at,
+        is_read: latest.is_read,
+      });
+
+      console.log("📡 Emitted alertUpdate to user:", userId, latest);
+    }
+
+    res.status(200).json({
+      success: true,
+      notifications: result.rows,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching mobile notifications:", error);
+    res.status(500).json({
+      message: "Failed to fetch notifications",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -803,5 +971,7 @@ module.exports = {
     deleteOfficial,
     getBarangayOfficialsForMobile,
     unfollowBarangay,
-    deleteAnnouncement
+    deleteAnnouncement,
+    sendAlert,
+    getMobileNotifications
 }

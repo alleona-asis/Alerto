@@ -27,6 +27,7 @@ import LGUDocumentRequests from './pages/LGU/LGU-Document-Requests/LGU-Document-
 import LGUAnnouncements from './pages/LGU/LGU-Announcements/LGU-Announcement';
 import LGUSupportTickets from './pages/LGU/LGU-Support-Tickets/LGU-Support-Tickets';
 import LGUSettings from './pages/LGU/LGU-Settings/LGU-Settings';
+import LGUMobileUsers from './pages/LGU/LGU-Mobile-Users/LGU-Mobile-Users';
 
 // Barangay
 import MobileUserRegistry from './pages/Barangay/BRGY-Mobile-Users/BRGY-Mobile-Users';
@@ -42,7 +43,7 @@ function AppRoutes({ token, role }) {
   // Redirect to role-specific dashboard on root path
   function DashboardRedirect() {
     const path = window.location.pathname;
-    console.log('🚦 Redirecting from root path:', path);
+    console.log('Redirecting from root path:', path);
 
     switch (role) {
       case 'super admin':
@@ -94,6 +95,9 @@ function AppRoutes({ token, role }) {
             <Route path="/lgu/announcements" element={<LGUAnnouncements />} />
             <Route path="/lgu/support-tickets" element={<LGUSupportTickets />} />
             <Route path="/lgu/settings" element={<LGUSettings />} />
+            <Route path="/lgu/mobile-users" element={<LGUMobileUsers />} />
+
+
           </>
         )}
 

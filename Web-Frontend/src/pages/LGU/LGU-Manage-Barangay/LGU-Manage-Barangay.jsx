@@ -371,10 +371,10 @@ const handleAddUserAccount = async (e) => {
   e.preventDefault();
 
   console.group('🛠️ handleAddUserAccount triggered');
-  console.log('👤 Current userForm:', JSON.stringify(userForm, null, 2));
-  console.log('🏘️ Selected Barangay:', selectedBarangay);
-  console.log('📜 LGUProfile:', JSON.stringify(LGUProfile, null, 2));
-  console.log('🆔 User ID:', userId);
+  console.log('Current userForm:', JSON.stringify(userForm, null, 2));
+  console.log('Selected Barangay:', selectedBarangay);
+  console.log('LGUProfile:', JSON.stringify(LGUProfile, null, 2));
+  console.log('User ID:', userId);
 
   const payload = {
     username: userForm.username,
@@ -391,7 +391,7 @@ const handleAddUserAccount = async (e) => {
     created_by: LGUProfile.last_name || LGUProfile.first_name,
   };
 
-  console.log('📤 Constructed payload:', JSON.stringify(payload, null, 2));
+  console.log('Constructed payload:', JSON.stringify(payload, null, 2));
 
   const missingFields = Object.entries(payload)
     .filter(([key, value]) => value === undefined || value === null || value === '')
@@ -405,7 +405,7 @@ const handleAddUserAccount = async (e) => {
   }
 
   try {
-    console.log('🚀 Sending POST request to /api/lgu/add-barangay-account...');
+    console.log('Sending POST request to /api/lgu/add-barangay-account...');
     const res = await axios.post('/api/lgu/add-barangay-account', payload);
 
     console.log('Account created:', res.data);
@@ -422,7 +422,7 @@ const handleAddUserAccount = async (e) => {
     });
     setIsAddUserModalOpen(false);
   } catch (error) {
-    console.error('❌ Error creating account:');
+    console.error('Error creating account:');
 
     if (error.response) {
       console.group('📨 Server error response');
@@ -507,7 +507,7 @@ const renderTable = (barangay = []) => {
               <th className="table-header">Barangay Name</th>
               <th className="table-header">Contact Number</th>
               <th className="table-header">Barangay Address</th>
-              <th className="table-header">Action</th>
+              <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -517,53 +517,62 @@ const renderTable = (barangay = []) => {
                 <td className="table-cell">{acc.barangay_name}</td>
                 <td className="table-cell">{acc.phone_number}</td>
                 <td className="table-cell">{acc.barangay_address}</td>
-                <td className="table-cell">
-                  <img
-                    src="/icons/add-user-row.png"
-                    alt="Add"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBarangay(acc.barangay_name);
-                      setIsAddUserModalOpen(true);
-                    }}
-                  />
-                  <img
-                    src="/icons/edit-row.png"
-                    alt="Edit"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBarangay(acc.barangay_name);
-                      setBarangayCaptain(acc.barangay_captain);
-                      setPhoneNumber(acc.phone_number);
-                      setAddress(acc.barangay_address);
-                      setEditingBarangayId(acc.id);
-                      setIsEditMode(true);
-                      setIsAddBarangayModalOpen(true);
-                    }}
-                  />
-                  <img
-                    src="/icons/delete-row.png"
-                    alt="Delete"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBarangayToDelete(acc);
-                      setShowDeleteConfirm(true);
-                    }}
-                  />
-                  <img
-                    src="/icons/dashboard.png"
-                    alt="Dashboard"
-                    className="table-icon-button"
-                    onClick={(e) => {
-                      //e.stopPropagation();
-                      //setBarangayToDelete(acc);
-                      //setShowDeleteConfirm(true);
-                    }}
-                  />
-                </td>
+
+<td className="table-cell" style={styles.cell}>
+  <div style={styles.row}>
+    {[
+      {
+        src: "/icons/add-user-row.png",
+        alt: "Add",
+        action: () => {
+          setSelectedBarangay(acc.barangay_name);
+          setIsAddUserModalOpen(true);
+        },
+      },
+      {
+        src: "/icons/edit-row.png",
+        alt: "Edit",
+        action: () => {
+          setSelectedBarangay(acc.barangay_name);
+          setBarangayCaptain(acc.barangay_captain);
+          setPhoneNumber(acc.phone_number);
+          setAddress(acc.barangay_address);
+          setEditingBarangayId(acc.id);
+          setIsEditMode(true);
+          setIsAddBarangayModalOpen(true);
+        },
+      },
+      {
+        src: "/icons/delete-row.png",
+        alt: "Delete",
+        action: () => {
+          setBarangayToDelete(acc);
+          setShowDeleteConfirm(true);
+        },
+      },
+      {
+        src: "/icons/dashboard.png",
+        alt: "Dashboard",
+        action: () => {
+          // Optional: add dashboard action here
+        },
+      },
+    ].map((icon, idx) => (
+      <img
+        key={idx}
+        src={icon.src}
+        alt={icon.alt}
+        style={styles.icon}
+        onClick={(e) => {
+          e.stopPropagation();
+          icon.action();
+        }}
+        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
+      />
+    ))}
+  </div>
+</td>
+
               </tr>
             ))}
           </tbody>
@@ -779,66 +788,9 @@ const renderTable = (barangay = []) => {
       )}
 
       {/* DELETE MODAL */}
-{showDeleteConfirm && barangayToDelete && (
-  <div
-    className="modal-overlay"
-    onClick={() => {
-      setIsClosing(true);
-      setTimeout(() => {
-        setShowDeleteConfirm(false);
-        setIsClosing(false);
-      }, 200);
-    }}
-  >
-    <div
-      className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
-      style={{ maxWidth: '350px' }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => {
-          setIsClosing(true);
-          setTimeout(() => {
-            setShowDeleteConfirm(false);
-            setIsClosing(false);
-          }, 200);
-        }}
-      />
-
-      <div className="icon-container">
-        <img
-          src="/icons/delete.png"
-          alt="Delete"
-          className="icon-delete"
-        />
-      </div>
-
-      <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
-      <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginBottom: '20px',
-          paddingLeft: '18px',
-          paddingRight: '18px',
-          textAlign: 'center'
-        }}
-      >
-        <span className="location-text">
-          Barangay {barangayToDelete?.barangay_name ? capitalizeWords(barangayToDelete.barangay_name) : 'N/A'}
-        </span>
-      </div>
-
-
-      <div className="button-container">
-        <button
-          className="cancel-button"
+      {showDeleteConfirm && barangayToDelete && (
+        <div
+          className="modal-overlay"
           onClick={() => {
             setIsClosing(true);
             setTimeout(() => {
@@ -847,19 +799,75 @@ const renderTable = (barangay = []) => {
             }, 200);
           }}
         >
-          Cancel
-        </button>
-        <button
-          className="confirm-button"
-          onClick={() => deleteBarangay(barangayToDelete.id)}
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '350px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowDeleteConfirm(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            />
 
+            <div className="icon-container">
+              <img
+                src="/icons/delete.png"
+                alt="Delete"
+                className="icon-delete"
+              />
+            </div>
+
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
+            <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: '20px',
+                paddingLeft: '18px',
+                paddingRight: '18px',
+                textAlign: 'center'
+              }}
+            >
+              <span className="location-text">
+                Barangay {barangayToDelete?.barangay_name ? capitalizeWords(barangayToDelete.barangay_name) : 'N/A'}
+              </span>
+            </div>
+
+
+            <div className="button-container">
+              <button
+                className="cancel-button"
+                onClick={() => {
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowDeleteConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button"
+                onClick={() => deleteBarangay(barangayToDelete.id)}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD BARANGAY USER MODAL */}
       {isAddUserModalOpen && (
@@ -1008,96 +1016,94 @@ const renderTable = (barangay = []) => {
         </div>
       )}
 
+      {isViewAccountModalOpen && selectedAccount && (
+        <div className="modal-overlay">
+          <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={closeViewAccountModal}
+            />
 
+            {/* Mini Nav Bar */}
+            <div className="modal-tabs">
+              <button
+                className={`tab-button ${activeTab === 'details' ? 'active' : ''}`}
+                onClick={() => setActiveTab('details')}
+              >
+                Barangay Details
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'staff' ? 'active' : ''}`}
+                onClick={() => setActiveTab('staff')}
+              >
+                Barangay Staff
+              </button>
+            </div>
 
-{isViewAccountModalOpen && selectedAccount && (
-  <div className="modal-overlay">
-    <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={closeViewAccountModal}
-      />
-
-      {/* Mini Nav Bar */}
-      <div className="modal-tabs">
-        <button
-          className={`tab-button ${activeTab === 'details' ? 'active' : ''}`}
-          onClick={() => setActiveTab('details')}
-        >
-          Barangay Details
-        </button>
-        <button
-          className={`tab-button ${activeTab === 'staff' ? 'active' : ''}`}
-          onClick={() => setActiveTab('staff')}
-        >
-          Barangay Staff
-        </button>
-      </div>
-
-      {/* Content Switch with Animation */}
-      <div className={`modal-tab-content fade-slide ${activeTab}`}>
-        {activeTab === 'details' ? (
-          <div className="modern-details-card">
-            <div className="detail-row">
-              <span className="detail-label">Barangay Name</span>
-              <span className="detail-value">{selectedAccount.barangay_name}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Barangay Captain</span>
-              <span className="detail-value">{selectedAccount.barangay_captain}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Phone Number</span>
-              <span className="detail-value">{selectedAccount.phone_number}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Barangay Address</span>
-              <span className="detail-value">{selectedAccount.barangay_address}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Added By</span>
-              <span className="detail-value">{selectedAccount.created_by}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Date Added</span>
-              <span className="detail-value">
-                {selectedAccount.created_at
-                  ? new Date(selectedAccount.created_at).toLocaleDateString()
-                  : '—'}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="barangay-staff">
-            <h4>Created User Accounts:</h4>
-            <div className="staff-card-grid">
-              {barangayAccounts.length > 0 ? (
-                barangayAccounts.map((user, index) => (
-                  <div className="staff-card" key={index}>
-                    <p><strong>Username:</strong> {user.username}</p>
-                    <p><strong>Full Name:</strong> {user.first_name} {user.last_name}</p>
-                    <p><strong>Position:</strong> {user.position}</p>
-                    <p><strong>Phone:</strong> {user.phone_number}</p>
+            {/* Content Switch with Animation */}
+            <div className={`modal-tab-content fade-slide ${activeTab}`}>
+              {activeTab === 'details' ? (
+                <div className="modern-details-card">
+                  <div className="detail-row">
+                    <span className="detail-label">Barangay Name</span>
+                    <span className="detail-value">{selectedAccount.barangay_name}</span>
                   </div>
-                ))
+                  <div className="detail-row">
+                    <span className="detail-label">Barangay Captain</span>
+                    <span className="detail-value">{selectedAccount.barangay_captain}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Phone Number</span>
+                    <span className="detail-value">{selectedAccount.phone_number}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Barangay Address</span>
+                    <span className="detail-value">{selectedAccount.barangay_address}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Added By</span>
+                    <span className="detail-value">{selectedAccount.created_by}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date Added</span>
+                    <span className="detail-value">
+                      {selectedAccount.created_at
+                        ? new Date(selectedAccount.created_at).toLocaleDateString()
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <p style={{ textAlign: 'center', marginTop: '20px' }}>No accounts found.</p>
+                <div className="barangay-staff">
+                  <h4>Created User Accounts:</h4>
+                  <div className="staff-card-grid">
+                    {barangayAccounts.length > 0 ? (
+                      barangayAccounts.map((user, index) => (
+                        <div className="staff-card" key={index}>
+                          <p><strong>Username:</strong> {user.username}</p>
+                          <p><strong>Full Name:</strong> {user.first_name} {user.last_name}</p>
+                          <p><strong>Position:</strong> {user.position}</p>
+                          <p><strong>Phone:</strong> {user.phone_number}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ textAlign: 'center', marginTop: '20px' }}>No accounts found.</p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
-      </div>
 
-      <div className="modal-button-row">
-        <button onClick={closeViewAccountModal} className="modal-cancel-button">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="modal-button-row">
+              <button onClick={closeViewAccountModal} className="modal-cancel-button">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
 
@@ -1109,6 +1115,23 @@ const renderTable = (barangay = []) => {
   );
 }
 
+const styles = {
+  cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
+  row: { display: "flex", alignItems: "center", gap: "15px" },
+  icon: {
+    width: "20px",
+    height: "20px",
+    cursor: "pointer",
+    transition: "transform 0.15s ease",
+  },
+};
+
+const bounceEffect = (el) => {
+  el.style.transform = "translateY(-6px)";
+  setTimeout(() => (el.style.transform = "translateY(2px)"), 150);
+  setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
+  setTimeout(() => (el.style.transform = "translateY(0)"), 450);
+};
 
 const dropdownStyles = {
   control: (base, state) => ({

@@ -1,11 +1,11 @@
 const pool = require('../../PostgreSQL/database');
 const fs = require('fs');
 const path = require('path');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // =================================================
 //  GET ALL BARANGAY REPORT
 // =================================================
-
 const getAllPins = async (req, res) => {
   try {
     const city = req.user?.city || req.query.city;
@@ -58,6 +58,7 @@ const getBarangayReports = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 // =================================================
 //  GET TOTAL REPORTS (FILTERED BY USER LOCATION)
@@ -136,9 +137,6 @@ const getTotalReports = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
 
 
 module.exports = {

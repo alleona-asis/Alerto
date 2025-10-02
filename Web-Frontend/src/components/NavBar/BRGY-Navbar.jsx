@@ -132,11 +132,11 @@ const notifData = res.data.notifications.map(n => {
   // ---------------- Mark Notification as Read ----------------
 const markNotificationAsRead = async (id) => {
   if (!id) {
-    console.error('❌ Cannot mark notification as read: ID is missing');
+    console.error('Cannot mark notification as read: ID is missing');
     return;
   }
   if (!BRGYProfile?.first_name || !BRGYProfile?.last_name) {
-    console.error("❌ Missing staff first_name / last_name in BRGYProfile");
+    console.error("Missing staff first_name / last_name in BRGYProfile");
     return;
   }
 
@@ -159,7 +159,7 @@ const markNotificationAsRead = async (id) => {
       )
     );
   } catch (err) {
-    console.error("❌ Failed to mark as read:", err.response?.data || err.message);
+    console.error("Failed to mark as read:", err.response?.data || err.message);
   }
 };
 
@@ -217,7 +217,7 @@ useEffect(() => {
       setNotifications(sorted);
 
     } catch (err) {
-      console.error("❌ Failed to refresh notifications:", err);
+      console.error("Failed to refresh notifications:", err);
     }
   };
 
@@ -256,7 +256,7 @@ useEffect(() => {
           await axios.delete(`/api/brgy/notifications/${notif.id}`);
           console.log(`🗑 Deleted notification ${notif.id} from DB`);
         } catch (err) {
-          console.error(`❌ Failed to delete notification ${notif.id}`, err);
+          console.error(`Failed to delete notification ${notif.id}`, err);
         }
       });
 
