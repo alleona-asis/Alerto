@@ -14,7 +14,8 @@ const allowedOrigins = [
   "http://localhost:5173",              // Vite dev
   "http://localhost:3000",              // React dev
   "https://alerto-t3cj.onrender.com",    // deployed frontend
-  "https://alertoplus.app",               //custom domain(name.com)
+  "https://alertoplus.app",
+  "https://www.alertoplus.app",               //custom domain(name.com)
   "https://alertoplus.com"                //custom domain(hostinger)
 ];
 
