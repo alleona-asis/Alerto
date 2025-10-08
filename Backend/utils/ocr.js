@@ -3,7 +3,7 @@ const fuzzball = require('fuzzball');
 const ID_KEYWORDS = {
   passport: ['passport', 'republic', 'travel document'],
   driver_license: ['driver', 'license', 'dl no', 'lto'],
-  national_id: ['national id', 'psa', 'philsys'],
+  national_id: ['national id', 'psa', 'philsys', 'Pagkakakilanlan'],
   philhealth: ['philhealth', 'pin'],
   student_id: ['student', 'school', 'university', 'college'],
 };
