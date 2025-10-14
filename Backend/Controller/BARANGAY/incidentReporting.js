@@ -713,6 +713,29 @@ const getBarangayReportById = async (req, res) => {
 };
 
 
+// =================================================
+//  USER BLOCKING STATUS
+// =================================================
+const getUserBlockingStatus = async (userId) => {
+  try {
+    const result = await pool.query(
+      `SELECT invalid_count, blocked_until, permanently_blocked 
+       FROM mobile_users 
+       WHERE id = $1`,
+      [userId]
+    );
+    if (result.rows.length > 0) {
+      return result.rows[0];  // Return { invalid_count, blocked_until, permanently_blocked }
+    } else {
+      return null;  // Or throw an error if preferred
+    }
+  } catch (error) {
+    console.error('Error fetching user blocking status:', error);
+    throw error;  // Propagate for route handling
+  }
+};
+
+
 
 module.exports = {
   submitReport,
@@ -726,4 +749,5 @@ module.exports = {
   uploadProof,
   transferReport,
   getBarangayReportById,
+  getUserBlockingStatus,
 };

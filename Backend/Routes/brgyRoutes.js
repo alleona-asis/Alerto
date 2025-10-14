@@ -395,4 +395,20 @@ router.post('/user-blocking/apply', async (req, res) => {
 });
 
 
+router.get('/user-blocking/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const blockData = await getUserBlockingStatus(userId);
+    if (blockData) {
+      res.status(200).json(blockData);  // e.g., { invalid_count: 0, blocked_until: null, permanently_blocked: false }
+    } else {
+      res.status(404).json({ message: 'No blocking status found for this user.' });
+    }
+  } catch (err) {
+    console.error('Error fetching user blocking status:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
 module.exports = router;
