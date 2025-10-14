@@ -197,7 +197,8 @@ const {
     updateReportStatus,
     uploadProof,
     transferReport,
-    getBarangayReportById
+    getBarangayReportById,
+    getUserBlockingStatus
 } = require('../Controller/BARANGAY/incidentReporting');
 
 // Mobile
