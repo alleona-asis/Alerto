@@ -940,6 +940,18 @@ const getMobileNotifications = async (req, res) => {
 
 
 
+const markMobileNotificationAsRead = async (notificationId) => {
+  try {
+    const result = await pool.query(
+      `UPDATE mobile_notifications SET is_read = true WHERE id = $1 RETURNING *`,
+      [notificationId]
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
+};
 
 
 
@@ -973,5 +985,6 @@ module.exports = {
     unfollowBarangay,
     deleteAnnouncement,
     sendAlert,
-    getMobileNotifications
+    getMobileNotifications,
+    markMobileNotificationAsRead
 }

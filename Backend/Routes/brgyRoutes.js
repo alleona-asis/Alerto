@@ -411,5 +411,18 @@ router.get('/user-blocking/:userId', async (req, res) => {
   }
 });
 
+//Mark Notifications as Read
+router.patch('/notifications/:notificationId/read', async (req, res) => {
+  const notificationId = req.params.notificationId;
+  try {
+    const result = await markMobileNotificationAsRead(notificationId);
+    res.status(200).json({ message: 'Notification marked as read', result });
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
 
 module.exports = router;
