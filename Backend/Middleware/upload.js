@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const PUBLIC_BUCKET = process.env.PUBLIC_BUCKET || 'Alerto-public';
 const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET || 'Alerto-private';
 
-const storage = multer.memoryStorage();
+// const storage = multer.memoryStorage();
 
 // Storage for announcements (public bucket)
 const announcementStorage = multer.diskStorage({
@@ -130,6 +130,7 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
             if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
             req.supabaseFiles[field.name].push({
               // localPath: `/uploads/${relativePath}`,
+              field: field.name,
               supabaseUrl: url,
               isPublic,
               relativePath

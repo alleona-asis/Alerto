@@ -49,7 +49,7 @@ const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
 
   // For private bucket, you can generate a signed URL or return a path
   // Here, returning a path placeholder; adjust as needed
-  return `/storage/v1/object/public/${bucket}/${relativePath}`;
+  return `/storage/v1/object/${bucket}/${relativePath}`;
 }
 
 /**
