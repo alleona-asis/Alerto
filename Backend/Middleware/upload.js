@@ -63,6 +63,14 @@ const fileFilter = (req, file, cb) => {
         allowedVideoTypes.includes(file.mimetype)
       ) return cb(null, true);
       break;
+    case 'media':  // NEW CASE for report submissions
+      if (
+        allowedImageTypes.includes(file.mimetype) ||  // Allow images
+        allowedVideoTypes.includes(file.mimetype)    // Allow videos if needed
+      ) return cb(null, true);  // You can add docs if reports support them
+      break;
+    default:
+      cb(new Error(`Unsupported field: ${file.fieldname}`));
   }
   cb(new Error(`Unsupported file type for field ${file.fieldname}: ${file.mimetype}`));
 };
