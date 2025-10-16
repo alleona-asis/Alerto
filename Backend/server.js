@@ -35,6 +35,7 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
+
 app.use(express.json());
 
 // Create HTTP server using Express app
