@@ -208,12 +208,14 @@ router.post(
     try {
       const allFiles = [];
       for (const key in req.supabaseFiles) {
+         console.log(`Key in req.supabaseFiles: ${key}`, req.supabaseFiles[key]);
         if (Array.isArray(req.supabaseFiles[key])) {
           allFiles.push(...req.supabaseFiles[key]);
         }
       }
       
       const uploadedFiles = allFiles.filter(f => f.field === 'media');
+      console.log('Uploaded files after filter:', uploadedFiles);
       
       if (uploadedFiles.length === 0) {
         return res.status(400).json({ message: 'No media files uploaded.' });
