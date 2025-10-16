@@ -222,7 +222,6 @@ router.post(
       const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
       
       await submitReport(req, res, { mediaUrls });
-      res.status(200).json({ message: 'Report submitted successfully', mediaUrls });
     } catch (err) {
       console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
       res.status(500).json({ message: 'Incident report upload failed' });
