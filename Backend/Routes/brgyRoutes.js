@@ -206,6 +206,14 @@ router.post(
   uploadWithSupabase([{ name: 'media', maxCount: 5 }]), // handle up to 5 media files
   async (req, res) => {
     try {
+       console.log('req.supabaseFiles:', req.supabaseFiles);
+       const allFiles = [];
+       for (const key in req.supabaseFiles) {
+        if (Array.isArray(req.supabaseFiles[key])) {
+          allFiles.push(...req.supabaseFiles[key]);  // Flatten into one array
+        }
+      }
+
       const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'media');
 
       if (uploadedFiles.length === 0) {
@@ -220,7 +228,7 @@ router.post(
 
     } catch (err) {
       console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
-      res.status(500).json({ message: 'Incident report upload failed' });
+      res.status(500).json({ message: 'Incident report upload failed', details: err.message });
     }
   }
 );
