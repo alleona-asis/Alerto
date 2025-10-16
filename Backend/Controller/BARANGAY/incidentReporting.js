@@ -80,7 +80,6 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
     // =======================
     // Handle uploaded files 
     // =======================
-    const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
     const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
       ? req.supabaseFiles.media
@@ -93,15 +92,13 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
     const allMedia = [...uploadedFiles, ...supabaseMedia];
 
     const media = allMedia.map(file => {
-    const isSupabase = !!file.supabaseUrl;
+    // const isSupabase = !!file.supabaseUrl;
 
         return {
-          filename: isSupabase ? path.basename(file.supabaseUrl) : file.filename,
-          url: isSupabase
-            ? file.supabaseUrl 
-            : `${BASE_URL}/uploads/reports/${file.filename}`,
-          mimetype:
-            file.mimetype ||
+          filename: file.filename || 
+            path.basename(file.supabaseUrl),
+          url: file.supabaseUrl,  
+          mimetype: file.mimetype || 
             (file.supabaseUrl?.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg'),
         };
       });
