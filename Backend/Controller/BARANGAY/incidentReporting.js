@@ -93,12 +93,12 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
     const allMedia = [...uploadedFiles, ...supabaseMedia];
 
     const media = allMedia.map(file => {
-  const isSupabase = !!file.supabaseUrl;
+    const isSupabase = !!file.supabaseUrl;
 
         return {
           filename: isSupabase ? path.basename(file.supabaseUrl) : file.filename,
           url: isSupabase
-            ? `${process.env.SUPABASE_URL}${file.supabaseUrl}`
+            ? file.supabaseUrl 
             : `${BASE_URL}/uploads/reports/${file.filename}`,
           mimetype:
             file.mimetype ||
@@ -107,7 +107,7 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
       });
 
       const mediaFilenames = media.map(m => m.filename);
-      const mediaUrls = media.map(m => m.url);
+      const mediaRelativePaths = allMedia.map(m => m.relativePath || null);
     // =======================
     // Parse date & boolean
     // =======================
@@ -134,7 +134,7 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
 
     const queryText = `
       INSERT INTO incident_reports 
-      (latitude, longitude, barangay, city, province, region, category, incident_type, description, reported_person, reported_by, agreed_privacy, incident_datetime, incident_date, incident_time, media_filenames, media_urls, mobile_user_id, device_id)
+      (latitude, longitude, barangay, city, province, region, category, incident_type, description, reported_person, reported_by, agreed_privacy, incident_datetime, incident_date, incident_time, media_filenames, media_relative_paths, mobile_user_id, device_id)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, $18, $19)
       RETURNING *;
     `;
@@ -156,7 +156,7 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
       incidentDate,
       incidentTime,
       mediaFilenames.length > 0 ? mediaFilenames : null,
-      mediaUrls.length > 0 ? mediaUrls : null,
+      mediaRelativePaths.length > 0 ? mediaRelativePaths : null,
       req.body.mobile_user_id || req.user?.id || null,
       deviceRow ? deviceRow.id : null
     ];
