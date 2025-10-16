@@ -214,11 +214,11 @@ router.post(
         }
       }
       
-      const uploadedFiles = allFiles.filter(f => f.field === 'media');
-      console.log('Uploaded files after filter:', uploadedFiles);
+      const uploadedFiles = allFiles.filter(f => f.field === 'media');  // Ensure 'field' matches
+      console.log('Debug: All files before filter:', allFiles);  // Add this
       
-      if (uploadedFiles.length === 0) {
-        return res.status(400).json({ message: 'No media files uploaded.' });
+       if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: 'No media files uploaded.', details: 'Filter returned empty' });
       }
       
       const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
