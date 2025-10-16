@@ -23,7 +23,7 @@ const announcementStorage = multer.diskStorage({
   }
 });
 
-// Storage for sensitive files (private bucket)
+// Storage for private files (private bucket)
 const privateStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const folder = 'uploads/private';
@@ -64,7 +64,7 @@ const fileFilter = (req, file, cb) => {
         allowedVideoTypes.includes(file.mimetype)
       ) return cb(null, true);
       break;
-    case 'media':  // NEW CASE for report submissions
+    case 'media':  //for report submissions
       if (
         allowedImageTypes.includes(file.mimetype) ||  // Allow images
         allowedVideoTypes.includes(file.mimetype)    // Allow videos if needed
@@ -104,38 +104,33 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
           
           const files = req.files[field.name];
           if (!files) continue;
+
           for (const f of files) {
 
             const localPath = path.join(f.destination, f.filename);
-            const relativePath = `private/${f.filename}`;            
-            // Determine bucket and public/private flag using env vars
-            let bucketName = PRIVATE_BUCKET;
-            let isPublic = false;
+                        
+            // Determine bucket and relative path
+            let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
+            let relativePath = isAnnouncement ? `announcements/${f.filename}` : `private/${f.filename}`;
+            let isPublic = isAnnouncement;
 
-           if (field.name === 'images' && isAnnouncement) {
-              bucketName = PUBLIC_BUCKET;
-              isPublic = true;
-            }
-            let url = null;
-            try {
-              url = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
-            } catch (uploadErr) {
-              console.error(`[UPLOAD] Supabase upload failed for ${relativePath}:`, uploadErr.message);
-              return next(uploadErr);
-            }
-            // Delete local file after successful upload
+            // Upload to Supabase (returns signed URL if private)
+            let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
+
+            // Delete local file
             deleteLocalFile(localPath);
 
             if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
             req.supabaseFiles[field.name].push({
-              // localPath: `/uploads/${relativePath}`,
               field: field.name,
-              supabaseUrl: url,
-              isPublic,
-              relativePath
+              supabaseUrl,    // This is the signed URL for private or public URL for announcements
+              relativePath,
+              filename: f.filename,
+              isPublic
             });
           }
         }
+
         next();
 
       } catch (e) {

@@ -81,30 +81,18 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
     // Handle uploaded files 
     // =======================
 
-    const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
-      ? req.supabaseFiles.media
-      : req.supabaseFiles
-      ? [req.supabaseFiles] // wrap single object in array
-      : [];
+   const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
+        ? req.supabaseFiles.media
+        : [];
 
-    const uploadedFiles = Array.isArray(req.files) ? req.files : [];
-
-    const allMedia = [...uploadedFiles, ...supabaseMedia];
-
-    const media = allMedia.map(file => {
-    // const isSupabase = !!file.supabaseUrl;
-
-        return {
-          filename: file.filename || 
-            path.basename(file.supabaseUrl),
-          url: file.supabaseUrl,  
-          mimetype: file.mimetype || 
-            (file.supabaseUrl?.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg'),
-        };
-      });
+      const media = supabaseMedia.map(f => ({
+        filename: f.filename,
+        url: f.supabaseUrl,  // signed URL
+        mimetype: f.mimetype || (f.filename.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
+      }));
 
       const mediaFilenames = media.map(m => m.filename);
-      const mediaUrls = allMedia.map(m => m.relativePath || null);
+      const mediaUrls = media.map(m => m.url);
     // =======================
     // Parse date & boolean
     // =======================
