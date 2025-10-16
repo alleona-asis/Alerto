@@ -107,8 +107,7 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
           for (const f of files) {
 
             const localPath = path.join(f.destination, f.filename);
-            const relativePath = path.relative('uploads', localPath).replace(/\\/g, '/');
-            
+            const relativePath = `private/${f.filename}`;            
             // Determine bucket and public/private flag using env vars
             let bucketName = PRIVATE_BUCKET;
             let isPublic = false;
