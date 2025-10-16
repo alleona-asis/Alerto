@@ -5,7 +5,7 @@ const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 
 // =================================================
-// GET ALL PENDING ACCOUNTS
+// GET ALL PENDING LGU ACCOUNTS
 // =================================================
 const getPendingAccount = async (req, res) => {
   try {
@@ -194,19 +194,13 @@ const getTotalLGUAccounts = async (req, res) => {
 
     res.status(200).json({
       total: parseInt(totalRes.rows[0].total),
-      graphData: statusRes.rows // [{ status: 'Approved', value: 5 }, ...]
+      graphData: statusRes.rows
     });
   } catch (error) {
     console.error("Error fetching total LGU accounts:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-
-
-
 
 
 module.exports = {

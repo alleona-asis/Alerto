@@ -102,7 +102,6 @@ const proofUpload = multer({
 // =================================================
 // MULTER SETUP FOR OFFICIALS PROFILE PICTURE
 // =================================================
-// Storage
 const officialStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const folder = "uploads/officials";

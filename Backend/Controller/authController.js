@@ -127,7 +127,6 @@ const registerLguAdmin = async (req, res) => {
     return res.status(400).json({ message: 'Both Government ID and Letter of Intent are required' });
   }
 
-
   const idFileName = govID?.filename || null;
   const intentFileName = letterOfIntent?.filename || null;
 
@@ -278,7 +277,7 @@ const adminLogin = async (req, res) => {
 
 
 // =================================================================================
-// BARANGAY LOGIN
+// BARANGAY STAFF LOGIN
 // =================================================================================
 const barangayStaffLogin = async (req, res) => {
   const { username, password } = req.body;
@@ -331,7 +330,7 @@ const barangayStaffLogin = async (req, res) => {
 
 
 // =================================================================================
-// MOBILE REGISTRATION
+// MOBILE USER REGISTRATION
 // =================================================================================
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -463,7 +462,7 @@ const mobileUserSignUp = async (req, res) => {
 
 
 // =================================================================================
-//  VERIFICATION REQUEST
+//  VERIFICATION REQUEST (MOBILE USER ACCOUNT)
 // =================================================================================
 const requestMobileUserVerification = async (req, res) => {
   try {
@@ -489,7 +488,7 @@ const requestMobileUserVerification = async (req, res) => {
     const user = userQuery.rows[0];
 
     const MAX_ATTEMPTS = 2;
-    const COOLDOWN_MINUTES = 1; // Test 1 minute
+    const COOLDOWN_MINUTES = 1;
     const attempts = user.verification_attempts || 0;
     const lastRequest = user.last_verification_request ? new Date(user.last_verification_request) : null;
     const now = new Date();

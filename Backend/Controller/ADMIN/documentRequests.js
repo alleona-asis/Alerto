@@ -4,6 +4,9 @@ const fs = require('fs');
 const { getIo } = require('../../socket');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
 
+// =================================================
+//  GET ALL DOCUMENT REQUESTS
+// =================================================
 
 const getDocumentRequests = async (req, res) => {
   try {

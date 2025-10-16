@@ -193,7 +193,7 @@ const submitReport = async (req, res) => {
 
 
 // =======================
-// userBlocking
+// USER BLOCKING
 // =======================
 const userBlocking = async (user, id, io) => {
   const now = new Date();
@@ -280,7 +280,7 @@ const getAllPins = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORT FOR MOBILE
+//  GET ALL BARANGAY REPORTS FOR MOBILE
 // =================================================
 const getBarangayReportsForMobile = async (req, res) => {
   try {
@@ -301,7 +301,7 @@ const getBarangayReportsForMobile = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORT FOR WEB
+//  GET ALL BARANGAY REPORTS FOR WEB
 // =================================================
 const getBarangayReports = async (req, res) => {
   try {
@@ -331,7 +331,7 @@ const getBarangayReports = async (req, res) => {
 
 
 // =================================================
-//  Barangay Web Dashboard
+//  BARANGAY WEB DASHBOARD
 // =================================================
 const getReportsByLocation = async (req, res) => {
   try {

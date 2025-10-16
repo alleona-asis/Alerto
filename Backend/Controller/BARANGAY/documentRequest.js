@@ -197,7 +197,9 @@ const getRequestsByLocation = async (req, res) => {
     );
 */
 
-
+// =========================
+// UPDATE DOCUMENT REQUEST STATUS
+// =========================
 
 const updateDocumentRequestStatus = async (req, res) => {
   try {
@@ -352,6 +354,9 @@ const updateDocumentRequestStatus = async (req, res) => {
   }
 };
 
+// =========================
+// GET DOCUMENT REQUEST BY USER ID
+// =========================
 
 const getRequestsByUserId = async (req, res) => {
   try {
@@ -417,7 +422,9 @@ const getRequestsByUserId = async (req, res) => {
   }
 };
 
-
+// =========================
+// GET DOCUMENT REQUESTS BY LOCATION
+// =========================
 const getRequestsByLocation = async (req, res) => {
   try {
     const { city, province, barangay } = req.query;
