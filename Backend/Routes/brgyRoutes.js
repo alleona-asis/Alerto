@@ -208,22 +208,21 @@ router.post(
     try {
       const allFiles = [];
       for (const key in req.supabaseFiles) {
-         console.log(`Key in req.supabaseFiles: ${key}`, req.supabaseFiles[key]);
         if (Array.isArray(req.supabaseFiles[key])) {
           allFiles.push(...req.supabaseFiles[key]);
         }
       }
       
       const uploadedFiles = allFiles.filter(f => f.field === 'media');  // Ensure 'field' matches
-      console.log('Debug: All files before filter:', allFiles);  // Add this
       
        if (uploadedFiles.length === 0) {
-        return res.status(400).json({ message: 'No media files uploaded.', details: 'Filter returned empty' });
+        return res.status(400).json({ message: 'No media files uploaded.' });
       }
       
       const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
       
       await submitReport(req, res, { mediaUrls });
+      res.status(200).json({ message: 'Report submitted successfully', mediaUrls });
     } catch (err) {
       console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
       res.status(500).json({ message: 'Incident report upload failed' });
