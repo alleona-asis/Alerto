@@ -102,7 +102,6 @@ const proofUpload = multer({
 // =================================================
 // MULTER SETUP FOR OFFICIALS PROFILE PICTURE
 // =================================================
-// Storage
 const officialStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const folder = "uploads/officials";
@@ -197,7 +196,8 @@ const {
     updateReportStatus,
     uploadProof,
     transferReport,
-    getBarangayReportById
+    getBarangayReportById,
+    getUserBlockingStatus
 } = require('../Controller/BARANGAY/incidentReporting');
 
 // Mobile
@@ -393,6 +393,35 @@ router.post('/user-blocking/apply', async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
+router.get('/user-blocking/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const blockData = await getUserBlockingStatus(userId);
+    if (blockData) {
+      res.status(200).json(blockData);  // e.g., { invalid_count: 0, blocked_until: null, permanently_blocked: false }
+    } else {
+      res.status(404).json({ message: 'No blocking status found for this user.' });
+    }
+  } catch (err) {
+    console.error('Error fetching user blocking status:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+//Mark Notifications as Read
+router.patch('/notifications/:notificationId/read', async (req, res) => {
+  const notificationId = req.params.notificationId;
+  try {
+    const result = await markMobileNotificationAsRead(notificationId);
+    res.status(200).json({ message: 'Notification marked as read', result });
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 
 module.exports = router;

@@ -110,7 +110,7 @@ const deleteBarangay = async (req, res) => {
 
 
 // ==============================
-// ADD BARANGAY ACCOUNT
+// ADD BARANGAY STAFF ACCOUNT
 // ==============================
 const addBarangayUserAccount = async (req, res) => {
   const {

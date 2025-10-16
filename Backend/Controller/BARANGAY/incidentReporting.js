@@ -193,7 +193,7 @@ const submitReport = async (req, res) => {
 
 
 // =======================
-// userBlocking
+// USER BLOCKING
 // =======================
 const userBlocking = async (user, id, io) => {
   const now = new Date();
@@ -280,7 +280,7 @@ const getAllPins = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORT FOR MOBILE
+//  GET ALL BARANGAY REPORTS FOR MOBILE
 // =================================================
 const getBarangayReportsForMobile = async (req, res) => {
   try {
@@ -301,7 +301,7 @@ const getBarangayReportsForMobile = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORT FOR WEB
+//  GET ALL BARANGAY REPORTS FOR WEB
 // =================================================
 const getBarangayReports = async (req, res) => {
   try {
@@ -331,7 +331,7 @@ const getBarangayReports = async (req, res) => {
 
 
 // =================================================
-//  Barangay Web Dashboard
+//  BARANGAY WEB DASHBOARD
 // =================================================
 const getReportsByLocation = async (req, res) => {
   try {
@@ -713,6 +713,29 @@ const getBarangayReportById = async (req, res) => {
 };
 
 
+// =================================================
+//  USER BLOCKING STATUS
+// =================================================
+const getUserBlockingStatus = async (userId) => {
+  try {
+    const result = await pool.query(
+      `SELECT invalid_count, blocked_until, permanently_blocked 
+       FROM mobile_users 
+       WHERE id = $1`,
+      [userId]
+    );
+    if (result.rows.length > 0) {
+      return result.rows[0];  // Return { invalid_count, blocked_until, permanently_blocked }
+    } else {
+      return null;  // Or throw an error if preferred
+    }
+  } catch (error) {
+    console.error('Error fetching user blocking status:', error);
+    throw error;  // Propagate for route handling
+  }
+};
+
+
 
 module.exports = {
   submitReport,
@@ -726,4 +749,5 @@ module.exports = {
   uploadProof,
   transferReport,
   getBarangayReportById,
+  getUserBlockingStatus,
 };
