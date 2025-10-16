@@ -203,35 +203,32 @@ const {
 // Mobile
 router.post(
   '/submit-incident-report',
-  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), // handle up to 5 media files
+  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), 
   async (req, res) => {
     try {
-       console.log('req.supabaseFiles:', req.supabaseFiles);
-       const allFiles = [];
-       for (const key in req.supabaseFiles) {
+      const allFiles = [];
+      for (const key in req.supabaseFiles) {
         if (Array.isArray(req.supabaseFiles[key])) {
-          allFiles.push(...req.supabaseFiles[key]);  // Flatten into one array
+          allFiles.push(...req.supabaseFiles[key]);
         }
       }
-
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'media');
-
+      
+      const uploadedFiles = allFiles.filter(f => f.field === 'media');
+      
       if (uploadedFiles.length === 0) {
         return res.status(400).json({ message: 'No media files uploaded.' });
       }
-
-      // Get Supabase private URLs (signed URLs for sensitive incident reports)
+      
       const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
-
-      // Call your existing report handler, passing mediaUrls
+      
       await submitReport(req, res, { mediaUrls });
-
     } catch (err) {
       console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
-      res.status(500).json({ message: 'Incident report upload failed', details: err.message });
+      res.status(500).json({ message: 'Incident report upload failed' });
     }
   }
 );
+
 
 
 router.get('/all-report-pins', getAllPins);
