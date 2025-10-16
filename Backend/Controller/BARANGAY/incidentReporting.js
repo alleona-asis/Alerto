@@ -82,17 +82,32 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
     // =======================
     const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
-    // Combine Supabase upload URLs if available
-      const mediaUrls = req.body.mediaUrls || req.supabaseFiles?.media?.map(f => f.supabaseUrl) || [];
+    const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
+      ? req.supabaseFiles.media
+      : req.supabaseFiles
+      ? [req.supabaseFiles] // wrap single object in array
+      : [];
 
-      const media = mediaUrls.map((url) => ({
-        filename: path.basename(url),
-        url,
-        mimetype: url.endsWith(".mp4") ? "video/mp4" : "image/jpeg",
-      }));
+    const uploadedFiles = Array.isArray(req.files) ? req.files : [];
+
+    const allMedia = [...uploadedFiles, ...supabaseMedia];
+
+    const media = allMedia.map(file => {
+  const isSupabase = !!file.supabaseUrl;
+
+        return {
+          filename: isSupabase ? path.basename(file.supabaseUrl) : file.filename,
+          url: isSupabase
+            ? `${process.env.SUPABASE_URL}${file.supabaseUrl}`
+            : `${BASE_URL}/uploads/reports/${file.filename}`,
+          mimetype:
+            file.mimetype ||
+            (file.supabaseUrl?.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg'),
+        };
+      });
 
       const mediaFilenames = media.map(m => m.filename);
-      const mediaLinks = media.map(m => m.url);
+      const mediaUrls = media.map(m => m.url);
     // =======================
     // Parse date & boolean
     // =======================
