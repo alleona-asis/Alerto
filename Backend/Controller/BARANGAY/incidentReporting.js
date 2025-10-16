@@ -8,7 +8,7 @@ const {supabase} = require('../../PostgreSQL/supabaseClient');
 // =================================================
 //  SUBMIT BARANGAY REPORT
 // =================================================
-const submitReport = async (req, res) => {
+const submitReport = async (req, res, { mediaUrls = [] }) => {
   try {
 
     const mobileUserId = req.body.mobile_user_id || req.user?.id;
@@ -78,20 +78,21 @@ const submitReport = async (req, res) => {
     } = req.body;
 
     // =======================
-    // Handle uploaded files
+    // Handle uploaded files 
     // =======================
-    const uploadedFiles = req.files || [];
-    const BASE_URL = process.env.BASE_URL || "http://localhost:5000"; 
+    const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
-    const media = uploadedFiles.map(file => ({
-      filename: file.filename,
-      url: `${BASE_URL}/uploads/reports/${file.filename}`,
-      mimetype: file.mimetype
-    }));
+    // Combine Supabase upload URLs if available
+      const mediaUrls = req.body.mediaUrls || req.supabaseFiles?.media?.map(f => f.supabaseUrl) || [];
 
-    const mediaFilenames = media.map(m => m.filename);
-    const mediaUrls = media.map(m => m.url);
+      const media = mediaUrls.map((url) => ({
+        filename: path.basename(url),
+        url,
+        mimetype: url.endsWith(".mp4") ? "video/mp4" : "image/jpeg",
+      }));
 
+      const mediaFilenames = media.map(m => m.filename);
+      const mediaLinks = media.map(m => m.url);
     // =======================
     // Parse date & boolean
     // =======================
