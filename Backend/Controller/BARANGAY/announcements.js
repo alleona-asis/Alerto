@@ -11,6 +11,17 @@ const PORT = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
 
+const parseJSONSafely = (data) => {
+  try {
+    if (!data) return [];
+    if (typeof data === "string") return JSON.parse(data);
+    if (Array.isArray(data)) return data;
+    return [];
+  } catch {
+    return [];
+  }
+};
+
 // =========================
 // CREATE ANNOUNCEMENT
 // =========================
@@ -280,68 +291,46 @@ const getAnnouncements = async (req, res) => {
 
         const result = await pool.query(query, params);
 
-        return res.status(200).json(result.rows);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Failed to fetch announcements', error: error.message });
-    }
+       const announcements = result.rows.map(a => ({
+            ...a,
+            image_urls: parseJSONSafely(a.image_urls),
+            image_filenames: parseJSONSafely(a.image_filenames),
+          }));
+
+    return res.status(200).json(announcements);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Failed to fetch announcements', error: error.message });
+  }
 };
 
 
 const getAnnouncementByUserLocation = async (req, res) => {
   try {
-    const userId = req.params.id;
+    const { region, province, city, barangays } = req.query;
+    const allBarangays = JSON.parse(barangays || '[]');
 
-    // Get user profile including followed barangays
-    const userResult = await pool.query(
-      `SELECT region, province, city, barangay, followed_barangays
-       FROM mobile_users WHERE id = $1`,
-      [userId]
-    );
-
-    if (!userResult.rows.length) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const { region, province, city, barangay, followed_barangays } = userResult.rows[0];
-
-    // Parse followed barangays safely
-    let followed = [];
-    if (followed_barangays) {
-      if (typeof followed_barangays === "string") {
-        try {
-          followed = JSON.parse(followed_barangays);
-        } catch {
-          followed = [];
-        }
-      } else if (Array.isArray(followed_barangays)) {
-        followed = followed_barangays;
-      }
-    }
-
-    // Include user's own barangay + followed barangays
-    const allBarangays = [barangay, ...followed.map(f => f.brgyDesc)];
-
-    //console.log("All barangays to fetch:", allBarangays);
-
-    // Fetch announcements from own + followed barangays
     const announcementResult = await pool.query(
-      `SELECT *
-       FROM announcements
+      `SELECT * FROM announcements
        WHERE region = $1 AND province = $2 AND city = $3
          AND barangay = ANY($4::text[])
        ORDER BY created_at DESC`,
       [region, province, city, allBarangays]
     );
 
-    //console.log(`Announcements fetched: ${announcementResult.rows.length}`);
-    res.json(announcementResult.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    // ✅ Normalize the JSON string fields
+    const announcements = announcementResult.rows.map(a => ({
+      ...a,
+      image_urls: parseJSONSafely(a.image_urls),
+      image_filenames: parseJSONSafely(a.image_filenames),
+    }));
+
+    return res.status(200).json(announcements);
+  } catch (error) {
+    console.error('Error fetching announcements by user location:', error);
+    return res.status(500).json({ message: 'Failed to fetch announcements', error: error.message });
   }
 };
-
 
 // =========================
 // FOLLOW OTHER BARANGAY
