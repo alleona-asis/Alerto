@@ -279,23 +279,23 @@ const getAnnouncements = async (req, res) => {
     try {
         const { barangay } = req.query; // optional filter by barangay
 
-        let query = 'SELECT * FROM announcements';
-        const params = [];
+            let query = 'SELECT * FROM announcements';
+    const params = [];
 
-        if (barangay) {
-            query += ' WHERE barangay = $1';
-            params.push(barangay);
-        }
+    if (barangay) {
+      query += ' WHERE barangay = $1';
+      params.push(barangay);
+    }
 
-        query += ' ORDER BY created_at DESC'; // latest first
+    query += ' ORDER BY created_at DESC'; // latest first
 
-        const result = await pool.query(query, params);
+    const result = await pool.query(query, params);
 
-       const announcements = result.rows.map(a => ({
-            ...a,
-            image_urls: parseJSONSafely(a.image_urls),
-            image_filenames: parseJSONSafely(a.image_filenames),
-          }));
+    const announcements = result.rows.map(a => ({
+      ...a,
+      image_urls: parseJSONSafely(a.image_urls),
+      image_filenames: parseJSONSafely(a.image_filenames),
+    }));
 
     return res.status(200).json(announcements);
   } catch (error) {
@@ -305,10 +305,59 @@ const getAnnouncements = async (req, res) => {
 };
 
 
+// =========================
+// GET ANNOUNCEMENTS BY USER LOCATION
+// =========================
 const getAnnouncementByUserLocation = async (req, res) => {
   try {
-    const { region, province, city, barangays } = req.query;
-    const allBarangays = JSON.parse(barangays || '[]');
+    let { region, province, city, barangays } = req.query;
+    const userId = req.params.id;
+
+    let allBarangays = [];
+
+    // 🧭 Case 1: request includes userId (mobile app)
+    if (userId && !region) {
+      const userResult = await pool.query(
+        `SELECT region, province, city, barangay, followed_barangays
+         FROM mobile_users WHERE id = $1`,
+        [userId]
+      );
+
+      if (!userResult.rows.length) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const { region: reg, province: prov, city: cty, barangay, followed_barangays } = userResult.rows[0];
+
+      region = reg;
+      province = prov;
+      city = cty;
+
+      // parse followed barangays
+      let followed = [];
+      if (followed_barangays) {
+        try {
+          followed = typeof followed_barangays === "string" ? JSON.parse(followed_barangays) : followed_barangays;
+        } catch {
+          followed = [];
+        }
+      }
+
+      allBarangays = [barangay, ...followed.map(f => f.brgyDesc)];
+    }
+
+    // 🧭 Case 2: query params version
+    if (barangays && typeof barangays === 'string') {
+      try {
+        allBarangays = JSON.parse(barangays);
+      } catch {
+        allBarangays = [];
+      }
+    }
+
+    if (!region || !province || !city) {
+      return res.status(400).json({ error: "Missing location parameters." });
+    }
 
     const announcementResult = await pool.query(
       `SELECT * FROM announcements
@@ -318,7 +367,6 @@ const getAnnouncementByUserLocation = async (req, res) => {
       [region, province, city, allBarangays]
     );
 
-    // ✅ Normalize the JSON string fields
     const announcements = announcementResult.rows.map(a => ({
       ...a,
       image_urls: parseJSONSafely(a.image_urls),
