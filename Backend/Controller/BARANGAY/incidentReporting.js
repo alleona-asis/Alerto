@@ -78,7 +78,7 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
     } = req.body;
 
     // =======================
-    // Handle uploaded files 
+    // Handle uploaded files
     // =======================
 
    const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
@@ -281,7 +281,7 @@ const getAllPins = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORTS FOR MOBILE
+//  GET ALL BARANGAY REPORT FOR MOBILE
 // =================================================
 const getBarangayReportsForMobile = async (req, res) => {
   try {
@@ -302,7 +302,7 @@ const getBarangayReportsForMobile = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORTS FOR WEB
+//  GET ALL BARANGAY REPORT FOR WEB
 // =================================================
 const getBarangayReports = async (req, res) => {
   try {
@@ -451,17 +451,27 @@ const updateReportStatus = async (req, res) => {
     }
 
 
-    // --- Emit notification ONLY to the mobile user ---
-    if (notification) {
-      const io = getIo();
-      io.to(`user_${updatedReport.mobile_user_id}`).emit(
-        "reportStatusUpdate",
-        {
-          ...notification,
-          type: "barangay_report_status",
-        }
-      );
-    }
+// after you compute updatedReport and (optionally) save notification
+const io = getIo();
+
+// optional: keep a dedicated channel for the inbox feed
+if (notification) {
+  io.to(`user_${updatedReport.mobile_user_id}`).emit('notification', {
+    ...notification,
+    type: 'barangay_report_status',
+  });
+}
+
+// ✅ send the actual report update for the UI list/modal
+io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
+  id: updatedReport.id,                 // the client accepts id OR reportId
+  reportId: updatedReport.id,
+  status: updatedReport.status,
+  status_history: updatedReport.status_history,
+  updated_by: updatedReport.updated_by,
+  updated_at: updatedReport.updated_at,
+});
+
 
     res.status(200).json({
       message: "Status updated successfully",
@@ -728,11 +738,11 @@ const getUserBlockingStatus = async (userId) => {
     if (result.rows.length > 0) {
       return result.rows[0];  // Return { invalid_count, blocked_until, permanently_blocked }
     } else {
-      return null;  // Or throw an error if preferred
+      return null; 
     }
   } catch (error) {
     console.error('Error fetching user blocking status:', error);
-    throw error;  // Propagate for route handling
+    throw error; 
   }
 };
 

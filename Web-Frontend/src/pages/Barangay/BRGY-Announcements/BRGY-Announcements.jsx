@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Player } from '@lottiefiles/react-lottie-player';
 import BRGYNavbar from '../../../components/NavBar/BRGY-Navbar';
 import BRGYSidebar from '../../../components/SideBar/BRGY-Sidebar';
-import developmentAnimation from '@/assets/animations/Software Development.json';
 import '../../../components/SideBar/styles.css';
-import { motion } from 'framer-motion';
 import axios from '../../../axios/axiosInstance';
 import defaultProfile from '@/assets/icons/default.png';
-// import DefaultIcon from "@/assets/icons/default.png";
-import { ToastContainer } from "react-toastify";
-// import { toast } from "react-toastify";
-// import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from 'react-toastify';
 
 export default function BRGYProfile() {
   const [BRGYProfile, setBRGYProfile] = useState(null);
@@ -19,10 +12,8 @@ export default function BRGYProfile() {
   const [error, setError] = useState(null);
   const userId = localStorage.getItem('userId');
   const token = localStorage.getItem('token');
-  const navigate = useNavigate();
 
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isDevelopmentOngoing, setIsDevelopmentOngoing] = useState(true);
   const [activeTab, setActiveTab] = useState('Announcement');
   const [hovered, setHovered] = useState(null);
 
@@ -33,15 +24,12 @@ export default function BRGYProfile() {
   const [isClosing, setIsClosing] = useState(false);
   const [isViewAnnouncementModalOpen, setViewAnnouncementModalOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
-
   const [isSendAlertModalOpen, setIsSendAlertModalOpen] = useState(false);
 
-  const [isEditProfileModalOpen, setEditProfileModalOpen] = useState(false);
 
-
-
-
-  // Fetch Barangay Profile
+  // =================================================
+  //  FETCH BARANGAY PROFILE
+  // =================================================
   useEffect(() => {
     if (!userId || !token) {
       setError('User not logged in.');
@@ -68,395 +56,354 @@ export default function BRGYProfile() {
   }, [userId, token]);
 
 
+  // =================================================
+  //  CREATE ANNOUNCEMENT
+  // =================================================
+  const handlePostAnnouncement = async (e) => {
+    e.preventDefault();
 
-const handlePostAnnouncement = async (e) => {
-  e.preventDefault();
-
-  if (!announcementTitle && !announcementText && !announcementImage) {
-    alert('Please add a title, text, or image for the announcement.');
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append('title', announcementTitle);
-    formData.append('text', announcementText);
-
-    // Add who posted it
-    const userId = localStorage.getItem('userId');
-    const userName = `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim();
-    formData.append('posted_by_id', userId);
-    formData.append('posted_by_name', userName);
-
-    // Add location info
-    formData.append('region', BRGYProfile?.region || '');
-    formData.append('province', BRGYProfile?.province || '');
-    formData.append('city', BRGYProfile?.city || '');
-    formData.append('barangay', BRGYProfile?.barangay || '');
-
-    if (announcementImage) {
-      Array.from(announcementImage).forEach(file => {
-        formData.append('images', file); // Must match backend 'images'
-      });
+    if (!announcementTitle && !announcementText && !announcementImage) {
+      alert('Please add a title, text, or image for the announcement.');
+      return;
     }
 
-    const token = localStorage.getItem('token');
-
-    const response = await axios.post('/api/brgy/create-announcements', formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data', // Axios handles boundaries
-      },
-    });
-
-    console.log('Announcement created:', response.data);
-
-    // ✅ Immediately add new announcement to state
-    const newAnnouncement = response.data.announcement || response.data; // depends on backend response
-    setAnnouncements(prev => [newAnnouncement, ...prev]);
-
-    // Reset modal
-    setIsClosing(true);
-    setTimeout(() => {
-      setAnnouncementModalOpen(false);
-      setIsClosing(false);
-      setAnnouncementText('');
-      setAnnouncementTitle('');
-      setAnnouncementImage(null);
-    }, 300);
-
-  } catch (error) {
-    console.error('Error posting announcement:', error);
-    alert(error.response?.data?.message || error.message);
-  }
-};
-
-
-
-const [announcements, setAnnouncements] = useState([]);
-const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
-const [announcementError, setAnnouncementError] = useState(null);
-
-useEffect(() => {
-  const fetchAnnouncements = async () => {
-    setLoadingAnnouncements(true);
-    setAnnouncementError(null);
     try {
-      const response = await axios.get('/api/brgy/get-announcements', {
+      const formData = new FormData();
+      formData.append('title', announcementTitle);
+      formData.append('text', announcementText);
+
+      const userId = localStorage.getItem('userId');
+      const userName = `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim();
+      formData.append('posted_by_id', userId);
+      formData.append('posted_by_name', userName);
+
+      formData.append('region', BRGYProfile?.region || '');
+      formData.append('province', BRGYProfile?.province || '');
+      formData.append('city', BRGYProfile?.city || '');
+      formData.append('barangay', BRGYProfile?.barangay || '');
+
+      if (announcementImage) {
+        Array.from(announcementImage).forEach(file => {
+          formData.append('images', file);
+        });
+      }
+
+      const token = localStorage.getItem('token');
+
+      const response = await axios.post('/api/brgy/create-announcements', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
       });
 
-      let allAnnouncements = response.data; // Assuming array
-      if (BRGYProfile) {
-        // Filter by exact match
-        allAnnouncements = allAnnouncements.filter(
-          ann =>
-            ann.region === BRGYProfile.region &&
-            ann.province === BRGYProfile.province &&
-            ann.city === BRGYProfile.city &&
-            ann.barangay === BRGYProfile.barangay
-        );
-      }
+      toast.success('Announcement posted successfully!');
 
-      setAnnouncements(allAnnouncements);
+      const newAnnouncement = response.data.announcement || response.data;
+      setAnnouncements(prev => [newAnnouncement, ...prev]);
+
+      setIsClosing(true);
+      setTimeout(() => {
+        setAnnouncementModalOpen(false);
+        setIsClosing(false);
+        setAnnouncementText('');
+        setAnnouncementTitle('');
+        setAnnouncementImage(null);
+      }, 300);
+
     } catch (error) {
-      console.error('Failed to fetch announcements:', error);
-      setAnnouncementError('Failed to load announcements.');
-    } finally {
-      setLoadingAnnouncements(false);
+      console.error('Error posting announcement:', error);
+      alert(error.response?.data?.message || error.message);
     }
   };
 
-  if (BRGYProfile) {
-    fetchAnnouncements();
-  }
-}, [token, BRGYProfile]);
+  // =================================================
+  //  FETCH ANNOUNEMENTS
+  // =================================================
+  const [announcements, setAnnouncements] = useState([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [announcementError, setAnnouncementError] = useState(null);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      setLoadingAnnouncements(true);
+      setAnnouncementError(null);
+      try {
+        const response = await axios.get('/api/brgy/get-announcements', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let allAnnouncements = response.data;
+        if (BRGYProfile) {
+          allAnnouncements = allAnnouncements.filter(
+            ann =>
+              ann.region === BRGYProfile.region &&
+              ann.province === BRGYProfile.province &&
+              ann.city === BRGYProfile.city &&
+              ann.barangay === BRGYProfile.barangay
+          );
+        }
+
+        setAnnouncements(allAnnouncements);
+      } catch (error) {
+        console.error('Failed to fetch announcements:', error);
+        setAnnouncementError('Failed to load announcements.');
+      } finally {
+        setLoadingAnnouncements(false);
+      }
+    };
+    if (BRGYProfile) {
+      fetchAnnouncements();
+    }
+  }, [token, BRGYProfile]);
 
 
+  // =================================================
+  //  BARANGAY OFFICIALS
+  // =================================================
+  const [isAddOfficialsModalOpen, setAddOfficialsModalOpen] = useState(false);
+  const [officialName, setOfficialName] = useState("");
+  const [officialPosition, setOfficialPosition] = useState("");
+  const [officialContact, setOfficialContact] = useState("");
+  const [officialImage, setOfficialImage] = useState(null);
+  const [selectedOfficial, setSelectedOfficial] = useState(null);
 
-// Barangay Officials
-const [isAddOfficialsModalOpen, setAddOfficialsModalOpen] = useState(false);
-const [officialName, setOfficialName] = useState("");
-const [officialPosition, setOfficialPosition] = useState("");
-const [officialContact, setOfficialContact] = useState("");
-const [officialImage, setOfficialImage] = useState(null);
-const [selectedOfficial, setSelectedOfficial] = useState(null); // null initially
+  const handleAddOfficial = async (e) => {
+    e.preventDefault();
 
-
-const handleAddOfficial = async (e) => {
-  e.preventDefault();
-
-  if (!officialName || !officialPosition || !officialContact) {
-    alert("Please fill out all required fields.");
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append("name", officialName);
-    formData.append("position", officialPosition);
-    formData.append("contact_number", officialContact);
-
-    // Profile picture
-    if (officialImage) {
-      formData.append("image", officialImage);
+    if (!officialName || !officialPosition || !officialContact || !officialImage) {
+      alert("Please fill out all required fields.");
+      return;
     }
 
-    // Add location + creator from profile
-    formData.append("region", BRGYProfile?.region || "");
-    formData.append("province", BRGYProfile?.province || "");
-    formData.append("city", BRGYProfile?.city || "");
-    formData.append("barangay", BRGYProfile?.barangay || "");
+    try {
+      const formData = new FormData();
+      formData.append("name", officialName);
+      formData.append("position", officialPosition);
+      formData.append("contact_number", officialContact);
 
-    const userId = localStorage.getItem("userId");
-    formData.append("created_by", userId);
+      if (officialImage) {
+        formData.append("image", officialImage);
+      }
 
-    const token = localStorage.getItem("token");
+      formData.append("region", BRGYProfile?.region || "");
+      formData.append("province", BRGYProfile?.province || "");
+      formData.append("city", BRGYProfile?.city || "");
+      formData.append("barangay", BRGYProfile?.barangay || "");
 
-    const response = await axios.post("/api/brgy/create-official", formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    });
+      const userId = localStorage.getItem("userId");
+      formData.append("created_by", userId);
 
-    console.log("Official created:", response.data);
+      const token = localStorage.getItem("token");
 
-    const officialData = response.data.official;
+      const response = await axios.post("/api/brgy/create-official", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    // Use temporary local URL if uploading new image
-    const imageUrl = officialImage
-      ? URL.createObjectURL(officialImage) // <-- instant preview
-      : officialData.image
-      ? `/uploads/officials/${officialData.image}`
-      : "/public/icons/default.png";
+      console.log("Official created:", response.data);
+      toast.success('Official added successfully!');
 
-    const newOfficial = {
-      id: officialData.id,
-      name: officialData.name || "",
-      position: officialData.position || "",
-      contact_number: officialData.contact_number || "",
-      profile_picture: {
-        url: imageUrl,
-      },
-      region: officialData.region || "",
-      province: officialData.province || "",
-      city: officialData.city || "",
-      barangay: officialData.barangay || "",
-      created_by: officialData.created_by || "",
+      const officialData = response.data.official;
+
+      const imageUrl = officialImage
+        ? URL.createObjectURL(officialImage)
+        : officialData.image
+        ? `/uploads/officials/${officialData.image}`
+        : "/icons/default.png";
+
+      const newOfficial = {
+        id: officialData.id,
+        name: officialData.name || "",
+        position: officialData.position || "",
+        contact_number: officialData.contact_number || "",
+        profile_picture: {
+          url: imageUrl,
+        },
+        region: officialData.region || "",
+        province: officialData.province || "",
+        city: officialData.city || "",
+        barangay: officialData.barangay || "",
+        created_by: officialData.created_by || "",
+      };
+      setOfficials(prev => [newOfficial, ...prev]);
+
+      setOfficialName("");
+      setOfficialPosition("");
+      setOfficialContact("");
+      setOfficialImage(null);
+      setAddOfficialsModalOpen(false);
+
+    } catch (error) {
+      console.error("Error adding official:", error);
+      alert(error.response?.data?.message || error.message);
+    }
+  };
+
+  const [officials, setOfficials] = useState([]);
+
+  useEffect(() => {
+    const fetchOfficials = async () => {
+      if (!token) return;
+
+      try {
+        const response = await axios.get("/api/brgy/get-officials", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let allOfficials = response.data;
+
+        if (BRGYProfile) {
+          allOfficials = allOfficials.filter(
+            o =>
+              o.barangay === BRGYProfile.barangay &&
+              o.city === BRGYProfile.city &&
+              o.province === BRGYProfile.province &&
+              o.region === BRGYProfile.region
+          );
+        }
+
+        setOfficials(allOfficials);
+      } catch (err) {
+        console.error("Error fetching officials:", err);
+      }
     };
 
-    // Update UI immediately
-    setOfficials(prev => [newOfficial, ...prev]);
+    fetchOfficials();
+  }, [BRGYProfile, token]);
 
 
-    // Reset modal
-    setOfficialName("");
-    setOfficialPosition("");
-    setOfficialContact("");
-    setOfficialImage(null);
-    setAddOfficialsModalOpen(false);
+  // =================================================
+  //  DELETE ANNOUNCEMENT
+  // =================================================
+  const [officialToDelete, setOfficialToDelete] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  } catch (error) {
-    console.error("Error adding official:", error);
-    alert(error.response?.data?.message || error.message);
-  }
-};
-
-const [officials, setOfficials] = useState([]);
-
-
-useEffect(() => {
-  const fetchOfficials = async () => {
-    if (!token) return;
+  const deleteOfficial = async (officialId) => {
+    if (!officialId) return;
 
     try {
-      const response = await axios.get("/api/brgy/get-officials", {
+      const token = localStorage.getItem("token");
+
+      await axios.delete(`/api/brgy/delete-official/${officialId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOfficials((prev) => prev.filter((o) => o.id !== officialId));
+
+      setShowDeleteConfirm(false);
+      setOfficialToDelete(null);
+
+      console.log("Official deleted successfully!");
+      toast.success('Official deleted successfully!');
+    } catch (error) {
+      console.error("Failed to delete official:", error);
+      alert(error.response?.data?.message || "Failed to delete official");
+    }
+  };
+
+
+  // =================================================
+  //  HANDLE COMMENTS
+  // =================================================
+  const [comments, setComments] = useState([]);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!selectedAnnouncement) return;
+      try {
+        const response = await axios.get(`/api/brgy/get-comments/${selectedAnnouncement.id}`);
+        setComments(response.data);
+      } catch (error) {
+        console.error("Failed to fetch comments:", error);
+      }
+    };
+
+    fetchComments();
+  }, [selectedAnnouncement]);
+
+
+  // =================================================
+  //  DELETE ANNOUNCEMENT
+  // =================================================
+  const [announcementToDelete, setAnnouncementToDelete] = useState(null);
+  const [showDeleteAnnouncementConfirm, setShowDeleteAnnouncementConfirm] = useState(false);
+
+  const handleDeleteAnnouncement = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.delete(`/api/brgy/delete-announcement/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      let allOfficials = response.data;
+      console.log("Delete response:", res.data);
+      setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
 
-      // Filter by current barangay
-      if (BRGYProfile) {
-        allOfficials = allOfficials.filter(
-          o =>
-            o.barangay === BRGYProfile.barangay &&
-            o.city === BRGYProfile.city &&
-            o.province === BRGYProfile.province &&
-            o.region === BRGYProfile.region
-        );
-      }
-
-      setOfficials(allOfficials);
+      toast.success("Announcement deleted successfully!");
     } catch (err) {
-      console.error("Error fetching officials:", err);
+      console.error("Failed to delete announcement:", err.response?.data || err.message);
+      toast.error("Failed to delete announcement. Please try again.");
     }
   };
 
-  fetchOfficials();
-}, [BRGYProfile, token]);
+  // =================================================
+  //  ALERT NOTIFICATIONS
+  // =================================================
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
+  const handleSendAlert = async (e) => {
+    e.preventDefault();
 
-//Delete 
-const [officialToDelete, setOfficialToDelete] = useState(null);
-const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    if (!alertTitle && !alertMessage) {
+      alert('Please add a title or message for the alert.');
+      return;
+    }
 
-const deleteOfficial = async (officialId) => {
-  if (!officialId) return;
-
-  try {
-    const token = localStorage.getItem("token");
-
-    await axios.delete(`/api/brgy/delete-official/${officialId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // Remove from UI
-    setOfficials((prev) => prev.filter((o) => o.id !== officialId));
-
-    // Close modal
-    setShowDeleteConfirm(false);
-    setOfficialToDelete(null);
-
-    console.log("Official deleted successfully!");
-  } catch (error) {
-    console.error("Failed to delete official:", error);
-    alert(error.response?.data?.message || "Failed to delete official");
-  }
-};
-
-
-// inside your component
-const [comments, setComments] = useState([]); // initialize as empty array
-const [newComment, setNewComment] = useState(''); // for input field
-
-useEffect(() => {
-  const fetchComments = async () => {
-    if (!selectedAnnouncement) return;
     try {
-      const response = await axios.get(`/api/brgy/get-comments/${selectedAnnouncement.id}`);
-      setComments(response.data);
+      const payload = {
+        title: alertTitle,
+        text: alertMessage,
+        sent_by_id: localStorage.getItem('userId'),
+        sent_by_name: `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim(),
+        region: BRGYProfile?.region || '',
+        province: BRGYProfile?.province || '',
+        city: BRGYProfile?.city || '',
+        barangay: BRGYProfile?.barangay || ''
+      };
+
+      const token = localStorage.getItem('token');
+
+      const response = await axios.post('/api/brgy/send-alert', payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('Alert sent:', response.data);
+      toast.success('Alert sent successfully!');
+
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsSendAlertModalOpen(false);
+        setIsClosing(false);
+        setAlertTitle('');
+        setAlertMessage('');
+      }, 300);
+
     } catch (error) {
-      console.error("Failed to fetch comments:", error);
+      console.error('Error sending alert:', error);
+      alert(error.response?.data?.message || error.message);
     }
   };
-
-  fetchComments();
-}, [selectedAnnouncement]);
-
-
-const handleAddComment = async () => {
-  if (!newComment.trim()) return;
-
-  try {
-    const userId = localStorage.getItem("userId"); 
-
-    const response = await axios.post('/api/brgy/add-comment', {
-      userId,
-      announcementId: selectedAnnouncement.id,
-      commentText: newComment,
-    });
-
-    setComments(prev => [...prev, response.data.comment]);
-    setNewComment('');
-  } catch (error) {
-    console.error("Failed to add comment:", error);
-  }
-};
-
-
-const [announcementToDelete, setAnnouncementToDelete] = useState(null);
-const [showDeleteAnnouncementConfirm, setShowDeleteAnnouncementConfirm] = useState(false);
-
-
-const handleDeleteAnnouncement = async (id) => {
-  try {
-    const token = localStorage.getItem("token"); // ✅ use localStorage for web
-
-    const res = await axios.delete(`/api/brgy/delete-announcement/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    console.log("Delete response:", res.data);
-
-    // Update UI
-    setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
-
-    toast.success("✅ Announcement deleted successfully!");
-  } catch (err) {
-    console.error("Failed to delete announcement:", err.response?.data || err.message);
-    toast.error("Failed to delete announcement. Please try again.");
-  }
-};
-
-
-const [alertTitle, setAlertTitle] = useState('');
-const [alertMessage, setAlertMessage] = useState('');
-
-const handleSendAlert = async (e) => {
-  e.preventDefault();
-
-  // Ensure title or message is provided
-  if (!alertTitle && !alertMessage) {
-    alert('Please add a title or message for the alert.');
-    return;
-  }
-
-  try {
-    // Prepare payload (JSON instead of FormData since no files)
-    const payload = {
-      title: alertTitle,
-      text: alertMessage,
-      sent_by_id: localStorage.getItem('userId'),
-      sent_by_name: `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim(),
-      region: BRGYProfile?.region || '',
-      province: BRGYProfile?.province || '',
-      city: BRGYProfile?.city || '',
-      barangay: BRGYProfile?.barangay || ''
-    };
-
-    const token = localStorage.getItem('token');
-
-    // POST request
-    const response = await axios.post('/api/brgy/send-alert', payload, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    console.log('Alert sent:', response.data);
-
-    // Update local alerts feed
-    const newAlert = response.data.alert || response.data;
-
-    // Reset form and close modal
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsSendAlertModalOpen(false);
-      setIsClosing(false);
-      setAlertTitle('');
-      setAlertMessage('');
-    }, 300);
-
-  } catch (error) {
-    console.error('Error sending alert:', error);
-    alert(error.response?.data?.message || error.message);
-  }
-};
-
-
-
-
-
-
-
 
 
   return (
@@ -472,12 +419,33 @@ const handleSendAlert = async (e) => {
         <div 
           className="main-content"
           style={{ 
-            marginLeft: isSidebarCollapsed ? 80 : 270,
-            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)',
+            marginLeft: isSidebarCollapsed ? 80 : 300,
+            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)',
             transition: 'margin-left 0.3s, width 0.3s',
             overflow: 'hidden'
           }}
         >
+          <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="colored"
+            style={{
+              fontFamily: 'Poppins, sans-serif',
+              fontSize: '12px',
+              borderRadius: '8px',
+            }}
+            toastStyle={{
+              borderRadius: '8px',
+              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)',
+            }}
+          />
           <div className="header-row">
             <h2 className="page-title">Barangay Profile</h2>
           </div>
@@ -522,13 +490,6 @@ const handleSendAlert = async (e) => {
                     {announcements.length === 1 ? 'Post' : 'Posts'}
                   </p>
                 </div>
-
-
-                {/* Followers */}
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 16 }}>2.5K</p>
-                  <p style={{ margin: 0, fontSize: 14 }}>Followers</p>
-                </div>
               </div>
 
               {/* 2nd row: Announcement button, Edit button */}
@@ -550,7 +511,7 @@ const handleSendAlert = async (e) => {
                     transition: 'all 0.3s ease',
                   }}
                 >
-                  Create Announcement
+                  Announcement
                 </button>
 
                 <button
@@ -1128,64 +1089,72 @@ const handleSendAlert = async (e) => {
                       placeholder="Enter contact number"
                       className="modal-input"
                       value={officialContact}
-                      onChange={(e) => setOfficialContact(e.target.value)}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        if (value.includes(' ')) return;
+
+                        // Format and sanitize input
+                        if (!value.startsWith('+639')) {
+                          value = '+639' + value.replace(/\D/g, '').slice(0, 9);
+                        } else {
+                          value = '+639' + value.slice(4).replace(/\D/g, '').slice(0, 9);
+                        }
+
+                        setOfficialContact(value);
+                      }}
                       required
                     />
                   </div>
 
-          {/* Profile Picture */}
-          {/* Profile Picture */}
-          <div className="input-group">
-            <label className="input-label">Upload a Photo</label>
-            <div
-              onClick={() => document.getElementById('officialImageInput').click()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '30%',
-                height: '100px',
-                border: '2px dashed #4894FE',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                color: '#4894FE',
-                fontWeight: 'bold',
-                backgroundColor: '#f5f7ff',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              {officialImage ? (
-                <img
-                  src={URL.createObjectURL(officialImage)}
-                  alt="Preview"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: '10px',
-                  }}
-                />
-              ) : (
-                ''
-              )}
-            </div>
+                  {/* Profile Picture */}
+                  <div className="input-group">
+                    <label className="input-label">Upload a Photo</label>
+                    <div
+                      onClick={() => document.getElementById('officialImageInput').click()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '30%',
+                        height: '100px',
+                        border: '2px dashed #4894FE',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        color: '#4894FE',
+                        fontWeight: 'bold',
+                        backgroundColor: '#f5f7ff',
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {officialImage ? (
+                        <img
+                          src={URL.createObjectURL(officialImage)}
+                          alt="Preview"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '10px',
+                          }}
+                        />
+                      ) : (
+                        ''
+                      )}
+                    </div>
 
-            <input
-              id="officialImageInput"
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setOfficialImage(e.target.files[0]);
-                }
-              }}
-            />
-          </div>
-
-
-
+                    <input
+                      id="officialImageInput"
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setOfficialImage(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </div>
 
                   {/* Buttons */}
                   <div className="modal-button-row">
@@ -1368,41 +1337,11 @@ const handleSendAlert = async (e) => {
                     </div>
                   ))}
                 </div>
-
-                {/* Add Comment 
-                <div style={{ display: 'flex', marginTop: '10px', gap: '5px' }}>
-                  <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
-                    style={{
-                      flex: 1,
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid #ccc',
-                    }}
-                  />
-                  <button
-                    onClick={handleAddComment}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      backgroundColor: '#007bff',
-                      color: '#fff',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Post
-                  </button>
-                </div>
-                */}
               </div>
             </div>
           )}
 
-          {/* DELETE CONFIRMATION MODAL FOR ANNOUNCEMENTS */}
+          {/* DELETE CONFIRMATION MODAL */}
           {showDeleteAnnouncementConfirm && announcementToDelete && (
             <div
               className="modal-overlay"
@@ -1485,7 +1424,6 @@ const handleSendAlert = async (e) => {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

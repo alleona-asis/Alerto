@@ -7,7 +7,7 @@ import '../../../components/SideBar/styles.css';
 import './ADMIN-Barangay-Reports.css'
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
-import noBarangayAnim from "@/assets/animations/non data found.json";
+import noBarangayAnim from '@/assets/animations/non data found.json';
 import Select from 'react-select';
 import { io } from 'socket.io-client';
 import { format } from "date-fns";

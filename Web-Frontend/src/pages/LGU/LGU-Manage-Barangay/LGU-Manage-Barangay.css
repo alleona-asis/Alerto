@@ -252,6 +252,67 @@ table.scroll,
   text-align: left;
 }
 
+.modal-content-details {
+  position: relative;
+  background-color: #ffffff;
+  padding: 30px 25px 25px;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  text-align: left;
+}
+
+.top-incident-card {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #0f172a;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.top-incident-badge {
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid #bfdbfe;
+  letter-spacing: 0.02em;
+}
+
+.top-incident-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+  margin-left: 1px;
+  margin-top: 10px;
+}
+
+.top-incident-sub {
+  font-size: 12px;
+  color: #475569;
+}
+
+.incident-bullets {
+  margin: 0 0 4px 38px;
+  padding: 0;
+  list-style: disc;
+  color: #0f172a;
+}
+
+.incident-bullets li {
+  margin: 4px 0;
+}
+
+.incident-bullet-item {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+
 @keyframes pop-in {
   0% {
     transform: scale(0.85);
@@ -407,7 +468,7 @@ table.scroll,
   padding: 10px 20px;
   background: none;
   border: none;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   color: #8696BB;
   font-weight: 500;
@@ -533,6 +594,5 @@ table.scroll,
   max-width: 60%;
   word-wrap: break-word;
 }
-
 
 

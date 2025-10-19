@@ -28,7 +28,6 @@ const createDocumentRequest = async (req, res) => {
       civil_status
     } = req.body;
 
-    // Validate required fields
     if (!documentType || !purpose || !date || !time || !mobile_user_id || !region || !province || !city || !barangay || !date_of_birth || !sex || !home_address || !civil_status) {
       return res.status(400).json({ message: 'Missing required fields.' });
     }
@@ -108,95 +107,6 @@ const createDocumentRequest = async (req, res) => {
 
 
 
-
-
-/*
-const getRequestsByUserId = async (req, res) => {
-  try {
-    const userId = req.params.id;
-    if (!userId) {
-      return res.status(400).json({ error: "User ID missing" });
-    }
-
-    console.log("Fetching reports for userId:", userId);
-
-    const query = `
-      SELECT *
-      FROM document_requests
-      WHERE mobile_user_id = $1
-      ORDER BY date DESC
-    `;
-    const result = await pool.query(query, [userId]);
-
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching user reports:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-*/
-
-
-
-// =================================================
-// =================================================
-//  Barangay Web Dashboard
-// =================================================
-// =================================================
-/*
-const getRequestsByLocation = async (req, res) => {
-  try {
-    const { city, province, barangay } = req.query;
-
-    const result = await pool.query(
-      'SELECT * FROM document_requests WHERE city = $1 AND province = $2 AND barangay = $3',
-      [city, province, barangay]
-    );
-
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error fetching pins:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
-*/
-
-/*
-    // ===== PICKUP DEADLINE =====
-    let pickupDeadline = null;
-
-      if (status.toLowerCase() === "ready for pick-up" || status.toLowerCase() === "reschedule") {
-      // TEMPORARY: 5 minutes for testing
-      const tempDate = new Date(Date.now() + 5 * 60 * 1000); 
-
-      // 1 day from now
-      //const tempDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      const options = {
-        year: "numeric",
-        month: "short",  // Sep
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true
-      };
-      pickupDeadline = tempDate.toLocaleString("en-US", options);
-    }
-
-    // Update document request
-    const updateResult = await pool.query(
-      `UPDATE document_requests
-       SET status = $1,
-           updated_by = $2,
-           updated_at = NOW(),
-           status_history = $3::jsonb,
-           pickup_deadline = $4
-       WHERE id = $5
-       RETURNING *`,
-      [status.toLowerCase(), updatedBy, JSON.stringify(updatedHistory), pickupDeadline, id]
-    );
-*/
-
 // =========================
 // UPDATE DOCUMENT REQUEST STATUS
 // =========================
@@ -204,9 +114,16 @@ const getRequestsByLocation = async (req, res) => {
 const updateDocumentRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, first_name, last_name, new_date } = req.body;
+    const {
+      status,
+      first_name,
+      last_name,
+      new_date,
+      price_amount,   // <- from Amount Modal
+      price_note      // <- from Amount Modal
+    } = req.body;
 
-    console.log("Incoming status update:", { id, status, first_name, last_name, new_date });
+    console.log("Incoming status update:", { id, status, first_name, last_name, new_date, price_amount, price_note });
 
     const updatedBy =
       `${first_name || req.user?.first_name || ''} ${last_name || req.user?.last_name || ''}`.trim() || "Unknown";
@@ -225,11 +142,20 @@ const updateDocumentRequestStatus = async (req, res) => {
       "claimed",
       "unclaimed",
     ];
-
     if (!allowedStatuses.includes(status.toLowerCase())) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
+    // ========= Validate amount fields when moving to "ready for pick-up"
+    if (status.toLowerCase() === "ready for pick-up") {
+      // allow 0, but not undefined/NaN/negative
+      const amt = Number(price_amount);
+      if (!Number.isFinite(amt) || amt < 0) {
+        return res.status(400).json({ message: "price_amount must be a non-negative number when setting Ready for Pick-up." });
+      }
+    }
+
+    // Get current history
     const { rows } = await pool.query(
       `SELECT status_history FROM document_requests WHERE id = $1`,
       [id]
@@ -243,31 +169,19 @@ const updateDocumentRequestStatus = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    // ===== PICKUP DEADLINE =====
+    // ===== PICKUP DEADLINE / NEW DATE =====
     let pickupDeadline = null;
     let finalNewDate = null;
 
     if (status.toLowerCase() === "ready for pick-up") {
-      pickupDeadline = new Date(Date.now() + 5 * 60 * 1000); // Test 5 minutes
-
-      // 3 Working Days
-      /*
-        let daysToAdd = 3;
-        let pickupDate = new Date();
-
-        while (daysToAdd > 0) {
-          pickupDate.setDate(pickupDate.getDate() + 1);
-          const day = pickupDate.getDay();
-          if (day !== 0 && day !== 6) daysToAdd--;
-        }
-
-        pickupDeadline = pickupDate;
-      */
+      // TEST: +5 mins; replace with working days logic later
+      pickupDeadline = new Date(Date.now() + 5 * 60 * 1000);
     }
 
     if (status.toLowerCase() === "reschedule" && new_date) {
       finalNewDate = new Date(new_date);
-      pickupDeadline = new Date(finalNewDate.getTime() + 5 * 60 * 1000); // Test 5 minutes
+      // TEST: +5 mins after reschedule date
+      pickupDeadline = new Date(finalNewDate.getTime() + 5 * 60 * 1000);
 
       console.log(`Status updated to: "${status}" by ${updatedBy}`);
       console.log(`Rescheduled date: ${finalNewDate}`);
@@ -275,29 +189,45 @@ const updateDocumentRequestStatus = async (req, res) => {
       console.log(`Updated status history:`, updatedHistory);
     }
 
-    // TRACKER LOGS
-    console.log(`Status updated to: "${status}" by ${updatedBy}`);
-    if (finalNewDate) console.log(`Rescheduled date set to: ${finalNewDate}`);
-    if (pickupDeadline) console.log(`Pickup deadline: ${pickupDeadline}`);
-    console.log(`Updated status history:`, updatedHistory);
+    // ===== Build dynamic SQL to also set price fields when provided
+    // Base columns always updated
+    const sets = [
+      `status = $1`,
+      `updated_by = $2`,
+      `updated_at = NOW()`,
+      `status_history = $3::jsonb`,
+      `pickup_deadline = $4`,
+      `new_date = $5`
+    ];
+    const params = [
+      status.toLowerCase(),
+      updatedBy,
+      JSON.stringify(updatedHistory),
+      pickupDeadline,
+      finalNewDate,
+    ];
 
-    const updateResult = await pool.query(
-      `UPDATE document_requests
-      SET status = $1,
-          updated_by = $2,
-          updated_at = NOW(),
-          status_history = $3::jsonb,
-          pickup_deadline = $4,
-          new_date = $5
-      WHERE id = $6
-      RETURNING *`,
-      [status.toLowerCase(), updatedBy, JSON.stringify(updatedHistory), pickupDeadline, finalNewDate, id]
-    );
+    // If going to Ready for Pick-up, also persist price fields
+    if (status.toLowerCase() === "ready for pick-up") {
+      sets.push(`price_amount = $${params.length + 1}`);
+      params.push(price_amount !== undefined && price_amount !== null ? Number(price_amount) : null);
 
+      sets.push(`price_note = $${params.length + 1}`);
+      params.push(price_note ?? null);
+    }
 
+    params.push(id); // WHERE id = $n
+    const sql = `
+      UPDATE document_requests
+      SET ${sets.join(", ")}
+      WHERE id = $${params.length}
+      RETURNING *
+    `;
+
+    const updateResult = await pool.query(sql, params);
     const updatedRequest = updateResult.rows[0];
-    
-    // Log the new date and pickup deadline clearly
+
+    // Logs
     console.log(`Status updated to: "${updatedRequest.status}" by ${updatedBy}`);
     if (updatedRequest.new_date) {
       console.log(`Rescheduled date (new_date): ${updatedRequest.new_date}`);
@@ -305,15 +235,20 @@ const updateDocumentRequestStatus = async (req, res) => {
     if (updatedRequest.pickup_deadline) {
       console.log(`Pickup deadline: ${updatedRequest.pickup_deadline}`);
     }
+    if (status.toLowerCase() === "ready for pick-up") {
+      console.log(`Amount set:`, {
+        price_amount: updatedRequest.price_amount,
+        price_note: updatedRequest.price_note
+      });
+    }
     console.log(`Updated status history:`, updatedRequest.status_history);
 
+    // Create a mobile notification
     const notificationQuery = `
-      INSERT INTO mobile_notifications
-        (mobile_user_id, type, status)
+      INSERT INTO mobile_notifications (mobile_user_id, type, status)
       VALUES ($1, $2, $3)
       RETURNING *
     `;
-
     const notificationValues = [
       updatedRequest.mobile_user_id,
       'document_request_status',
@@ -322,37 +257,58 @@ const updateDocumentRequestStatus = async (req, res) => {
 
     let notification = null;
     try {
-      const notificationResult = await pool.query(
-        notificationQuery,
-        notificationValues
-      );
+      const notificationResult = await pool.query(notificationQuery, notificationValues);
       notification = notificationResult.rows[0];
       console.log("Notification saved successfully:", notification);
     } catch (err) {
       console.error("Failed to save notification:", err);
     }
 
-    // Emit notification ONLY to the mobile user
-    if (notification) {
-      const io = getIo();
-      io.to(`user_${updatedRequest.mobile_user_id}`).emit(
-        "documentRequestUpdate",
-        {
-          ...notification,
-          type: "document_request_status",
-        }
-      );
-    }
+    // ===== Socket emissions
+    const io = getIo();
 
-    res.status(200).json({
+    // 1) Emit to the specific mobile user room
+    io.to(`user_${updatedRequest.mobile_user_id}`).emit('documentRequestUpdate', {
+      id: updatedRequest.id,
+      status: updatedRequest.status,
+      status_history: updatedRequest.status_history,
+      updated_by: updatedRequest.updated_by,
+      updated_at: updatedRequest.updated_at,
+      document_type: updatedRequest.document_type,
+      date: updatedRequest.date,
+      time: updatedRequest.time,
+      city: updatedRequest.city,
+      province: updatedRequest.province,
+      barangay: updatedRequest.barangay,
+      pickup_date: updatedRequest.pickup_date,
+      new_date: updatedRequest.new_date,
+      pickup_deadline: updatedRequest.pickup_deadline,
+      price_amount: updatedRequest.price_amount,
+      price_note: updatedRequest.price_note,
+    });
+
+    // 2) Also broadcast to BRGY dashboards (your panel listens to global "documentRequestUpdate")
+    io.emit('documentRequestUpdate', {
+      requestId: updatedRequest.id,
+      status: updatedRequest.status,
+      status_history: updatedRequest.status_history,
+      // (optional) include these for dashboards that want to diff:
+      updated_by: updatedRequest.updated_by,
+      updated_at: updatedRequest.updated_at,
+      price_amount: updatedRequest.price_amount,
+      price_note: updatedRequest.price_note,
+    });
+
+    return res.status(200).json({
       message: "Status updated successfully",
       report: updatedRequest,
     });
   } catch (error) {
     console.error("[updateDocumentRequestStatus] Error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // =========================
 // GET DOCUMENT REQUEST BY USER ID
@@ -492,91 +448,129 @@ const getRequestsByLocation = async (req, res) => {
 // =========================
 // REJECT DOCUMENT REQUEST
 // =========================
+// Controller/BARANGAY/documentRequest.js
+
 const rejectDocumentRequest = async (req, res) => {
+  const where = "[rejectDocumentRequest]";
   try {
     const { requestId } = req.params;
-    const { first_name, last_name, reason } = req.body;
+    const { reason, first_name, last_name } = req.body;
 
-    if (!requestId || !reason) {
-      return res.status(400).json({ message: "Request ID and rejection reason are required" });
+    console.log(`${where} hit`, { requestId, reason, first_name, last_name });
+
+    // Basic validation
+    if (!requestId) {
+      console.warn(`${where} 400: missing requestId param`);
+      return res.status(400).json({ message: "Missing requestId" });
+    }
+    if (!reason || !reason.trim()) {
+      console.warn(`${where} 400: missing rejection reason`);
+      return res.status(400).json({ message: "Rejection reason is required" });
     }
 
-    const updatedBy =
-      `${first_name || req.user?.first_name || ''} ${last_name || req.user?.last_name || ''}`.trim() || "Unknown";
+    const updatedBy = (
+      `${first_name || req.user?.first_name || ""} ${last_name || req.user?.last_name || ""}`
+    ).trim() || "Unknown";
 
-
+    // Fetch current history + mobile user id for notifications
     const { rows } = await pool.query(
-      `SELECT status_history FROM document_requests WHERE id = $1`,
+      `SELECT id, mobile_user_id, status, status_history
+       FROM document_requests
+       WHERE id = $1`,
       [requestId]
     );
 
     if (!rows.length) {
+      console.warn(`${where} 404: request not found`, { requestId });
       return res.status(404).json({ message: "Document request not found" });
     }
 
-    const currentHistory = rows[0].status_history || [];
+    const current = rows[0];
+    const currentHistory = Array.isArray(current.status_history) ? current.status_history : [];
 
+    // Build history entry (we store the reason here as well)
     const newHistoryItem = {
       label: "rejected",
-      reason,
       updated_by: updatedBy,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      reason: reason.trim(),
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    const updateResult = await pool.query(
-      `UPDATE document_requests
-       SET status = 'rejected',
-           updated_by = $1,
-           updated_at = NOW(),
-           rejection_reason = $2,
-           status_history = $3::jsonb
-       WHERE id = $4
-       RETURNING *`,
-      [updatedBy, reason, JSON.stringify(updatedHistory), requestId]
-    );
+    // Update request -> status: rejected
+    // NOTE: If you don't have a `rejection_reason` column, remove it from the update list and rely on status_history.
+    const updateSql = `
+      UPDATE document_requests
+      SET status = $1,
+          updated_by = $2,
+          updated_at = NOW(),
+          status_history = $3::jsonb,
+          rejection_reason = $4
+      WHERE id = $5
+      RETURNING *`;
+    const updateParams = ["rejected", updatedBy, JSON.stringify(updatedHistory), reason.trim(), requestId];
 
+    console.log(`${where} running UPDATE`, { sql: "document_requests", requestId, status: "rejected" });
+
+    const updateResult = await pool.query(updateSql, updateParams);
     const updatedRequest = updateResult.rows[0];
 
-    const notificationQuery = `
-      INSERT INTO mobile_notifications
-        (mobile_user_id, type, status)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
+    console.log(`${where} updated OK`, {
+      id: updatedRequest.id,
+      status: updatedRequest.status,
+      updated_by: updatedRequest.updated_by,
+    });
 
-    const notificationValues = [
-      req.user?.id || null,
-      'document_request_status',
-      status.toLowerCase(),
-    ];
-    console.log("Attempting to save notification with values:", notificationValues);
-
+    // Create mobile notification
+    let notification = null;
     try {
-      const notificationResult = await pool.query(notificationQuery, notificationValues);
-      const notification = notificationResult.rows[0];
-      console.log("Notification saved successfully:", notification);
+      const notificationResult = await pool.query(
+        `INSERT INTO mobile_notifications (mobile_user_id, type, status)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [updatedRequest.mobile_user_id, "document_request_status", "rejected"]
+      );
+      notification = notificationResult.rows[0];
+      console.log(`${where} notification saved`, { notificationId: notification.id });
     } catch (err) {
-      console.error("Failed to save notification:", err.message);
-      console.error("Full error:", err);
+      console.error(`${where} failed to save notification`, err);
+    }
+
+    // Emit only to the mobile user's room
+    // after you get `updatedRequest`
+    try {
+      const io = getIo();
+      io.to(`user_${updatedRequest.mobile_user_id}`).emit("documentRequestUpdate", {
+        // minimal notification
+        type: "document_request_status",
+        status: updatedRequest.status,        // "rejected", "accepted", etc.
+        // identify which request and provide fresh state
+        requestId: updatedRequest.id,
+        status_history: updatedRequest.status_history,
+        updated_by: updatedRequest.updated_by,
+        updated_at: updatedRequest.updated_at,
+        new_date: updatedRequest.new_date,
+        pickup_deadline: updatedRequest.pickup_deadline,
+        // (optional) include full request if you like:
+        // request: updatedRequest
+      });
+      console.log("[rejectDocumentRequest] socket emitted", {
+        room: `user_${updatedRequest.mobile_user_id}`,
+        requestId: updatedRequest.id,
+        status: updatedRequest.status
+      });
+    } catch (err) {
+      console.error("[rejectDocumentRequest] socket emit error", err);
     }
 
 
-    // Emit socket event
-    const io = getIo();
-    io.emit("documentRequestUpdate", {
-      requestId: updatedRequest.id,
-      status: updatedRequest.status,
-      status_history: updatedRequest.status_history,
-    });
-
     return res.status(200).json({
       message: "Document request rejected successfully",
-      report: updatedRequest
+      request: updatedRequest,
     });
   } catch (error) {
-    console.error("Reject document request error:", error);
-    return res.status(500).json({ message: "Failed to reject document request", error: error.message });
+    console.error(`${where} 500`, error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 

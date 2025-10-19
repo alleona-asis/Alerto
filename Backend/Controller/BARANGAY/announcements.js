@@ -134,9 +134,7 @@ const createAnnouncement = async (req, res) => {
       // Emit to everyone
       // -----------------------------
       const io = getIo();
-      console.log("Emitting announcementUpdate:", createdAnnouncement);
-
-      io.emit("announcementUpdate", {
+      const payload = {
         id: createdAnnouncement.id,
         title: createdAnnouncement.title,
         text: createdAnnouncement.text,
@@ -146,11 +144,13 @@ const createAnnouncement = async (req, res) => {
         province: createdAnnouncement.province,
         city: createdAnnouncement.city,
         barangay: createdAnnouncement.barangay,
+        image_filenames: createdAnnouncement.image_filenames, // keep as stored (JSON/array)
+        image_urls: createdAnnouncement.image_urls,           // keep as stored (JSON/array)
         created_at: createdAnnouncement.created_at,
-      });
+      };
 
-
-
+      console.log("📡 Emitting announcementUpdate:", payload.id);
+      io.emit("announcementUpdate", payload);
 
       // -----------------------------
       // Final response

@@ -51,9 +51,9 @@
 
 .add-barangay-button {
   background-color: #006FFD;
-  color: #fff;
+  color: #ffffff;
   border: none;
-  padding: 9px 22px;
+  padding: 6px 18px;
   border-radius: 6px;
   font-weight: 600;
   font-size: 15px;
@@ -391,6 +391,18 @@ table.scroll,
   justify-content: flex-end;
   gap: 12px;
   margin-top: 20px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.add-user-btn {
+  font-family: 'Poppins', sans-serif;
+  box-shadow: 0 2px 4px rgba(0, 111, 253, 0.2);
+  transform: scale(1);
+  transition: all 0.3s ease;
+}
+
+.add-user-btn:hover {
+  transform: scale(1.03);
 }
 
 .modal-add-button {
@@ -438,7 +450,6 @@ table.scroll,
 /*  View Barangay  */
 .modal-tabs {
   display: flex;
-  gap: 12px;
   margin-bottom: 20px;
   border-bottom: 2px solid #eee;
 }
@@ -513,7 +524,7 @@ table.scroll,
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
-  margin-top: 15px;
+  margin-top: 0;
   max-height: 250px;
   overflow-y: auto;
   padding-right: 6px;
@@ -573,6 +584,5 @@ table.scroll,
   max-width: 60%;
   word-wrap: break-word;
 }
-
 
 

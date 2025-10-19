@@ -16,10 +16,13 @@ const submitLGUFeedback = async (req, res) => {
       region,
       province,
       city,
-      concernedBarangay
+      concernedBarangay,
+      firstName,
+      middleName,
+      lastName
     } = req.body;
 
-    if (!feedbackType || !messages || !region || !province || !city || !concernedBarangay) {
+    if (!feedbackType || !messages || !region || !province || !city || !concernedBarangay || !firstName || !middleName || !lastName) {
       console.log('Validation failed: Missing required fields');
       return res.status(400).json({ error: 'Please fill in all required fields.' });
     }
@@ -47,8 +50,9 @@ const submitLGUFeedback = async (req, res) => {
 
     const query = `
       INSERT INTO lgu_feedbacks
-        (feedback_type, messages, region, province, city, concerned_barangay, images, video)
-      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+        (feedback_type, messages, region, province, city, concerned_barangay, images, video,
+         first_name, middle_name, last_name)
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11)
       RETURNING *;
     `;
 
@@ -60,7 +64,10 @@ const submitLGUFeedback = async (req, res) => {
       city,
       concernedBarangay,
       JSON.stringify(images),
-      JSON.stringify(video)
+      JSON.stringify(video),
+      firstName,
+      middleName,
+      lastName
     ];
 
     const result = await pool.query(query, values);

@@ -11,9 +11,9 @@ import axios from '../../../axios/axiosInstance';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-import ActsoflasciviousnessIcon from "@/assets/pins/Acts-of-lasciviousness.png";
-import AnimalIssuesIcon from "@/assets/pins/Animal-Issues.png";
-import BlockedDrainageIcon from "@/assets/pins/Blocked-Drainage.png";
+import ActsoflasciviousnessIcon from '@/assets/pins/Acts-of-lasciviousness.png';
+import AnimalIssuesIcon from '@/assets/pins/Animal-Issues.png';
+import BlockedDrainageIcon from '@/assets/pins/Blocked-Drainage.png';
 import BrokenstreetlightIcon from '@/assets/pins/Broken-streetlight.png';
 import DomesticIcon from '@/assets/pins/Domestic.png';
 import FloodingIcon from '@/assets/pins/Flooding.png';

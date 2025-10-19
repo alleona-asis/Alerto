@@ -104,10 +104,8 @@ const getTotalReports = async (req, res) => {
       [city, province, region]
     );
 
-    // Find all distinct barangays
     const allBarangays = [...new Set(monthBarangayRows.map(r => r.barangay))];
 
-    // Build graphData: one object per month with barangay counts
     const graphData = allMonths.map(month => {
       const row = { label: month };
       allBarangays.forEach(b => {
@@ -120,11 +118,9 @@ const getTotalReports = async (req, res) => {
     // =============================
     // DEBUG LOGGING
     // =============================
-    console.log("=== Debug: Reports Per Month × Barangay ===");
     graphData.forEach(row => {
       console.log(row);
     });
-    console.log("===========================================");
 
     res.status(200).json({ 
       total: totalRows[0].total, 
