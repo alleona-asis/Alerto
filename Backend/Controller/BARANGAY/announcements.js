@@ -277,48 +277,37 @@ const deleteAnnouncement = async (req, res) => {
 // GET ANNOUNCEMENTS
 // =========================
 const getAnnouncements = async (req, res) => {
- try {
-    const { barangay } = req.query;
+    try {
+        const { barangay } = req.query; // optional filter by barangay
 
-    let query = "SELECT * FROM announcements";
-    const params = [];
+        let query = 'SELECT * FROM announcements';
+        const params = [];
 
-    if (barangay) {
-      query += " WHERE barangay = $1";
-      params.push(barangay);
+        if (barangay) {
+            query += ' WHERE barangay = $1';
+            params.push(barangay);
+        }
+
+        query += ' ORDER BY created_at DESC'; // latest first
+
+        const result = await pool.query(query, params);
+
+        return res.status(200).json(result.rows);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Failed to fetch announcements', error: error.message });
     }
-
-    query += " ORDER BY created_at DESC";
-    const result = await pool.query(query, params);
-
-    // Parse JSON fields for frontend safety
-    const announcements = result.rows.map(a => ({
-      ...a,
-      image_urls: parseJSONSafely(a.image_urls),
-      image_filenames: parseJSONSafely(a.image_filenames),
-    }));
-
-    return res.status(200).json(announcements);
-  } catch (error) {
-    console.error("❌ Error fetching announcements:", error);
-    return res.status(500).json({
-      message: "Failed to fetch announcements",
-      error: error.message,
-    });
-  }
 };
 
 
-// =========================
-// GET ANNOUNCEMENTS BY USER LOCATION
-// =========================
 const getAnnouncementByUserLocation = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // Fetch user’s location
+    // Get user profile including followed barangays
     const userResult = await pool.query(
-      `SELECT region, province, city, barangay FROM mobile_users WHERE id = $1`,
+      `SELECT region, province, city, barangay, followed_barangays
+       FROM mobile_users WHERE id = $1`,
       [userId]
     );
 
@@ -326,37 +315,45 @@ const getAnnouncementByUserLocation = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const { region, province, city, barangay } = userResult.rows[0];
+    const { region, province, city, barangay, followed_barangays } = userResult.rows[0];
 
-    // Fetch announcements matching the user’s barangay
+    // Parse followed barangays safely
+    let followed = [];
+    if (followed_barangays) {
+      if (typeof followed_barangays === "string") {
+        try {
+          followed = JSON.parse(followed_barangays);
+        } catch {
+          followed = [];
+        }
+      } else if (Array.isArray(followed_barangays)) {
+        followed = followed_barangays;
+      }
+    }
+
+    // Include user's own barangay + followed barangays
+    const allBarangays = [barangay, ...followed.map(f => f.brgyDesc)];
+
+    //console.log("All barangays to fetch:", allBarangays);
+
+    // Fetch announcements from own + followed barangays
     const announcementResult = await pool.query(
       `SELECT *
-         FROM announcements
-        WHERE region = $1
-          AND province = $2
-          AND city = $3
-          AND barangay = $4
-        ORDER BY created_at DESC`,
-      [region, province, city, barangay]
+       FROM announcements
+       WHERE region = $1 AND province = $2 AND city = $3
+         AND barangay = ANY($4::text[])
+       ORDER BY created_at DESC`,
+      [region, province, city, allBarangays]
     );
 
-    // Safely parse JSON fields
-    const announcements = announcementResult.rows.map(a => ({
-      ...a,
-      image_urls: parseJSONSafely(a.image_urls),
-      image_filenames: parseJSONSafely(a.image_filenames),
-    }));
-
-    console.log(`✅ Found ${announcements.length} announcements for ${barangay}`);
-    res.status(200).json(announcements);
-  } catch (error) {
-    console.error("❌ Error fetching announcements by user location:", error);
-    res.status(500).json({
-      message: "Failed to fetch announcements by location",
-      error: error.message,
-    });
+    //console.log(`Announcements fetched: ${announcementResult.rows.length}`);
+    res.json(announcementResult.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 };
+
 
 // =========================
 // FOLLOW OTHER BARANGAY
