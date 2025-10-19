@@ -11,16 +11,17 @@ const PORT = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://${LAN_IP}:${PORT}`;
 
-const parseJSONSafely = (data) => {
+function parseJSONSafely(value) {
+  if (!value) return [];
   try {
-    if (!data) return [];
-    if (typeof data === "string") return JSON.parse(data);
-    if (Array.isArray(data)) return data;
+    if (typeof value === "string") return JSON.parse(value);
+    if (Array.isArray(value)) return value;
     return [];
-  } catch {
+  } catch (err) {
+    console.warn("JSON parse error:", err.message);
     return [];
   }
-};
+}
 
 // =========================
 // CREATE ANNOUNCEMENT
@@ -276,21 +277,21 @@ const deleteAnnouncement = async (req, res) => {
 // GET ANNOUNCEMENTS
 // =========================
 const getAnnouncements = async (req, res) => {
-    try {
-        const { barangay } = req.query; // optional filter by barangay
+ try {
+    const { barangay } = req.query;
 
-            let query = 'SELECT * FROM announcements';
+    let query = "SELECT * FROM announcements";
     const params = [];
 
     if (barangay) {
-      query += ' WHERE barangay = $1';
+      query += " WHERE barangay = $1";
       params.push(barangay);
     }
 
-    query += ' ORDER BY created_at DESC'; // latest first
-
+    query += " ORDER BY created_at DESC";
     const result = await pool.query(query, params);
 
+    // Parse JSON fields for frontend safety
     const announcements = result.rows.map(a => ({
       ...a,
       image_urls: parseJSONSafely(a.image_urls),
@@ -299,8 +300,11 @@ const getAnnouncements = async (req, res) => {
 
     return res.status(200).json(announcements);
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Failed to fetch announcements', error: error.message });
+    console.error("❌ Error fetching announcements:", error);
+    return res.status(500).json({
+      message: "Failed to fetch announcements",
+      error: error.message,
+    });
   }
 };
 
@@ -310,73 +314,47 @@ const getAnnouncements = async (req, res) => {
 // =========================
 const getAnnouncementByUserLocation = async (req, res) => {
   try {
-    let { region, province, city, barangays } = req.query;
     const userId = req.params.id;
 
-    let allBarangays = [];
-
-    // 🧭 Case 1: request includes userId (mobile app)
-    if (userId && !region) {
-      const userResult = await pool.query(
-        `SELECT region, province, city, barangay, followed_barangays
-         FROM mobile_users WHERE id = $1`,
-        [userId]
-      );
-
-      if (!userResult.rows.length) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      const { region: reg, province: prov, city: cty, barangay, followed_barangays } = userResult.rows[0];
-
-      region = reg;
-      province = prov;
-      city = cty;
-
-      // parse followed barangays
-      let followed = [];
-      if (followed_barangays) {
-        try {
-          followed = typeof followed_barangays === "string" ? JSON.parse(followed_barangays) : followed_barangays;
-        } catch {
-          followed = [];
-        }
-      }
-
-      allBarangays = [barangay, ...followed.map(f => f.brgyDesc)];
-    }
-
-    // 🧭 Case 2: query params version
-    if (barangays && typeof barangays === 'string') {
-      try {
-        allBarangays = JSON.parse(barangays);
-      } catch {
-        allBarangays = [];
-      }
-    }
-
-    if (!region || !province || !city) {
-      return res.status(400).json({ error: "Missing location parameters." });
-    }
-
-    const announcementResult = await pool.query(
-      `SELECT * FROM announcements
-       WHERE region = $1 AND province = $2 AND city = $3
-         AND barangay = ANY($4::text[])
-       ORDER BY created_at DESC`,
-      [region, province, city, allBarangays]
+    // Fetch user’s location
+    const userResult = await pool.query(
+      `SELECT region, province, city, barangay FROM mobile_users WHERE id = $1`,
+      [userId]
     );
 
+    if (!userResult.rows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { region, province, city, barangay } = userResult.rows[0];
+
+    // Fetch announcements matching the user’s barangay
+    const announcementResult = await pool.query(
+      `SELECT *
+         FROM announcements
+        WHERE region = $1
+          AND province = $2
+          AND city = $3
+          AND barangay = $4
+        ORDER BY created_at DESC`,
+      [region, province, city, barangay]
+    );
+
+    // Safely parse JSON fields
     const announcements = announcementResult.rows.map(a => ({
       ...a,
       image_urls: parseJSONSafely(a.image_urls),
       image_filenames: parseJSONSafely(a.image_filenames),
     }));
 
-    return res.status(200).json(announcements);
+    console.log(`✅ Found ${announcements.length} announcements for ${barangay}`);
+    res.status(200).json(announcements);
   } catch (error) {
-    console.error('Error fetching announcements by user location:', error);
-    return res.status(500).json({ message: 'Failed to fetch announcements', error: error.message });
+    console.error("❌ Error fetching announcements by user location:", error);
+    res.status(500).json({
+      message: "Failed to fetch announcements by location",
+      error: error.message,
+    });
   }
 };
 
