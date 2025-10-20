@@ -29,10 +29,24 @@ app.use(cors({
       callback(new Error("Not allowed by CORS: " + origin));
     }
   },
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS Blocked Origin:', origin);
+      callback(new Error("Not allowed by CORS: " + origin));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],  
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], 
-  credentials: true,
-  optionsSuccessStatus: 200
+  allowedHeaders: [
+    "Authorization",
+    "Content-Type",
+    "X-Requested-With",
+    "Accept",
+    "Origin"
+  ],
+  exposedHeaders: ["Content-Length", "Content-Range"]
 }));
 
 
