@@ -18,7 +18,7 @@ router.get('/signed-url', async (req, res) => {
     console.log(`Generating signed URL for cleaned path: ${cleanPath}`);  // For debugging
     const { data, error } = await supabase.storage
       .from(bucketName)
-      .createSignedUrl(cleanPath, 3600);  // 1-hour expiry; adjust as needed
+      .createSignedUrl(cleanPath,  3600 * 24 * 7);  
     if (error) {
       console.error('Supabase createSignedUrl error:', error);
       return res.status(500).json({ error: 'Failed to generate signed URL' });

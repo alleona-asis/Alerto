@@ -26,7 +26,36 @@ const announcementStorage = multer.diskStorage({
 // Storage for private files (private bucket)
 const privateStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const folder = 'uploads/private';
+    let folder = 'uploads/other';  // Default folder
+
+    // Dynamic folder logic based on fieldname
+    switch (file.fieldname) {
+      case 'idFile':
+        folder = 'uploads/id';
+        break;
+      case 'intentFile':
+        folder = 'uploads/letter';
+        break;
+      case 'idImage':
+        folder = 'uploads/mobile';  // For mobile ID uploads
+        break;
+      case 'selfieTaken':
+        folder = 'uploads/selfie';  // For mobile user selfie pictures
+        break;
+      case 'image':
+        folder = 'uploads/ocr';  // OCR-specific images
+        break;
+      case 'picture':
+        folder = 'uploads/profile';  // For mobile user profile pictures
+        break;
+      case 'media':
+        folder = 'uploads/reports';  // For report submissions
+        break;
+      // Add more cases as needed (e.g., 'proofFile': folder = 'uploads/proof';)
+      default:
+        folder = 'uploads/other';  // Fallback for unmatched fields
+    }
+
     fs.mkdirSync(folder, { recursive: true });
     cb(null, folder);
   },
@@ -36,7 +65,7 @@ const privateStorage = multer.diskStorage({
   }
 });
 
-// File filter to allow specific mimetypes per field
+// File filter to allow specific mimetypes per field (unchanged)
 const fileFilter = (req, file, cb) => {
   const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg'];
   const allowedDocTypes = [
@@ -45,7 +74,6 @@ const fileFilter = (req, file, cb) => {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ];
   const allowedVideoTypes = ['video/mp4', 'video/mpeg', 'video/quicktime'];
-
 
   switch (file.fieldname) {
     case 'idFile':
@@ -64,7 +92,7 @@ const fileFilter = (req, file, cb) => {
         allowedVideoTypes.includes(file.mimetype)
       ) return cb(null, true);
       break;
-    case 'media':  //for report submissions
+    case 'media':  // For report submissions
       if (
         allowedImageTypes.includes(file.mimetype) ||  // Allow images
         allowedVideoTypes.includes(file.mimetype)    // Allow videos if needed
@@ -77,7 +105,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 
-// Multer upload instances
+// Multer upload instances (unchanged)
 const uploadPrivate = multer({
   storage: privateStorage,
   fileFilter,
@@ -91,35 +119,34 @@ const uploadAnnouncements = multer({
 
 function uploadWithSupabase(fields, isAnnouncement = false) {
   const handler = isAnnouncement ? uploadAnnouncements.fields(fields) : uploadPrivate.fields(fields);
-
   return (req, res, next) => {
     handler(req, res, async (err) => {
       if (err) 
         return next(err);
-
       try {
         req.supabaseFiles = {};
-
         for (const field of fields) {
           
           const files = req.files[field.name];
           if (!files) continue;
-
           for (const f of files) {
-
             const localPath = path.join(f.destination, f.filename);
                         
             // Determine bucket and relative path
             let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
-            let relativePath = isAnnouncement ? `announcements/${f.filename}` : `private/${f.filename}`;
+            let relativePath;
             let isPublic = isAnnouncement;
+            if (isAnnouncement) {
+              relativePath = `announcements/${f.filename}`;  // Public bucket: announcements/
+            } else {
+              // Private bucket: Dynamic path under uploads/ (e.g., uploads/reports/filename.jpg)
+              relativePath = path.join(f.destination, f.filename);  // f.destination is 'uploads/subfolder', so this gives 'uploads/subfolder/filename'
+            }
 
-            // Upload to Supabase (returns signed URL if private)
+                        // Upload to Supabase (returns signed URL if private)
             let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
-
             // Delete local file
             deleteLocalFile(localPath);
-
             if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
             req.supabaseFiles[field.name].push({
               field: field.name,
@@ -130,9 +157,7 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
             });
           }
         }
-
         next();
-
       } catch (e) {
         console.error('[UPLOAD] Fatal Supabase sync error:', e.message);
         next(e);
@@ -140,6 +165,5 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
     });
   };
 }
-
 
 module.exports = { uploadWithSupabase, uploadPrivate, uploadAnnouncements };
