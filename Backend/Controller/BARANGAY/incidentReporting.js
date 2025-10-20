@@ -509,7 +509,6 @@ const uploadProof = async (req, res) => {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    // Fix: Use req.supabaseFiles instead of req.files (set by uploadWithSupabase)
     const uploadedFiles = req.supabaseFiles?.proof || [];
     if (uploadedFiles.length === 0) {
       console.error('[UPLOAD PROOF] No files in req.supabaseFiles.proof');
@@ -517,11 +516,10 @@ const uploadProof = async (req, res) => {
     }
     console.log(`[UPLOAD PROOF] Processing ${uploadedFiles.length} files for report ${id}`);
 
-        // Map Supabase files to the format expected by your DB
     const proofFiles = uploadedFiles.map(file => ({
-      filename: file.filename || file.originalname,  // Use filename from Supabase or fallback
-      path: file.relativePath || '',  // Optional: relative path in Supabase
-      url: file.supabaseUrl,  // Signed URL from Supabase
+      filename: file.filename || file.originalname,  
+      path: file.relativePath || '', 
+      url: file.supabaseUrl,  
       type: file.mimetype.startsWith("image") ? "image" : "video",  
     }));
     // Fetch current proof_files from DB
@@ -530,6 +528,11 @@ const uploadProof = async (req, res) => {
       [id]
     );
     const currentProofs = rows[0]?.proof_files || [];
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
     // Append new proofs
     const updatedProofs = [...currentProofs, ...proofFiles];
     // Update DB

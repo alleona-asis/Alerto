@@ -51,6 +51,9 @@ const privateStorage = multer.diskStorage({
       case 'media':
         folder = 'uploads/reports';  // For report submissions
         break;
+      case 'proof':
+        folder = 'uploads/proof';
+        break;
       // Add more cases as needed (e.g., 'proofFile': folder = 'uploads/proof';)
       default:
         folder = 'uploads/other';  // Fallback for unmatched fields
@@ -100,6 +103,11 @@ const fileFilter = (req, file, cb) => {
       break;
     case 'picture':
       if (allowedImageTypes.includes(file.mimetype)
+      ) return cb(null, true);
+      break;
+     case 'proof':  // <-- ADD THIS: Allow images/docs for proof uploads
+      if (allowedImageTypes.includes(file.mimetype) ||
+       allowedDocTypes.includes(file.mimetype)
       ) return cb(null, true);
       break;
     default:
@@ -157,7 +165,8 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
               supabaseUrl,    // This is the signed URL for private or public URL for announcements
               relativePath,
               filename: f.filename,
-              isPublic
+              isPublic,
+              mimetype: f.mimetype
             });
           }
         }

@@ -242,13 +242,12 @@ router.patch('/update-barangay-report-status/:id', updateReportStatus);
 router.post(
   '/upload-proof/:id',
   authenticateToken,
-  uploadWithSupabase([{ name: 'proof', maxCount: 5 }]), // private by default
+  uploadWithSupabase([{ name: 'proof', maxCount: 5 }]), 
   async (req, res) => {
     try {
 
       console.log(`[UPLOAD PROOF] Starting for report: ${req.params.id}`);
 
-      // Fix: req.supabaseFiles is an object, not an array. Access the 'proof' key.
       const uploadedFiles = req.supabaseFiles?.proof || [];
       
       if (uploadedFiles.length === 0) {
@@ -259,8 +258,7 @@ router.post(
       const proofUrls = uploadedFiles.map(f => f.supabaseUrl);
       console.log(`[UPLOAD PROOF] URLs: ${proofUrls.join(', ')}`);
       
-      // Ensure uploadProof is defined and handles errors (e.g., DB update)
-      await uploadProof(req, res, { proofUrls });
+      await uploadProof(req, res);
       
       console.log('[UPLOAD PROOF] Success');
       res.status(200).json({ message: 'Proof uploaded successfully', proof_urls: proofUrls });
