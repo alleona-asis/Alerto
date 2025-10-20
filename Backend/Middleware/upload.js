@@ -107,7 +107,8 @@ const fileFilter = (req, file, cb) => {
       break;
      case 'proof':  // <-- ADD THIS: Allow images/docs for proof uploads
       if (allowedImageTypes.includes(file.mimetype) ||
-       allowedDocTypes.includes(file.mimetype)
+          allowedDocTypes.includes(file.mimetype) || 
+          allowedVideoTypes.includes(file.mimetype)
       ) return cb(null, true);
       break;
     default:
