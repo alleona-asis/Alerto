@@ -205,7 +205,8 @@ router.post(
   async (req, res) => {
     try {
       // The uploaded file info
-      const profileFile = req.supabaseFiles.find(f => f.field === 'picture');
+      const profileFiles = req.supabaseFiles.picture || [];
+      const profileFile = profileFiles[0];
 
       if (!profileFile) {
         return res.status(400).json({ message: 'No picture uploaded.' });
