@@ -23,7 +23,7 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
         const fetchProfile = async () => {
         try {
             const res = await axios.get(`/api/auth/lgu-admin-profile/${userId}`);
-            console.log('Profile Data:', res.data);
+            //console.log('Profile Data:', res.data);
 
             const { last_name, first_name, position } = res.data || {};
 
@@ -49,6 +49,12 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
             isActive: pathname === '/LGUDashboard' || pathname === '/admin',
         },
         {
+            label: 'Mobile Users',
+            icon: '/icons/mobile-user.png',
+            path: '/lgu/mobile-users',
+            isActive: pathname === '/lgu/mobile-users',
+        },
+        {
             label: 'Manage Barangay',
             icon: '/icons/manage-lgu.png',
             path: '/lgu/manage-barangay',
@@ -65,12 +71,6 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
             icon: '/icons/Requests.png',
             path: '/lgu/document-requests',
             isActive: pathname === '/lgu/document-requests',
-        },
-        {
-            label: 'Announcements',
-            icon: '/icons/announcements.png',
-            path: '/lgu/announcements',
-            isActive: pathname === '/lgu/announcements',
         },
     ];
 
@@ -136,7 +136,7 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
                 <img src="/icons/help-center.png" alt="Settings" className="icon" />
                 {!isCollapsed && <span>Support Tickets</span>}
             </div>
-
+{/*
             <div
                 className="menu-item"
                 onClick={() => navigate('/lgu/settings', '_blank')}
@@ -144,6 +144,7 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
                 <img src="/icons/settings.png" alt="Settings" className="icon" />
                 {!isCollapsed && <span>Settings</span>}
             </div>
+*/}
 
             <div className="menu-item" onClick={handleLogout}>
                 <img src="/icons/logout.png" alt="Logout" className="icon" />

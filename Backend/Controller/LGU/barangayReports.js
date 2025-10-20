@@ -1,11 +1,11 @@
 const pool = require('../../PostgreSQL/database');
 const fs = require('fs');
 const path = require('path');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // =================================================
 //  GET ALL BARANGAY REPORT
 // =================================================
-
 const getAllPins = async (req, res) => {
   try {
     const city = req.user?.city || req.query.city;
@@ -59,6 +59,7 @@ const getBarangayReports = async (req, res) => {
   }
 };
 
+
 // =================================================
 //  GET TOTAL REPORTS (FILTERED BY USER LOCATION)
 // =================================================
@@ -103,10 +104,8 @@ const getTotalReports = async (req, res) => {
       [city, province, region]
     );
 
-    // Find all distinct barangays
     const allBarangays = [...new Set(monthBarangayRows.map(r => r.barangay))];
 
-    // Build graphData: one object per month with barangay counts
     const graphData = allMonths.map(month => {
       const row = { label: month };
       allBarangays.forEach(b => {
@@ -119,11 +118,9 @@ const getTotalReports = async (req, res) => {
     // =============================
     // DEBUG LOGGING
     // =============================
-    console.log("=== Debug: Reports Per Month × Barangay ===");
     graphData.forEach(row => {
       console.log(row);
     });
-    console.log("===========================================");
 
     res.status(200).json({ 
       total: totalRows[0].total, 
@@ -136,9 +133,6 @@ const getTotalReports = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
 
 
 module.exports = {

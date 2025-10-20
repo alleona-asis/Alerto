@@ -8,19 +8,27 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
 router.get('/signed-url', async (req, res) => {
   try {
-    const { relativePath } = req.query; // Renamed from 'filePath' for clarity; assume it's already clean (e.g., 'uploads/reports/filename.jpg')
-    
-    // Validate input
-    if (!relativePath || typeof relativePath !== 'string') {
-      return res.status(400).json({ error: 'relativePath query parameter is required and must be a string' });
+    const { filePath } = req.query;
+    if (!filePath) {
+      return res.status(400).json({ error: 'filePath is required' });
+    }
+    // Clean the path: Remove the bucket name prefix (e.g., 'Alerto-private/') to get the relative path
+    const bucketName = 'Alerto-private';  // Your bucket name from logs
+    const cleanPath = filePath.replace(new RegExp(`^${bucketName}/`), '');  // Results in 'uploads/72839.jpg'
+    console.log(`Generating signed URL for cleaned path: ${cleanPath}`);  // For debugging
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(cleanPath,  3600 * 24 * 7);  
+    if (error) {
+      console.error('Supabase createSignedUrl error:', error);
+      return res.status(500).json({ error: 'Failed to generate signed URL' });
     }
 
-    // Generate fresh signed URL using your utility (with shorter expiry)
-    const signedUrl = await generateSignedUrl(relativePath, 3600); // 1 hour expiry for better security
-    
-    res.json({ signedUrl });
+    res.json({ signedUrl: data.signedUrl });
   } catch (err) {
     console.error('Signed URL endpoint error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+    console.error('Signed URL endpoint error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

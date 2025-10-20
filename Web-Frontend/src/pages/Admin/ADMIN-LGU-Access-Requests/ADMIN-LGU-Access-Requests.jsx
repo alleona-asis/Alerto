@@ -509,7 +509,7 @@ const renderTable = (accounts, isPending = false) => {
               />
             </div>
 
-            {/* <div className="document-container">
+            <div className="document-container">
               <div
                 className="document-box"
                 onClick={() => window.open(selectedAccount.upload_id_url, "_blank")}
@@ -533,7 +533,7 @@ const renderTable = (accounts, isPending = false) => {
                 />
                 <p className="doc-label">Letter of Intent</p>
               </div>
-            </div> */}
+            </div>
 
             <div className="approver-info">
                 <p><strong>Office Address:</strong> {selectedAccount.address}</p>

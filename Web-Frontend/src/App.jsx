@@ -24,16 +24,15 @@ import ADMINMobileUsers from './pages/Admin/ADMIN-Mobile-Users/ADMIN-Mobile-User
 import ManageBarangay from './pages/LGU/LGU-Manage-Barangay/LGU-Manage-Barangay';
 import LGUBarangayReports from './pages/LGU/LGU-Barangay-Reports/LGU-Barangay-Reports';
 import LGUDocumentRequests from './pages/LGU/LGU-Document-Requests/LGU-Document-Requests';
-import LGUAnnouncements from './pages/LGU/LGU-Announcements/LGU-Announcement';
 import LGUSupportTickets from './pages/LGU/LGU-Support-Tickets/LGU-Support-Tickets';
 import LGUSettings from './pages/LGU/LGU-Settings/LGU-Settings';
+import LGUMobileUsers from './pages/LGU/LGU-Mobile-Users/LGU-Mobile-Users';
 
 // Barangay
 import MobileUserRegistry from './pages/Barangay/BRGY-Mobile-Users/BRGY-Mobile-Users';
 import BRGYBarangayReport from './pages/Barangay/BRGY-Barangay-Reports/BRGY-Barangay-Reports';
 import BRGYDocumentRequests from './pages/Barangay/BRGY-Document-Requests/BRGY-Document-Requests';
 import BRGYAnnouncements from './pages/Barangay/BRGY-Announcements/BRGY-Announcements';
-import BRGYSupportTickets from './pages/Barangay/BRGY-Support-Tickets/BRGY-Support-Tickets';
 import BRGYSettings from './pages/Barangay/BRGY-Settings/BRGY-Settings';
 
 function AppRoutes({ token, role }) {
@@ -42,7 +41,7 @@ function AppRoutes({ token, role }) {
   // Redirect to role-specific dashboard on root path
   function DashboardRedirect() {
     const path = window.location.pathname;
-    console.log('🚦 Redirecting from root path:', path);
+    console.log('Redirecting from root path:', path);
 
     switch (role) {
       case 'super admin':
@@ -91,9 +90,9 @@ function AppRoutes({ token, role }) {
             <Route path="/lgu/Manage-Barangay" element={<ManageBarangay />} />
             <Route path="/lgu/barangay-reports" element={<LGUBarangayReports />} />
             <Route path="/lgu/document-requests" element={<LGUDocumentRequests />} />
-            <Route path="/lgu/announcements" element={<LGUAnnouncements />} />
             <Route path="/lgu/support-tickets" element={<LGUSupportTickets />} />
             <Route path="/lgu/settings" element={<LGUSettings />} />
+            <Route path="/lgu/mobile-users" element={<LGUMobileUsers />} />
           </>
         )}
 
@@ -105,7 +104,6 @@ function AppRoutes({ token, role }) {
             <Route path="/barangay/barangay-reports" element={<BRGYBarangayReport />} />
             <Route path="/barangay/document-requests" element={<BRGYDocumentRequests />} />
             <Route path="/barangay/announcements" element={<BRGYAnnouncements />} />
-            <Route path="/barangay/support-tickets" element={<BRGYSupportTickets />} />
             <Route path="/barangay/settings" element={<BRGYSettings />} />
           </>
         )}

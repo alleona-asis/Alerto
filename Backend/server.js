@@ -13,7 +13,11 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",              // Vite dev
   "http://localhost:3000",              // React dev
-  "https://alerto-t3cj.onrender.com"    // Your deployed frontend
+  "https://alerto-t3cj.onrender.com",    // deployed frontend
+  // "https://alertoplus.app",
+  // "https://www.alertoplus.app",               //custom domain(name.com)
+  "https://alertoplus.com",
+  "https://www.alertoplus.com"                //custom domain(hostinger)
 ];
 
 app.use(cors({
@@ -21,11 +25,16 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log('CORS Blocked Origin:', origin);
       callback(new Error("Not allowed by CORS: " + origin));
     }
   },
-  credentials: true
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],  
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], 
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
+
 
 app.use(express.json());
 
@@ -48,7 +57,7 @@ io.on('connection', (socket) => {
     if (!userId) return;
     const room = `user_${userId}`;
     socket.join(room);
-    console.log(`🏠 ${socket.id} joined ${room}`);
+    console.log(`${socket.id} joined ${room}`);
     console.log("rooms for socket:", Array.from(socket.rooms));
   });
 
@@ -57,7 +66,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Register your existing routes
+// Register existing routes
 const authRoutes = require('./Routes/authRoutes');
 const adminRoutes = require('./Routes/adminRoutes');
 const lguRoutes = require('./Routes/lguRoutes');

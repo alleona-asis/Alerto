@@ -5,7 +5,6 @@ async function checkExpiredPickups() {
   try {
     const now = new Date();
 
-    // Fetch all requests that are "ready for pick-up" and have a pickup_deadline
     const result = await pool.query(
       `SELECT * FROM document_requests 
        WHERE status = 'ready for pick-up' 
@@ -38,7 +37,7 @@ async function checkExpiredPickups() {
 
         const updatedRequest = updateResult.rows[0];
 
-        // Emit socket event so frontend updates automatically
+        // Emit via Socket.io
         try {
           const io = getIo();
           io.emit("documentRequestUpdate", {
@@ -46,14 +45,14 @@ async function checkExpiredPickups() {
             status: updatedRequest.status,
             status_history: updatedRequest.status_history,
           });
-          console.log(`🔔 Request ${updatedRequest.id} marked as unclaimed and emitted`);
+          console.log(`Request ${updatedRequest.id} marked as unclaimed and emitted`);
         } catch (err) {
           console.warn("Socket.io not initialized:", err.message);
         }
       }
     }
   } catch (err) {
-    console.error("❌ Error checking expired pickups:", err);
+    console.error("Error checking expired pickups:", err);
   }
 }
 

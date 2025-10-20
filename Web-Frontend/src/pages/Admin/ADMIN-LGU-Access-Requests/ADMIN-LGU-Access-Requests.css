@@ -457,7 +457,7 @@
 .confirm-button {
   font-family: 'Poppins', sans-serif;
   flex: 1;
-  background-color: #28aa4f;
+  background-color: #dc3545;
   color: white;
   border: none;
   padding: 10px;
@@ -469,6 +469,26 @@
 }
 
 .confirm-button:hover {
+  transform: scale(1.05);
+  opacity: 0.95;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+
+.confirm-button-export {
+  font-family: 'Poppins', sans-serif;
+  flex: 1;
+  background-color: #006FFD;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+
+.confirm-button-export:hover {
   transform: scale(1.05);
   opacity: 0.95;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
@@ -503,6 +523,5 @@
 .approver-info .name {
   color: #333;
 }
-
 
 

@@ -7,8 +7,7 @@ const path = require('path');
 const sharp = require('sharp');
 const { cleanText, fuzzyMatchKeywords, ID_KEYWORDS } = require('../utils/ocr');
 const { getIo } = require('../socket');
-
-
+const twilio = require('twilio');
 
 
 // =================================================
@@ -51,29 +50,26 @@ const processOCR = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or missing ID type' });
     }
 
-    // Process image in-memory with Sharp and pass buffer to Tesseract directly
     const processedBuffer = await sharp(req.file.path)
       .grayscale()
       .normalize()
       .resize({ width: 1000 })
       .png()
-      .toBuffer(); // ✅ Skip writing to disk
+      .toBuffer();
 
-    // OCR directly from processed buffer
     const {
       data: { text: rawText = '' }
     } = await Tesseract.recognize(processedBuffer, 'eng', {
-      logger: m => console.log('🧠 OCR Progress:', m),
+      logger: m => console.log('OCR Progress:', m),
     });
 
     const cleanedText = cleanText(rawText);
-    console.log('🧾 Cleaned OCR Text:', cleanedText);
+    console.log('Cleaned OCR Text:', cleanedText);
 
     const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
 
-    // Cleanup original file
     fs.promises.unlink(req.file.path).catch(err =>
-      console.warn('⚠️ Failed to delete original file:', err)
+      console.warn('Failed to delete original file:', err)
     );
 
     return res.status(200).json({
@@ -84,20 +80,19 @@ const processOCR = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ OCR processing failed:', error.message || error);
+    console.error('OCR processing failed:', error.message || error);
     res.status(500).json({ error: 'OCR processing failed' });
   }
 };
-
 
 
 // =================================================
 //  LGU ADMIN REGISTRATION
 // =================================================
 const registerLguAdmin = async (req, res) => {
-  console.log('📥 Incoming LGU Admin Registration Request');
-  console.log('📝 Form Data:', req.body);
-  console.log('📎 Files:', req.files);
+  console.log('Incoming LGU Admin Registration Request');
+  console.log('Form Data:', req.body);
+  console.log('Files:', req.files);
 
   const {
     username,
@@ -124,7 +119,6 @@ const registerLguAdmin = async (req, res) => {
     return res.status(400).json({ message: 'All form fields are required' });
   }
 
-  //Extracts uploaded files from req.files
   const govID = req.files?.idFile?.[0] || null;
   const letterOfIntent = req.files?.intentFile?.[0] || null;
 
@@ -133,7 +127,6 @@ const registerLguAdmin = async (req, res) => {
     return res.status(400).json({ message: 'Both Government ID and Letter of Intent are required' });
   }
 
-  //Extracts filenames
   const idFileName = govID?.filename || null;
   const intentFileName = letterOfIntent?.filename || null;
 
@@ -284,7 +277,7 @@ const adminLogin = async (req, res) => {
 
 
 // =================================================================================
-// BARANGAY LOGIN
+// BARANGAY STAFF LOGIN
 // =================================================================================
 const barangayStaffLogin = async (req, res) => {
   const { username, password } = req.body;
@@ -312,7 +305,7 @@ const barangayStaffLogin = async (req, res) => {
         barangay: user.barangay,
         lgu_id: user.lgu_id,
       },
-      process.env.JWT_SECRET, // ✅ Uses .env secret
+      process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
 
@@ -322,8 +315,8 @@ const barangayStaffLogin = async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        firstName: user.first_name, // ✅ add this
-        lastName: user.last_name,   // ✅ add this
+        firstName: user.first_name,
+        lastName: user.last_name,
         position: user.position,
         barangay: user.barangay,
         lguId: user.lgu_id,
@@ -336,137 +329,15 @@ const barangayStaffLogin = async (req, res) => {
 };
 
 
-
-
-/*
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-
-const mobileUserSignUp = async (req, res) => {
-  try {
-    console.log('📥 Received mobile signup request');
-
-    const {
-      firstName,
-      lastName,
-      username,
-      email,
-      phone,
-      password,
-      region,
-      province,
-      city,
-      barangay,
-      idType, // 🆕 new field
-    } = req.body;
-
-    console.log('📝 User details:', {
-      firstName, lastName, username, email, phone,
-      region, province, city, barangay, idType
-    });
-
-    if (!firstName || !lastName || !username || !email || !phone || !password || !idType) {
-      return res.status(400).json({ message: 'Missing required fields.' });
-    }
-
-    // 🔍 Check if user exists
-    const existingUser = await pool.query(
-      'SELECT id FROM mobile_users WHERE username = $1 OR email = $2',
-      [username.trim(), email.trim()]
-    );
-
-    if (existingUser.rows.length > 0) {
-      return res.status(409).json({ message: 'Username or email already exists.' });
-    }
-
-    // 🔐 Hash password
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-    // 📎 Handle file (assumes multer already ran)
-    const idFilename = req.file?.filename || null;
-    const idUrl = idFilename
-      ? `${req.protocol}://${req.get('host')}/uploads/mobile/${idFilename}`
-      : null;
-
-    if (idFilename) {
-      console.log('🖼️ ID image saved as:', idFilename);
-      console.log('🌐 ID image URL:', idUrl);
-    }
-
-    // 💾 Insert into database, including new status field
-    const insertQuery = `
-      INSERT INTO mobile_users 
-      (first_name, last_name, username, email, phone_number, password, region, province, city, barangay, id_type, id_filename, id_url, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING id, first_name, last_name, username, email, phone_number, region, province, city, barangay, id_type, id_filename, id_url, status
-    `;
-
-    const insertValues = [
-      firstName.trim(),
-      lastName.trim(),
-      username.trim(),
-      email.trim(),
-      phone.trim(),
-      hashedPassword,
-      region?.trim() || null,
-      province?.trim() || null,
-      city?.trim() || null,
-      barangay?.trim() || null,
-      idType?.trim() || null,
-      idFilename,
-      idUrl,
-      'pending', // default status added here
-    ];
-
-    const result = await pool.query(insertQuery, insertValues);
-    const user = result.rows[0];
-
-    // Emit event to notify clients about new mobile user registration
-    try {
-      const io = getIo();
-      io.emit('mobileUserRegistered', user);
-    } catch (err) {
-      console.warn('Socket.io not initialized:', err.message);
-    }
-
-    if (!JWT_SECRET) {
-      return res.status(500).json({ message: 'JWT secret not configured.' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    console.log('✅ Mobile user created:', user.username);
-
-    res.status(201).json({
-      message: 'User registered successfully.',
-      user,
-      token,
-    });
-
-  } catch (error) {
-    console.error('❌ Error during mobile signup:', {
-      message: error.message,
-      detail: error?.detail,
-      code: error?.code,
-      constraint: error?.constraint,
-    });
-    res.status(500).json({ message: 'Server error during registration.', error: error.message });
-  }
-};
-*/
 // =================================================================================
-// MOBILE REGISTRATION
+// MOBILE USER REGISTRATION
 // =================================================================================
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 const mobileUserSignUp = async (req, res) => {
   try {
-    console.log('📥 Received mobile signup request');
+    console.log('Received mobile signup request');
 
     const {
       firstName,
@@ -482,20 +353,17 @@ const mobileUserSignUp = async (req, res) => {
       password,
     } = req.body;
 
-    console.log('📝 User details:', {
+    console.log('User details:', {
       firstName, lastName, middleName, dateOfBirth, phoneNumber, username, 
       region, province, city, barangay,
     });
 
-    // Format dateOfBirth to YYYY-MM-DD for PostgreSQL
     let dobFormatted = null;
     if (dateOfBirth) {
       if (dateOfBirth.includes('/')) {
-        // MM/DD/YYYY → YYYY-MM-DD
         const [month, day, year] = dateOfBirth.split('/');
         dobFormatted = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       } else {
-        // Already in YYYY-MM-DD
         dobFormatted = dateOfBirth;
       }
     }
@@ -504,7 +372,6 @@ const mobileUserSignUp = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields.' });
     }
 
-    // Check if user exists
     const existingUser = await pool.query(
       'SELECT id FROM mobile_users WHERE username = $1',
       [username.trim()]
@@ -522,7 +389,6 @@ const mobileUserSignUp = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING id, first_name, last_name, middle_name, date_of_birth, phone_number, username, region, province, city, barangay, status
     `;
-
 
     const insertValues = [
       firstName?.trim(),
@@ -543,9 +409,7 @@ const mobileUserSignUp = async (req, res) => {
     const result = await pool.query(insertQuery, insertValues);
     const user = result.rows[0];
 
-    // ===========================
-    // Create notification for mobile signup
-    // ===========================
+
     try {
       await pool.query(
         `INSERT INTO notifications 
@@ -554,13 +418,12 @@ const mobileUserSignUp = async (req, res) => {
         [user.id, user.region, user.province, user.city, user.barangay, 'mobileRegistered']
       );
 
-      console.log(`✅ Notification created for mobile user ID ${user.id} at location ${user.region}, ${user.province}, ${user.city}, ${user.barangay}`);
+      console.log(`Notification created for mobile user ID ${user.id} at location ${user.region}, ${user.province}, ${user.city}, ${user.barangay}`);
     } catch (notifErr) {
-      console.error('❌ Failed to create notification:', notifErr);
+      console.error('Failed to create notification:', notifErr);
     }
 
-
-    // Emit event to notify clients about new mobile user registration
+    // Emit via Socket.io
     try {
       const io = getIo();
       io.emit('mobileUserRegistered', user);
@@ -578,7 +441,7 @@ const mobileUserSignUp = async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    console.log('✅ Mobile user created:', user.username);
+    console.log('Mobile user created:', user.username);
 
     res.status(201).json({
       message: 'User registered successfully.',
@@ -587,7 +450,7 @@ const mobileUserSignUp = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error during mobile signup:', {
+    console.error('Error during mobile signup:', {
       message: error.message,
       detail: error?.detail,
       code: error?.code,
@@ -599,24 +462,20 @@ const mobileUserSignUp = async (req, res) => {
 
 
 // =================================================================================
-//  VERIFICATION REQUEST
+//  VERIFICATION REQUEST (MOBILE USER ACCOUNT)
 // =================================================================================
-
 const requestMobileUserVerification = async (req, res) => {
   try {
-    console.log('📥 Received mobile user verification request');
+    console.log('Received mobile user verification request');
 
     const userId = req.user?.id;
-    console.log("👤 User ID from token:", userId);
+    console.log("User ID from token:", userId);
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: No user ID in token" });
     }
 
-
-    // ===========================
     // Check verification attempts & cooldown
-    // ===========================
     const userQuery = await pool.query(
       `SELECT id, region, province, city, barangay, 
               verification_attempts, last_verification_request, status 
@@ -629,7 +488,7 @@ const requestMobileUserVerification = async (req, res) => {
     const user = userQuery.rows[0];
 
     const MAX_ATTEMPTS = 2;
-    const COOLDOWN_MINUTES = 1; // Test
+    const COOLDOWN_MINUTES = 1;
     const attempts = user.verification_attempts || 0;
     const lastRequest = user.last_verification_request ? new Date(user.last_verification_request) : null;
     const now = new Date();
@@ -643,18 +502,13 @@ const requestMobileUserVerification = async (req, res) => {
       }
     }
 
-    // ===========================
     // Handle form fields & files
-    // ===========================
     const { civil_status, sex, home_address, id_type } = req.body;
 
     const idImages = req.files?.idImage || [];
     const idFrontFile = idImages[0];
     const idBackFile  = idImages[1];
     const selfieFile = req.files?.selfieTaken?.[0];
-
-    //console.log('💾 Fields:', { civil_status, sex, home_address, id_type });
-    //console.log('💾 Files:', { idFrontFile, idBackFile, selfieFile });
 
     if (!civil_status || !sex || !home_address || !idFrontFile || !idBackFile || !selfieFile) {
       return res.status(400).json({ message: 'Missing required fields or files.' });
@@ -695,17 +549,12 @@ const requestMobileUserVerification = async (req, res) => {
       ]
     );
 
-
-    console.log("📝 DB Update result rowCount:", result.rowCount);
+    console.log("DB Update result rowCount:", result.rowCount);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found or not updated" });
     }
 
-
-    // ===========================
-    // Create notification for mobile signup
-    // ===========================
     try {
     await pool.query(
       `INSERT INTO notifications 
@@ -724,24 +573,22 @@ const requestMobileUserVerification = async (req, res) => {
     );
 
 
-      console.log(`✅ Notification created for mobile user ID ${user.id} at location ${user.region}, ${user.province}, ${user.city}, ${user.barangay}`);
+      console.log(`Notification created for mobile user ID ${user.id} at location ${user.region}, ${user.province}, ${user.city}, ${user.barangay}`);
     } catch (notifErr) {
-      console.error('❌ Failed to create notification:', notifErr);
+      console.error('Failed to create notification:', notifErr);
     }
 
-
+    // Emit via Socket.io
     const io = getIo();
     io.emit('newVerificationRequest', result.rows[0]);
-    console.log('📡 Emitted newVerificationRequest event to web clients');
+    console.log('Emitted newVerificationRequest event to web clients');
 
     res.json({ message: 'Verification submitted successfully', user: result.rows[0] });
   } catch (err) {
-    console.error('❌ Error during verification request:', err);
+    console.error('Error during verification request:', err);
     res.status(500).json({ message: 'Server error during verification', error: err.message });
   }
 };
-
-
 
 
 // =================================================================================
@@ -772,7 +619,7 @@ const mobileUserLogin = async (req, res) => {
     }
 
     if (!JWT_SECRET) {
-      console.error('❌ JWT_SECRET is not defined');
+      console.error('JWT_SECRET is not defined');
       return res.status(500).json({ message: 'JWT_SECRET not configured.' });
     }
 
@@ -793,50 +640,47 @@ const mobileUserLogin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error during login:', error);
+    console.error('Error during login:', error);
     res.status(500).json({ message: 'Server error during login.' });
   }
 };
 
 
-
-
-
-
-const twilio = require('twilio');
-
-console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID);
+console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Loaded' : 'Missing');
 console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Loaded' : 'Missing');
 console.log('TWILIO_SERVICE_SID:', process.env.TWILIO_SERVICE_SID);
-
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const serviceSid = process.env.TWILIO_SERVICE_SID;
 
 const client = twilio(accountSid, authToken);
 
-// Send OTP
+// =================================================
+//  SEND OTP
+// =================================================
 const sendOTP = async (req, res) => {
   const { phoneNumber } = req.body;
 
-  console.log('[OTP] Requested for:', phoneNumber); // 🔍 Incoming phone
+  console.log('Requested for:', phoneNumber);
 
   try {
     const verification = await client.verify.v2.services(serviceSid)
       .verifications
       .create({ to: phoneNumber, channel: 'sms' });
 
-    console.log('[OTP] Twilio response:', verification); // 🔍 Log Twilio result
+    console.log('Twilio response:', verification);
 
     res.status(200).json({ success: true, status: verification.status });
   } catch (err) {
-    console.error('[OTP] Error sending OTP:', err.message); // 🔍 Error log
+    console.error('Error sending OTP:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
 
-// Verify OTP
+// =================================================
+//  VERIFY OTP
+// =================================================
 const verifyOTP = async (req, res) => {
   const { phoneNumber, code } = req.body;
 
@@ -848,27 +692,12 @@ const verifyOTP = async (req, res) => {
     if (verificationCheck.status === 'approved') {
       res.status(200).json({ success: true });
     } else {
-      res.status(400).json({ success: false, message: 'Incorrect OTP' });
+      res.status(200).json({ success: false, message: 'Incorrect OTP' });
     }
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(200).json({ success: false, message: err.message });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // =================================================
@@ -919,19 +748,18 @@ const getLGUProfile = async (req, res) => {
   }
 };
 
+
 // =================================================
 // GET BARANGAY PROFILE
 // =================================================
 const getBarangayProfile = async (req, res) => {
   const { id } = req.params;
-  //console.log('[PROFILE] Fetching Barangay profile for ID:', id);
 
   try {
     const result = await pool.query(
       `SELECT * FROM barangay_accounts WHERE id = $1`,
       [id]
     );
-    //console.log('[PROFILE] Query returned', result.rows.length, 'rows');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching barangay accounts:', err);
@@ -941,40 +769,10 @@ const getBarangayProfile = async (req, res) => {
 
 
 // =================================================
-// GET MOBILE USER PROFILE
+//  GET MOBILE USER PROFILE
 // =================================================
-/*
-const getMobileUserProfile = async (req, res) => {
-  const { id } = req.params;
-  console.log('[PROFILE] Received request to fetch mobile user profile. ID:', id);
-
-  try {
-    console.log('[PROFILE] Executing DB query for user ID:', id);
-    const result = await pool.query(
-      `SELECT * FROM mobile_users WHERE id = $1`,
-      [id]
-    );
-    console.log('[PROFILE] Query executed successfully.');
-
-    if (!result.rows.length) {
-      console.warn(`[PROFILE] No user found with ID: ${id}`);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.log('[PROFILE] Query returned rows:', result.rows.length);
-    console.log('[PROFILE] User data:', result.rows[0]);
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('[PROFILE] Error fetching user profile:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-*/
-
 const getMobileUserProfile = async (req, res) => {
   try {
-    //console.log("[PROFILE] Received request to fetch mobile user profile. ID:", req.params.id);
 
     const result = await pool.query("SELECT * FROM mobile_users WHERE id=$1", [req.params.id]);
 
@@ -984,7 +782,6 @@ const getMobileUserProfile = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Build full URLs
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     user.id_front_url  = user.id_front_path  ? `${baseUrl}/${user.id_front_path.replace(/\\/g, "/")}` : null;
@@ -992,11 +789,9 @@ const getMobileUserProfile = async (req, res) => {
     user.selfie_url    = user.selfie_path    ? `${baseUrl}/${user.selfie_path.replace(/\\/g, "/")}` : null;
     user.profile_picture = user.profile_picture ? `${baseUrl}${user.profile_picture.replace(/\\/g, "/")}` : null;
 
-    //console.log("[PROFILE] User data with URLs:", user);
-
     res.json(user);
   } catch (err) {
-    console.error("❌ Error fetching profile:", err);
+    console.error("Error fetching profile:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -1007,31 +802,31 @@ const getMobileUserProfile = async (req, res) => {
 // =================================================
 const updateMobileUserProfilePicture = async (req, res) => {
   const { id } = req.params;
-  console.log('[PROFILE UPDATE] Received request to update profile picture for user ID:', id);
+  console.log('Received request to update profile picture for user ID:', id);
 
   const file = req.file;
   if (!file) {
-    console.warn('[PROFILE UPDATE] No file uploaded in request.');
+    console.warn('No file uploaded in request.');
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
   const filePath = `/uploads/profile/${file.filename}`;
-  console.log('[PROFILE UPDATE] File uploaded with filename:', file.filename);
-  console.log('[PROFILE UPDATE] File will be saved with path:', filePath);
+  console.log('File uploaded with filename:', file.filename);
+  console.log('File will be saved with path:', filePath);
 
   try {
-    console.log('[PROFILE UPDATE] Executing DB update for user ID:', id);
+    console.log('Executing DB update for user ID:', id);
     const updateResult = await pool.query(
       `UPDATE mobile_users SET profile_picture = $1 WHERE id = $2 RETURNING *`,
       [filePath, id]
     );
 
     if (!updateResult.rows.length) {
-      console.warn(`[PROFILE UPDATE] No user found to update with ID: ${id}`);
+      console.warn(`No user found to update with ID: ${id}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('[PROFILE UPDATE] Profile picture updated successfully in DB for user:', updateResult.rows[0]);
+    console.log('Profile picture updated successfully in DB for user:', updateResult.rows[0]);
 
     res.json({
       message: 'Profile picture updated successfully',
@@ -1039,7 +834,7 @@ const updateMobileUserProfilePicture = async (req, res) => {
       user: updateResult.rows[0],
     });
   } catch (err) {
-    console.error('[PROFILE UPDATE] Error updating profile picture:', err);
+    console.error('Error updating profile picture:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -1052,7 +847,6 @@ const removeMobileUserProfilePicture = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Update the user's profile_picture to null or empty string
     await pool.query(
       `UPDATE mobile_users
        SET profile_picture = NULL
@@ -1069,8 +863,6 @@ const removeMobileUserProfilePicture = async (req, res) => {
 
 
 
-
-
 module.exports = {
   checkUsernameAvailability,
   processOCR,
@@ -1081,7 +873,6 @@ module.exports = {
   sendOTP,
   verifyOTP,
   mobileUserLogin,
-
   getAdminProfile,
   getLGUProfile,
   barangayStaffLogin,

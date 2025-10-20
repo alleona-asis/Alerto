@@ -13,7 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
+    "@supabase/supabase-js": "^2.58.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -34,7 +34,8 @@
     "socket.io-client": "^4.8.1",
     "string-similarity": "^4.0.4",
     "tesseract.js": "^6.0.1",
-    "twilio": "^5.8.0"
+    "twilio": "^5.8.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

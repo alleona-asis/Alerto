@@ -1,6 +1,8 @@
 const pool = require('../../PostgreSQL/database');
 const fs = require('fs');
 const path = require('path');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 // =================================================
 //  GET ALL BARANGAY REPORT
@@ -15,7 +17,6 @@ const getAllPins = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
-
 
 const getBarangayReports = async (req, res) => {
   try {
@@ -62,11 +63,6 @@ const getTotalReports = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-
-
 
 
 

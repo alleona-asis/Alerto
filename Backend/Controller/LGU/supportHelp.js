@@ -1,8 +1,10 @@
 // controllers/lguFeedbackController.js
 const pool = require('../../PostgreSQL/database');
 const path = require('path');
-
-// Submit LGU Feedback
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+// ==============================
+//  SUBMIT LGU FEEDBACK
+// ==============================
 const submitLGUFeedback = async (req, res) => {
   try {
     console.log('Received LGU feedback submission:', req.body);
@@ -14,16 +16,17 @@ const submitLGUFeedback = async (req, res) => {
       region,
       province,
       city,
-      concernedBarangay
+      concernedBarangay,
+      firstName,
+      middleName,
+      lastName
     } = req.body;
 
-    // Basic validation
-    if (!feedbackType || !messages || !region || !province || !city || !concernedBarangay) {
+    if (!feedbackType || !messages || !region || !province || !city || !concernedBarangay || !firstName || !middleName || !lastName) {
       console.log('Validation failed: Missing required fields');
       return res.status(400).json({ error: 'Please fill in all required fields.' });
     }
 
-    // Process uploaded files (if any)
     let images = [];
     let video = null;
 
@@ -37,7 +40,7 @@ const submitLGUFeedback = async (req, res) => {
         if (file.mimetype.startsWith('image/')) {
           images.push(fileData);
         } else if (file.mimetype.startsWith('video/')) {
-          video = fileData; // store only one video, last uploaded
+          video = fileData;
         }
       });
     }
@@ -45,11 +48,11 @@ const submitLGUFeedback = async (req, res) => {
     console.log('Processed images:', images);
     console.log('Processed video:', video);
 
-    // Insert into database
     const query = `
       INSERT INTO lgu_feedbacks
-        (feedback_type, messages, region, province, city, concerned_barangay, images, video)
-      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+        (feedback_type, messages, region, province, city, concerned_barangay, images, video,
+         first_name, middle_name, last_name)
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11)
       RETURNING *;
     `;
 
@@ -61,7 +64,10 @@ const submitLGUFeedback = async (req, res) => {
       city,
       concernedBarangay,
       JSON.stringify(images),
-      JSON.stringify(video)
+      JSON.stringify(video),
+      firstName,
+      middleName,
+      lastName
     ];
 
     const result = await pool.query(query, values);
@@ -79,7 +85,9 @@ const submitLGUFeedback = async (req, res) => {
 };
 
 
-// ================== Get All LGU Feedback ==================
+// ==============================
+//  GET ALL LGU FEEDBACK
+// ==============================
 const getAllLGUFeedback = async (req, res) => {
   try {
     const query = `
@@ -100,7 +108,40 @@ const getAllLGUFeedback = async (req, res) => {
   }
 };
 
+// ==============================
+//  DELETE LGU FEEDBACK
+// ==============================
+const deleteLGUFeedback = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) return res.status(400).json({ error: 'Feedback ID is required' });
+
+  try {
+    const query = `
+      DELETE FROM lgu_feedbacks
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const result = await pool.query(query, [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Feedback not found' });
+    }
+
+    res.status(200).json({
+      message: 'Feedback deleted successfully',
+      feedback: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error deleting LGU feedback:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
+
 module.exports = { 
     submitLGUFeedback,
-    getAllLGUFeedback
+    getAllLGUFeedback,
+    deleteLGUFeedback
 };

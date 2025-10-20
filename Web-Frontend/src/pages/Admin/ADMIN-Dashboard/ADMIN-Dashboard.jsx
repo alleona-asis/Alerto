@@ -11,9 +11,9 @@ import axios from '../../../axios/axiosInstance';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-import ActsoflasciviousnessIcon from "@/assets/pins/Acts-of-lasciviousness.png";
-import AnimalIssuesIcon from "@/assets/pins/Animal-Issues.png";
-import BlockedDrainageIcon from "@/assets/pins/Blocked-Drainage.png";
+import ActsoflasciviousnessIcon from '@/assets/pins/Acts-of-lasciviousness.png';
+import AnimalIssuesIcon from '@/assets/pins/Animal-Issues.png';
+import BlockedDrainageIcon from '@/assets/pins/Blocked-Drainage.png';
 import BrokenstreetlightIcon from '@/assets/pins/Broken-streetlight.png';
 import DomesticIcon from '@/assets/pins/Domestic.png';
 import FloodingIcon from '@/assets/pins/Flooding.png';
@@ -33,8 +33,6 @@ import SuspeciouspersonreportIcon from '@/assets/pins/Suspecious-person-report.p
 import SuspiciousIcon from '@/assets/pins/Suspicious.png';
 import TheftIcon from '@/assets/pins/Theft.png';
 import VehicularaccidentsIcon from '@/assets/pins/Vehicular-accidents.png';
-
-
 
 export default function ADMINDashboard() {
   const navigate = useNavigate();
@@ -171,7 +169,6 @@ export default function ADMINDashboard() {
     return null;
   }
 
-  
 
   return (
     <>

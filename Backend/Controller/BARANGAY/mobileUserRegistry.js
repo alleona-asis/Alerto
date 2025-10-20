@@ -4,60 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 const { getIo } = require('../../socket'); 
-
-// =================================================
-//  OCR PROCESSING
-// =================================================
-/* 
-const processOCR = async (req, res) => {
-  try {
-    if (!req.file || !req.file.path) {
-      return res.status(400).json({ error: 'No image file uploaded' });
-    }
-
-    const { idType } = req.body;
-    if (!idType || !ID_KEYWORDS[idType]) {
-      return res.status(400).json({ error: 'Invalid or missing ID type' });
-    }
-
-    // Process image in-memory with Sharp and pass buffer to Tesseract directly
-    const processedBuffer = await sharp(req.file.path)
-      .grayscale()
-      .normalize()
-      .resize({ width: 1000 })
-      .png()
-      .toBuffer(); // ✅ Skip writing to disk
-
-    // OCR directly from processed buffer
-    const {
-      data: { text: rawText = '' }
-    } = await Tesseract.recognize(processedBuffer, 'eng', {
-      logger: m => console.log('🧠 OCR Progress:', m),
-    });
-
-    const cleanedText = cleanText(rawText);
-    console.log('🧾 Cleaned OCR Text:', cleanedText);
-
-    const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
-
-    // Cleanup original file
-    fs.promises.unlink(req.file.path).catch(err =>
-      console.warn('⚠️ Failed to delete original file:', err)
-    );
-
-    return res.status(200).json({
-      text: cleanedText,
-      matched,
-      matchedKeyword: keyword,
-      matchScore: score,
-    });
-
-  } catch (error) {
-    console.error('❌ OCR processing failed:', error.message || error);
-    res.status(500).json({ error: 'OCR processing failed' });
-  }
-};
-*/
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 // Keywords for validation
 const ID_KEYWORDS = {
@@ -96,6 +43,10 @@ const fuzzyMatchKeywords = (text, idType) => {
   return { matched: false, keyword: null, score: 0 };
 };
 
+
+// =================================================
+//  OCR PROCESSING
+// =================================================
 const processOCR = async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -109,7 +60,6 @@ const processOCR = async (req, res) => {
 
     let combinedText = "";
 
-    // 🔄 Loop through both front + back images
     for (const file of req.files) {
       const processedBuffer = await sharp(file.path)
         .grayscale()
@@ -121,19 +71,18 @@ const processOCR = async (req, res) => {
       const {
         data: { text: rawText = "" },
       } = await Tesseract.recognize(processedBuffer, "eng", {
-        logger: (m) => console.log("🧠 OCR Progress:", m),
+        logger: (m) => console.log("OCR Progress:", m),
       });
 
       combinedText += rawText + "\n";
 
-      // Cleanup uploaded file
       fs.promises.unlink(file.path).catch((err) =>
-        console.warn("⚠️ Failed to delete original file:", err)
+        console.warn("Failed to delete original file:", err)
       );
     }
 
     const cleanedText = cleanText(combinedText);
-    console.log("🧾 Cleaned OCR Text:", cleanedText);
+    console.log("Cleaned OCR Text:", cleanedText);
 
     const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
 
@@ -144,18 +93,19 @@ const processOCR = async (req, res) => {
       matchScore: score,
     });
   } catch (error) {
-    console.error("❌ OCR processing failed:", error.message || error);
+    console.error("OCR processing failed:", error.message || error);
     res.status(500).json({ error: "OCR processing failed" });
   }
 };
 
 
-// GET MOBILE USERS WITH OPTIONAL LOCATION FILTERS AND STAFF JURISDICTION
+// =================================================
+//  GET ALL MOBILE USERS WITHIN JURISDICTION
+// =================================================
 const getAllMobileUsers = async (req, res) => {
   try {
     const { region, province, city, barangay } = req.query;
 
-    // Assume staff's jurisdiction is in req.user
     const staffRegion = req.user.region;
     const staffProvince = req.user.province;
     const staffCity = req.user.city;
@@ -165,7 +115,6 @@ const getAllMobileUsers = async (req, res) => {
     const conditions = [];
     const values = [];
 
-    // ALWAYS filter by staff jurisdiction
     if (staffRegion) {
       values.push(staffRegion);
       conditions.push(`region = $${values.length}`);
@@ -183,7 +132,6 @@ const getAllMobileUsers = async (req, res) => {
       conditions.push(`barangay = $${values.length}`);
     }
 
-    // Optional filters from query (further narrow)
     if (region) {
       values.push(region);
       conditions.push(`region = $${values.length}`);
@@ -201,7 +149,6 @@ const getAllMobileUsers = async (req, res) => {
       conditions.push(`barangay = $${values.length}`);
     }
 
-    // Apply conditions
     if (conditions.length > 0) {
       baseQuery += ' WHERE ' + conditions.join(' AND ');
     }
@@ -210,8 +157,6 @@ const getAllMobileUsers = async (req, res) => {
 
     const result = await pool.query(baseQuery, values);
 
-    //console.log('Mobile Users under barangay staff jurisdiction:', result.rows);
-
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error('Failed to retrieve mobile users:', error);
@@ -219,12 +164,13 @@ const getAllMobileUsers = async (req, res) => {
   }
 };
 
+
 // =================================================
-// NOTIFICATIONS CONTROLLER WITH DEBUGGING
+// MARK AS READ NOTIFICATIONS
 // =================================================
 const markAsRead = async (req, res) => {
   try {
-    const { id } = req.params; // notification ID
+    const { id } = req.params;
     const { first_name, last_name } = req.body;
 
     if (!first_name || !last_name) {
@@ -248,17 +194,16 @@ const markAsRead = async (req, res) => {
 
     res.status(200).json({ success: true, notification: result.rows[0] });
   } catch (error) {
-    console.error('❌ Error marking as read:', error);
+    console.error('Error marking as read:', error);
     res.status(500).json({ success: false, message: 'Server error marking notification as read.' });
   }
 };
 
 
 
-
-
-
-
+// =================================================
+// GET NOTIFICATIONS BY LOCATIONS
+// =================================================
 const getNotificationsByLocation = async (req, res) => {
   try {
     const { region, province, city, barangay } = req.query;
@@ -286,19 +231,19 @@ const getNotificationsByLocation = async (req, res) => {
       notifications: result.rows
     });
   } catch (error) {
-    console.error('❌ Failed to fetch notifications:', error);
+    console.error('Failed to fetch notifications:', error);
     res.status(500).json({ message: 'Server error fetching notifications.', error: error.message });
   }
 };
 
 
-// Delete a notification
-// Delete a notification
+// =================================================
+// DELETE NOTIFICATIONS
+// =================================================
 const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch notification first to check status
     const checkQuery = `SELECT * FROM notifications WHERE id = $1`;
     const checkResult = await pool.query(checkQuery, [id]);
 
@@ -308,9 +253,7 @@ const deleteNotification = async (req, res) => {
 
     const notification = checkResult.rows[0];
 
-    // ✅ If it's already read, schedule auto-delete in 5 minutes
     if (notification.is_read) {
-      console.log(`⏳ Notification ${id} is read. Scheduling deletion in 5 minutes...`);
 
       setTimeout(async () => {
         try {
@@ -321,15 +264,14 @@ const deleteNotification = async (req, res) => {
           const delResult = await pool.query(deleteQuery, [id]);
 
           if (delResult.rowCount > 0) {
-            console.log(`🗑️ Notification ${id} auto-deleted after 5 minutes`);
+            console.log(`Notification ${id} auto-deleted after 5 minutes`);
           }
         } catch (err) {
-          console.error("❌ Error auto-deleting notification:", err);
+          console.error("Error auto-deleting notification:", err);
         }
       }, 30 * 24 * 60 * 60 * 1000); // 5 minutes = 5 * 60 * 1000 
     }
 
-    // ✅ Manual delete (when user explicitly deletes)
     const query = `
       DELETE FROM notifications
       WHERE id = $1
@@ -347,13 +289,10 @@ const deleteNotification = async (req, res) => {
       deletedNotification: result.rows[0]
     });
   } catch (err) {
-    console.error("❌ Error deleting notification:", err);
+    console.error("Error deleting notification:", err);
     res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 };
-
-
-
 
 
 // =================================================
@@ -367,7 +306,6 @@ const deleteMobileUser = async (req, res) => {
   }
 
   try {
-    // Delete the mobile user by ID
     const deleteResult = await pool.query(
       'DELETE FROM mobile_users WHERE id = $1 RETURNING *',
       [id]
@@ -385,37 +323,9 @@ const deleteMobileUser = async (req, res) => {
 };
 
 
-/*
-const updateMobileUserStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!id) return res.status(400).json({ message: 'Missing user ID (id) in request params' });
-    if (!status) return res.status(400).json({ message: 'Missing status in request body' });
-
-    const allowedStatuses = ['pending', 'verified', 'unverified'];
-    if (!allowedStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({ message: `Invalid status: "${status}". Allowed: ${allowedStatuses.join(', ')}` });
-    }
-
-    const query = `UPDATE mobile_users SET status = $1 WHERE id = $2 RETURNING *`;
-    const values = [status.toLowerCase(), id];
-
-    const result = await pool.query(query, values);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.status(200).json({ message: 'Status updated', user: result.rows[0] });
-
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-
+// =================================================
+//  UPDATE MOBILE USER STATUS
+// =================================================
 const updateMobileUserStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -429,66 +339,6 @@ const updateMobileUserStatus = async (req, res) => {
       return res.status(400).json({ message: `Invalid status: "${status}". Allowed: ${allowedStatuses.join(', ')}` });
     }
 
-    const query = `
-      UPDATE mobile_users 
-      SET status = $1, reason_for_rejection = $2
-      WHERE id = $3 
-      RETURNING *
-    `;
-    const values = [status.toLowerCase(), reason_for_rejection || null, id];
-
-    const result = await pool.query(query, values);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const updatedUser = result.rows[0];
-
-    // ✅ Increment attempts only if rejected
-    if (status.toLowerCase() === 'unverified') {
-      await pool.query(
-        `UPDATE mobile_users
-         SET verification_attempts = verification_attempts + 1,
-             last_verification_request = $1
-         WHERE id = $2`,
-        [new Date(), id]
-      );
-    }
-
-    // 🔥 Emit socket event so all clients know about the update
-    const io = getIo();
-    io.emit("verificationStatusUpdate", {
-      userId: updatedUser.id,
-      status: updatedUser.status,
-      reason_for_rejection: updatedUser.reason_for_rejection || null,
-      last_verification_request: updatedUser.last_verification_request,
-      reason_for_rejection: updatedUser.reason_for_rejection || null,
-    });
-
-    res.status(200).json({ message: 'Status updated', user: updatedUser });
-
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-*/
-
-
-const updateMobileUserStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, reason_for_rejection } = req.body;
-
-    if (!id) return res.status(400).json({ message: 'Missing user ID (id) in request params' });
-    if (!status) return res.status(400).json({ message: 'Missing status in request body' });
-
-    const allowedStatuses = ['pending', 'verified', 'unverified'];
-    if (!allowedStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({ message: `Invalid status: "${status}". Allowed: ${allowedStatuses.join(', ')}` });
-    }
-
-    // Update status first
     const query = `
       UPDATE mobile_users 
       SET status = $1, reason_for_rejection = $2
@@ -502,7 +352,6 @@ const updateMobileUserStatus = async (req, res) => {
 
     let updatedUser = result.rows[0];
 
-    // Increment attempts only if rejected
     if (status.toLowerCase() === 'unverified') {
       await pool.query(
         `UPDATE mobile_users
@@ -512,14 +361,11 @@ const updateMobileUserStatus = async (req, res) => {
         [id]
       );
 
-      // Refetch updated user to get new attempts and last_verification_request
       const refreshed = await pool.query('SELECT * FROM mobile_users WHERE id=$1', [id]);
       updatedUser = refreshed.rows[0];
     }
 
-    // -----------------------------
-    // Save verification status notification to database
-    // -----------------------------
+
     const notificationQuery = `
       INSERT INTO mobile_notifications
         (mobile_user_id, type, status, reason_for_rejection, last_verification_request)
@@ -538,11 +384,7 @@ const updateMobileUserStatus = async (req, res) => {
     const notificationResult = await pool.query(notificationQuery, notificationValues);
     const notification = notificationResult.rows[0];
 
-
-    // -----------------------------
-    // Emit real-time notification to the specific user
-    // -----------------------------
-
+    // Emit via Socket.io
     const io = getIo();
     io.emit("verificationStatusUpdate", {
       userId: updatedUser.id,
@@ -559,13 +401,15 @@ const updateMobileUserStatus = async (req, res) => {
   }
 };
 
-// GET /api/mobile/notifications/:userId
+
+// =================================================
+//  GET MOBILE USER NOTIFICATIONS
+// =================================================
 const getMobileUserNotifications = async (req, res) => {
   try {
     const { userId } = req.params;
     if (!userId) return res.status(400).json({ message: 'Missing user ID in request params' });
 
-    // Fetch notifications for this user, most recent first
     const query = `
       SELECT id, type, status, reason_for_rejection, last_verification_request, is_read, created_at
       FROM mobile_notifications
@@ -587,6 +431,9 @@ const getMobileUserNotifications = async (req, res) => {
 };
 
 
+// =================================================
+//  MARK MOBILE NOTIFICATIONS AS READ
+// =================================================
 const markMobileNotificationAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
@@ -608,11 +455,6 @@ const markMobileNotificationAsRead = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-
-
-
-
 
 
 

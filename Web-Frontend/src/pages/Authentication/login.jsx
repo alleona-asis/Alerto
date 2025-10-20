@@ -317,7 +317,7 @@ export default function Login() {
                 resetForm();
               }}
             >
-              Login as STAFF
+              Login as BARANGAY STAFF
             </button>
           </div>
         </div>

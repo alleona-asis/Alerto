@@ -1,6 +1,9 @@
 const pool = require('../../PostgreSQL/database');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
-// Get all mobile users
+// =================================================
+//  GET ALL MOBILE USERS
+// =================================================
 const getMobileUsers = async (req, res) => {
   try {
     const { rows: users } = await pool.query(
@@ -14,15 +17,15 @@ const getMobileUsers = async (req, res) => {
   }
 };
 
-// Delete mobile user by ID
+// =================================================
+//  DELETE MOBILE USER
+// =================================================
 const deleteMobileUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Delete notifications tied to this user
     await pool.query(`DELETE FROM notifications WHERE mobile_user_id = $1`, [id]);
 
-    // Now delete the user
     const result = await pool.query(
       `DELETE FROM mobile_users WHERE id = $1 RETURNING *`,
       [id]
@@ -39,9 +42,11 @@ const deleteMobileUser = async (req, res) => {
   }
 };
 
+// =================================================
+//  GET TOTAL MOBILE USERS
+// =================================================
 const getTotalMobileUsers = async (req, res) => {
   try {
-    // Total mobile users
     const totalResult = await pool.query('SELECT COUNT(*) AS total FROM mobile_users');
     const total = totalResult.rows[0].total;
 
@@ -70,7 +75,6 @@ const getTotalMobileUsers = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 
 

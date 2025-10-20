@@ -2,10 +2,63 @@ const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
 
-// ================= Submit Incident Report =================
-const submitReport = async (req, res) => {
+
+// =================================================
+//  SUBMIT BARANGAY REPORT
+// =================================================
+const submitReport = async (req, res, { mediaUrls = [] }) => {
   try {
+
+    const mobileUserId = req.body.mobile_user_id || req.user?.id;
+    const deviceIdentifier = req.body.device_id;
+
+    if (!mobileUserId) {
+      return res.status(400).json({ message: "User ID missing" });
+    }
+
+    // ================== Handle Device ==================
+    let deviceRow = null;
+    if (deviceIdentifier) {
+      const { rows: existingDevices } = await pool.query(
+        `SELECT id FROM devices WHERE mobile_user_id = $1 AND device_id = $2`,
+        [mobileUserId, deviceIdentifier]
+      );
+
+      if (existingDevices.length > 0) {
+        deviceRow = existingDevices[0];
+      } else {
+        const { rows: newDevice } = await pool.query(
+          `INSERT INTO devices (mobile_user_id, device_id) 
+           VALUES ($1, $2) 
+           RETURNING id`,
+          [mobileUserId, deviceIdentifier]
+        );
+        deviceRow = newDevice[0];
+      }
+    }
+
+    // ================== Blocking Checks ==================
+    const { rows: users } = await pool.query(
+      `SELECT invalid_count, blocked_until, permanently_blocked 
+       FROM mobile_users 
+       WHERE id = $1`,
+      [mobileUserId]
+    );
+    if (users.length === 0) return res.status(404).json({ message: "User not found" });
+    const user = users[0];
+    const now = new Date();
+
+    if (user.permanently_blocked) return res.status(403).json({ message: "❌ Permanently blocked." });
+
+    if (user.blocked_until && new Date(user.blocked_until) > now) {
+      return res.status(403).json({
+        message: `Temporarily blocked until ${user.blocked_until}.`
+      });
+    }
+
+    // ================== Extract Fields ==================
     const {
       latitude,
       longitude,
@@ -27,133 +80,106 @@ const submitReport = async (req, res) => {
     // =======================
     // Handle uploaded files
     // =======================
-    const uploadedFiles = req.files || [];
-    const BASE_URL = process.env.BASE_URL || "http://localhost:5000"; 
 
-    const media = uploadedFiles.map(file => ({
-      filename: file.filename,
-      url: `${BASE_URL}/uploads/reports/${file.filename}`,
-      mimetype: file.mimetype
-    }));
+   const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
+        ? req.supabaseFiles.media
+        : [];
 
-    const mediaFilenames = media.map(m => m.filename);
-    const mediaUrls = media.map(m => m.url);
+      const media = supabaseMedia.map(f => ({
+        filename: f.filename,
+        url: f.supabaseUrl,  // signed URL
+        mimetype: f.mimetype || (f.filename.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
+      }));
 
+      const mediaFilenames = media.map(m => m.filename);
+      const mediaUrls = media.map(m => m.url);
     // =======================
     // Parse date & boolean
     // =======================
-    //const incidentDateTimeObj = incident_datetime ? new Date(incident_datetime) : new Date();
-    //const agreedPrivacyBool = agreed_privacy === true || agreed_privacy === 'true';
+    const agreedPrivacyBool = agreed_privacy === true || agreed_privacy === 'true';
 
-    // Extract separate date and time
-    //const incidentDate = incidentDateTimeObj.toISOString().split("T")[0]; // "YYYY-MM-DD"
-    //const incidentTime = incidentDateTimeObj.toTimeString().split(" ")[0]; // "HH:MM:SS"
+    let incidentDate = req.body.incident_date || null;
+    let incidentTime = req.body.incident_time || null;
 
-// =======================
-// Parse date & boolean
-// =======================
-const agreedPrivacyBool = agreed_privacy === true || agreed_privacy === 'true';
+    let incidentDateTimeObj = null;
 
-// Prefer frontend values if available
-let incidentDate = req.body.incident_date || null;
-let incidentTime = req.body.incident_time || null;
-
-let incidentDateTimeObj = null;
-
-// If both provided, combine them into a single Date
-if (incidentDate && incidentTime) {
-  incidentDateTimeObj = new Date(`${incidentDate}T${incidentTime}`);
-} else if (incident_datetime) {
-  // fallback if frontend sends combined datetime
-  incidentDateTimeObj = new Date(incident_datetime);
-  incidentDate = incidentDateTimeObj.toISOString().split("T")[0];
-  incidentTime = incidentDateTimeObj.toTimeString().split(" ")[0];
-} else {
-  // ultimate fallback = now
-  incidentDateTimeObj = new Date();
-  incidentDate = incidentDateTimeObj.toISOString().split("T")[0];
-  incidentTime = incidentDateTimeObj.toTimeString().split(" ")[0];
-}
-
+    if (incidentDate && incidentTime) {
+      incidentDateTimeObj = new Date(`${incidentDate}T${incidentTime}`);
+    } else if (incident_datetime) {
+      incidentDateTimeObj = new Date(incident_datetime);
+      incidentDate = incidentDateTimeObj.toISOString().split("T")[0];
+      incidentTime = incidentDateTimeObj.toTimeString().split(" ")[0];
+    } else {
+      incidentDateTimeObj = new Date();
+      incidentDate = incidentDateTimeObj.toISOString().split("T")[0];
+      incidentTime = incidentDateTimeObj.toTimeString().split(" ")[0];
+    }
 
     const reported_by = `${first_name || ''} ${last_name || ''}`.trim();
 
-    // =======================
-    // Save to PostgreSQL
-    // =======================
-const queryText = `
-  INSERT INTO incident_reports 
-  (latitude, longitude, barangay, city, province, region, category, incident_type, description, reported_person, reported_by, agreed_privacy, incident_datetime, incident_date, incident_time, media_filenames, media_urls, mobile_user_id)
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, $18)
-  RETURNING *;
-`;
+    const queryText = `
+      INSERT INTO incident_reports 
+      (latitude, longitude, barangay, city, province, region, category, incident_type, description, reported_person, reported_by, agreed_privacy, incident_datetime, incident_date, incident_time, media_filenames, media_urls, mobile_user_id, device_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, $18, $19)
+      RETURNING *;
+    `;
 
-const values = [
-  latitude,  // $1
-  longitude, // $2
-  barangay,  // $3
-  city,      // $4
-  province,  // $5
-  region,    // $6
-  category,  // $7
-  incident_type ?? (customIncident || "other"), // $8
-  description,       // $9
-  reported_person,   // $10
-  reported_by,       // $11
-  agreedPrivacyBool, // $12
-  incidentDateTimeObj, // $13
-  incidentDate,      // $14
-  incidentTime,      // $15
-  mediaFilenames.length > 0 ? mediaFilenames : null, // $16
-  mediaUrls.length > 0 ? mediaUrls : null,            // $17
-  req.body.mobile_user_id || req.user?.id || null
-];
-
-
+    const values = [
+      latitude,
+      longitude,
+      barangay,
+      city,
+      province,
+      region,
+      category,
+      incident_type ?? (customIncident || "other"),
+      description,
+      reported_person,
+      reported_by,
+      agreedPrivacyBool,
+      incidentDateTimeObj,
+      incidentDate,
+      incidentTime,
+      mediaFilenames.length > 0 ? mediaFilenames : null,
+      mediaUrls.length > 0 ? mediaUrls : null,
+      req.body.mobile_user_id || req.user?.id || null,
+      deviceRow ? deviceRow.id : null
+    ];
 
     const result = await pool.query(queryText, values);
     const savedReport = result.rows[0];
 
-    // Get mobile user ID from request or authenticated user
-    const mobileUserId = req.body.mobile_user_id || req.user?.id;
+    if (mobileUserId) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications 
+          (mobile_user_id, region, province, city, barangay, type, incident_type, is_read, created_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, NOW())`,
+          [
+            mobileUserId,
+            savedReport.region,
+            savedReport.province,
+            savedReport.city,
+            savedReport.barangay,
+            'newBarangayReport',
+            savedReport.incident_type
+          ]
+        );
 
-if (mobileUserId) {
-  try {
-    await pool.query(
-      `INSERT INTO notifications 
-       (mobile_user_id, region, province, city, barangay, type, incident_type, is_read, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, NOW())`,
-      [
-        mobileUserId,             // $1
-        savedReport.region,       // $2
-        savedReport.province,     // $3
-        savedReport.city,         // $4
-        savedReport.barangay,     // $5
-        'newBarangayReport',      // $6
-        savedReport.incident_type // $7
-      ]
-    );
+        console.log(`Notification created for mobile user ID ${mobileUserId}`);
+      } catch (notifErr) {
+        console.error('Failed to create notification:', notifErr.message);
+      }
+    } else {
+      console.warn('No mobile_user_id provided; skipping notification creation.');
+    }
 
-    console.log(`✅ Notification created for mobile user ID ${mobileUserId}`);
-  } catch (notifErr) {
-    console.error('❌ Failed to create notification:', notifErr.message);
-  }
-} else {
-  console.warn('⚠️ No mobile_user_id provided; skipping notification creation.');
-}
-
-
-
-//console.log('📌 Report saved to DB:', savedReport);
-
-try {
-  const io = getIo();
-  //console.log('📢 Emitting newBarangayReport:', savedReport);
-  io.emit('newBarangayReport', savedReport);
-} catch (err) {
-  console.warn('⚠️ Socket.io not initialized:', err.message);
-}
-
+    try {
+      const io = getIo();
+      io.emit('newBarangayReport', savedReport);
+    } catch (err) {
+      console.warn('Socket.io not initialized:', err.message);
+    }
 
     res.status(201).json({
       message: "Report submitted successfully",
@@ -167,25 +193,82 @@ try {
 };
 
 
-// ================= Get All Pins =================
-/*
-const getPinsByLocation = async (req, res) => {
-  try {
-    const { city, province } = req.query;
+// =======================
+// USER BLOCKING
+// =======================
+const userBlocking = async (user, id, io) => {
+  const now = new Date();
+  let statusChanged = false;
 
-    const result = await pool.query(
-      'SELECT * FROM incident_reports WHERE city = $1 AND province = $2',
-      [city, province]
+  console.log(`Checking block status for user ${user.id}`);
+  console.log(`invalid_count: ${user.invalid_count}`);
+  console.log(`permanently_blocked: ${user.permanently_blocked}`);
+  console.log(`blocked_until: ${user.blocked_until}`);
+
+  if (user.blocked_until && new Date(user.blocked_until) <= now) {
+    await pool.query(
+      `UPDATE mobile_users SET blocked_until = NULL WHERE id = $1`,
+      [id]
     );
+    user.blocked_until = null;
+    statusChanged = true;
+  }
 
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error fetching pins:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  if (user.invalid_count >= 5 && !user.permanently_blocked) {
+    await pool.query(
+      `UPDATE mobile_users SET permanently_blocked = true, blocked_until = NULL WHERE id = $1`,
+      [id]
+    );
+    user.permanently_blocked = true;
+    user.blocked_until = null;
+    statusChanged = true;
+  }
+
+  const blockMinutesLookup = { 2: 1, 3: 2, 4: 3 };
+  const isCurrentlyBlocked =
+    user.blocked_until && new Date(user.blocked_until) > now;
+
+  const blockMinutes =
+    !user.permanently_blocked && !isCurrentlyBlocked
+      ? blockMinutesLookup[user.invalid_count] || 0
+      : 0;
+
+  if (blockMinutes > 0) {
+    const newBlockedUntil = new Date(now.getTime() + blockMinutes * 60 * 1000);
+    await pool.query(
+      `UPDATE mobile_users SET blocked_until = $1 WHERE id = $2`,
+      [newBlockedUntil, id]
+    );
+    user.blocked_until = newBlockedUntil;
+    console.log(`Applied NEW temporary block for user ${user.id}: ${blockMinutes} minute(s). Unblock at: ${newBlockedUntil.toISOString()}`);
+    statusChanged = true;
+  } else if (isCurrentlyBlocked) {
+    console.log(`User ${user.id} is STILL blocked until ${user.blocked_until}, no reset.`);
+  } else {
+    console.log(`No temporary block needed for user ${user.id}`);
+  }
+
+  if (statusChanged) {
+    const blockingStatus = {
+      userId: user.id,
+      blocked_until: user.blocked_until,
+      permanently_blocked: user.permanently_blocked,
+      invalid_count: user.invalid_count,
+      isTemporarilyBlocked: !!user.blocked_until,
+    };
+
+    console.log(
+      `Emitting blocking status for user ${user.id}:`,
+      blockingStatus
+    );
+    io.emit("blockingStatusUpdated", blockingStatus);
   }
 };
-*/
 
+
+// =================================================
+//  GET ALL BARANGAY PINS
+// =================================================
 const getAllPins = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM incident_reports');
@@ -197,7 +280,9 @@ const getAllPins = async (req, res) => {
 };
 
 
-// Get all barangay reports with status history
+// =================================================
+//  GET ALL BARANGAY REPORT FOR MOBILE
+// =================================================
 const getBarangayReportsForMobile = async (req, res) => {
   try {
     const { rows: reports } = await pool.query(
@@ -216,6 +301,9 @@ const getBarangayReportsForMobile = async (req, res) => {
 };
 
 
+// =================================================
+//  GET ALL BARANGAY REPORT FOR WEB
+// =================================================
 const getBarangayReports = async (req, res) => {
   try {
     const { province, region, city, barangay } = req.query;
@@ -243,16 +331,8 @@ const getBarangayReports = async (req, res) => {
 };
 
 
-
-
-
-
-
-
 // =================================================
-// =================================================
-//  Barangay Web Dashboard
-// =================================================
+//  BARANGAY WEB DASHBOARD
 // =================================================
 const getReportsByLocation = async (req, res) => {
   try {
@@ -271,8 +351,9 @@ const getReportsByLocation = async (req, res) => {
 };
 
 
-
-
+// =================================================
+//  UPDATE REPORT STATUS
+// =================================================
 const updateReportStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -302,14 +383,12 @@ const updateReportStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    // 1️⃣ Fetch current status_history
     const { rows } = await pool.query(
       `SELECT status_history FROM incident_reports WHERE id = $1`,
       [id]
     );
     const currentHistory = rows[0]?.status_history || [];
 
-    // 2️⃣ Append new status
     const newHistoryItem = {
       label: status.toLowerCase(),
       updated_by: updatedBy,
@@ -317,7 +396,6 @@ const updateReportStatus = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    // 3️⃣ Update report
     const updateResult = await pool.query(
       `UPDATE incident_reports
        SET status = $1,
@@ -329,27 +407,36 @@ const updateReportStatus = async (req, res) => {
       [status.toLowerCase(), updatedBy, JSON.stringify(updatedHistory), id]
     );
 
+    const updatedReport = updateResult.rows[0];
 
-      // After updating report
-      const updatedReport = updateResult.rows[0];
+    // Increment invalid_count if status is invalid
+    if (status.toLowerCase() === "invalid" && updatedReport.mobile_user_id) {
+      const { rows: userRows } = await pool.query(
+        `UPDATE mobile_users 
+        SET invalid_count = invalid_count + 1 
+        WHERE id=$1 
+        RETURNING id, invalid_count, blocked_until, permanently_blocked`,
+        [updatedReport.mobile_user_id]
+      );
 
-      // -----------------------------
-      // Save verification status notification to database
-      // -----------------------------
-      const notificationQuery = `
-        INSERT INTO mobile_notifications
-          (mobile_user_id, type, status)
-        VALUES ($1, $2, $3)
-        RETURNING *
-      `;
+      const user = userRows[0];
+      const io = getIo();
 
-      const notificationValues = [
-        updatedReport.mobile_user_id,
-        'barangay_report_status',
-        status.toLowerCase(),
-      ];
+      await userBlocking(user, updatedReport.mobile_user_id, io);
+    }
 
-      console.log("🔹 Saving notification for mobile_user_id:", updatedReport.mobile_user_id);
+    const notificationQuery = `
+      INSERT INTO mobile_notifications
+        (mobile_user_id, type, status)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+
+    const notificationValues = [
+      updatedReport.mobile_user_id,
+      'barangay_report_status',
+      status.toLowerCase(),
+    ];
 
     let notification = null;
     try {
@@ -358,34 +445,32 @@ const updateReportStatus = async (req, res) => {
         notificationValues
       );
       notification = notificationResult.rows[0];
-      console.log(
-        "📲 Notification saved successfully:",
-        notification
-      );
+      console.log("Notification saved successfully:", notification);
     } catch (err) {
-      console.error("❌ Failed to save notification:", err);
+      console.error("Failed to save notification:", err);
     }
 
 
-    // Emit to everyone
-    //const io = getIo();
-    //io.emit("reportStatusUpdate", {
-      //reportId: updatedReport.id,
-      //status: updatedReport.status,
-      //status_history: updatedReport.status_history
-    //});
+// after you compute updatedReport and (optionally) save notification
+const io = getIo();
 
-        // --- Emit notification ONLY to the mobile user ---
-    if (notification) {
-      const io = getIo();
-      io.to(`user_${updatedReport.mobile_user_id}`).emit(
-        "reportStatusUpdate",
-        {
-          ...notification,
-          type: "barangay_report_status",
-        }
-      );
-    }
+// optional: keep a dedicated channel for the inbox feed
+if (notification) {
+  io.to(`user_${updatedReport.mobile_user_id}`).emit('notification', {
+    ...notification,
+    type: 'barangay_report_status',
+  });
+}
+
+// ✅ send the actual report update for the UI list/modal
+io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
+  id: updatedReport.id,                 // the client accepts id OR reportId
+  reportId: updatedReport.id,
+  status: updatedReport.status,
+  status_history: updatedReport.status_history,
+  updated_by: updatedReport.updated_by,
+  updated_at: updatedReport.updated_at,
+});
 
 
     res.status(200).json({
@@ -398,7 +483,6 @@ const updateReportStatus = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 
 // ==========================
@@ -421,20 +505,19 @@ const uploadProof = async (req, res) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ message: "Missing report ID" });
 
-    // req.files is already an array if you use multer.array('proof', 5)
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    const uploadedFiles = req.files; // Already an array
-    console.log("Files received:", uploadedFiles);
-    console.log("Number of files to upload:", uploadedFiles.length);
+    const uploadedFiles = req.files;
+    //console.log("Files received:", uploadedFiles);
+    //console.log("Number of files to upload:", uploadedFiles.length);
 
     const proofFiles = uploadedFiles.map(file => {
       const uploadsDir = "uploads/proof";
       if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-      const filePath = file.path; // multer already saved it
+      const filePath = file.path;
       const url = `${BASE_URL}/${file.filename}`;
       console.log("File ready for DB:", { name: file.originalname, path: filePath, url });
 
@@ -465,7 +548,7 @@ const uploadProof = async (req, res) => {
 
     const updatedReport = updateResult.rows[0];
 
-    // Emit to everyone
+    // Emit via Socket.io
     const io = getIo();
     io.emit("proofUploaded", {
       reportId: updatedReport.id,
@@ -499,7 +582,6 @@ const transferReport = async (req, res) => {
       ? `${req.user.first_name} ${req.user.last_name}`
       : "Unknown";
 
-    // 1️⃣ Fetch current report
     const { rows } = await pool.query(
       `SELECT barangay, status_history FROM incident_reports WHERE id = $1`,
       [id]
@@ -510,11 +592,8 @@ const transferReport = async (req, res) => {
     }
 
     const report = rows[0];
-
-    // 🔹 Log current barangay
     console.log(`Report ID ${id} is currently in barangay: ${report.barangay}`);
 
-    // 2️⃣ Update status history
     const newHistoryItem = {
       label: "transferred",
       updated_by: updatedBy,
@@ -525,10 +604,8 @@ const transferReport = async (req, res) => {
 
     const updatedHistory = [...(report.status_history || []), newHistoryItem];
 
-    // 🔹 Log transfer action
     console.log(`Report ID ${id} transferred from ${report.barangay} to ${newBarangay} by ${updatedBy}`);
 
-    // 3️⃣ Update report
     const updateResult = await pool.query(
       `UPDATE incident_reports
        SET barangay = $1,
@@ -543,7 +620,6 @@ const transferReport = async (req, res) => {
 
     const updatedReport = updateResult.rows[0];
 
-    // 4️⃣ Save notification
     const notificationQuery = `
       INSERT INTO mobile_notifications
         (mobile_user_id, type, status)
@@ -564,15 +640,12 @@ const transferReport = async (req, res) => {
         notificationValues
       );
       notification = notificationResult.rows[0];
-      console.log(
-        "📲 Notification saved successfully:",
-        notification
-      );
+      console.log("Notification saved successfully:", notification);
     } catch (err) {
-      console.error("❌ Failed to save notification:", err);
+      console.error("Failed to save notification:", err);
     }
 
-        // --- Emit notification ONLY to the mobile user ---
+    // --- Emit notification ONLY to the mobile user ---
     if (notification) {
       const io = getIo();
       io.to(`user_${updatedReport.mobile_user_id}`).emit(
@@ -590,16 +663,13 @@ const transferReport = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("[transferReport] Error:", error);
+    console.error("Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 
-
-
-
-
+// =================================================
 //  DELETE INCIDENT REPORT
 // =================================================
 const deleteIncidentReport = async (req, res) => {
@@ -610,7 +680,6 @@ const deleteIncidentReport = async (req, res) => {
   }
 
   try {
-    // Delete the mobile user by ID
     const deleteResult = await pool.query(
       'DELETE FROM incident_reports WHERE id = $1 RETURNING *',
       [id]
@@ -627,16 +696,17 @@ const deleteIncidentReport = async (req, res) => {
   }
 };
 
-
-//Blocking Rules
+// =================================================
+//  BLOCK EXCESSIVE REPORTING
+// =================================================
 const getBarangayReportById = async (req, res) => {
   try {
-    const userId = req.params.id; // comes from URL
+    const userId = req.params.id;
     if (!userId) {
       return res.status(400).json({ error: "User ID missing" });
     }
 
-    console.log("Fetching reports for userId:", userId); // 🔍 Debug log
+    console.log("Fetching reports for userId:", userId);
 
     const query = `
       SELECT *
@@ -646,10 +716,6 @@ const getBarangayReportById = async (req, res) => {
     `;
     const result = await pool.query(query, [userId]);
 
-    result.rows.forEach((report, index) => {
-      console.log(`[getBarangayReportById] Report ${index + 1} proof_files:`, report.proof_files);
-    });
-
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching user reports:", err);
@@ -658,22 +724,41 @@ const getBarangayReportById = async (req, res) => {
 };
 
 
-
+// =================================================
+//  USER BLOCKING STATUS
+// =================================================
+const getUserBlockingStatus = async (userId) => {
+  try {
+    const result = await pool.query(
+      `SELECT invalid_count, blocked_until, permanently_blocked 
+       FROM mobile_users 
+       WHERE id = $1`,
+      [userId]
+    );
+    if (result.rows.length > 0) {
+      return result.rows[0];  // Return { invalid_count, blocked_until, permanently_blocked }
+    } else {
+      return null; 
+    }
+  } catch (error) {
+    console.error('Error fetching user blocking status:', error);
+    throw error; 
+  }
+};
 
 
 
 module.exports = {
   submitReport,
+  userBlocking,
   getAllPins,
   getBarangayReports,
   getBarangayReportsForMobile,
-
   getReportsByLocation,
   deleteIncidentReport,
   updateReportStatus,
   uploadProof,
   transferReport,
-
   getBarangayReportById,
-
+  getUserBlockingStatus,
 };

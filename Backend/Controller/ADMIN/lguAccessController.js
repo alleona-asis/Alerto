@@ -1,9 +1,11 @@
 const pool = require('../../PostgreSQL/database');
 const fs = require('fs');
 const path = require('path');
+const {supabase} = require('../../PostgreSQL/supabaseClient');
+
 
 // =================================================
-// GET ALL PENDING ACCOUNTS
+// GET ALL PENDING LGU ACCOUNTS
 // =================================================
 const getPendingAccount = async (req, res) => {
   try {
@@ -32,14 +34,14 @@ const markAsRead = async (req, res) => {
 
   console.log(`Mark as read request received for account ID: ${id} by admin: ${adminName}`);
 
-  try {
-    const result = await pool.query(
-    `UPDATE admin_accounts
-    SET is_read = TRUE, read_by = $1, read_at = NOW()
-    WHERE id = $2
-    RETURNING *`,
-    [adminName, id]
-  );
+    try {
+      const result = await pool.query(
+      `UPDATE admin_accounts
+      SET is_read = TRUE, read_by = $1, read_at = NOW()
+      WHERE id = $2
+      RETURNING *`,
+      [adminName, id]
+    );
 
 
     if (result.rowCount === 0) {
@@ -149,7 +151,7 @@ const deleteLGUAccount = async (req, res) => {
     ].forEach(({ file, folder }) => {
       if (!file) return;
       const filePath = path.join(process.cwd(), 'uploads', folder, file);
-      console.log(`🔍 Deleting: ${filePath}`);
+      console.log(`Deleting: ${filePath}`);
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
@@ -192,19 +194,13 @@ const getTotalLGUAccounts = async (req, res) => {
 
     res.status(200).json({
       total: parseInt(totalRes.rows[0].total),
-      graphData: statusRes.rows // [{ status: 'Approved', value: 5 }, ...]
+      graphData: statusRes.rows
     });
   } catch (error) {
     console.error("Error fetching total LGU accounts:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-
-
-
 
 
 module.exports = {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from 'react-router-dom';
 import LGUNavbar from '../../../components/NavBar/LGU-Navbar';
 import LGUSidebar from '../../../components/SideBar/LGU-Sidebar';
 import '../../../components/SideBar/styles.css';
@@ -18,7 +17,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
-
 
 const getStatusColor = (status) => {
   switch (status.toLowerCase()) {
@@ -48,7 +46,7 @@ export default function LGUBarangayReports() {
   }), 
 []
 );
-  const navigate = useNavigate();
+
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [incidentReports, setIncidentReports] = useState([]);
@@ -57,13 +55,15 @@ export default function LGUBarangayReports() {
   const [sortOption, setSortOption] = useState("incident-type-asc");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
   const [reportToDelete, setReportToDelete] = useState(null);
 
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showImagesModal, setShowImagesModal] = useState(false);
   const [modalUser, setModalUser] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
+  const [activeMiniTab, setActiveMiniTab] = useState("details");
 
   // Helper to capitalize words
   const capitalizeWords = (str) =>
@@ -121,7 +121,7 @@ export default function LGUBarangayReports() {
       case 'incident-type-asc':
         return sorted.sort((a, b) => (a.incident_type || '').localeCompare(b.incident_type || ''));
       case 'date-desc':
-        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        return sorted.sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
       case 'status-asc':
         return sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
       case 'id-asc':
@@ -134,23 +134,43 @@ export default function LGUBarangayReports() {
   // Filtering function
   const filterIncidentReports = (users) => {
     const query = searchQuery.toLowerCase();
-    return users.filter((user) =>
-      [
-        user.id?.toString(),
+
+    return users.filter((user) => {
+      const formattedId = user.id ? `Report-${String(user.id).padStart(5, "0")}` : "";
+
+      let formattedDate = "";
+      if (user.incident_date) {
+        try {
+          const dateObj = new Date(user.incident_date);
+          formattedDate = dateObj.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        } catch (err) {
+          formattedDate = "";
+        }
+      }
+
+      const fields = [
+        formattedId,
+        formattedDate,
         user.incident_type,
-        user.status,
-        user.province,
-        user.city,
+        user.incident_time,
         user.barangay,
-        user.first_name,
-        user.last_name,
-      ]
+        user.reported_by,
+        user.status,
+      ];
+
+      return fields
         .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(query))
-    );
+        .some((field) => field.toString().toLowerCase().includes(query));
+    });
   };
 
-  // Memoized filtered + sorted reports
+
+  // Memoized filtered and sorted reports
   const displayIncidentReports = useMemo(() => {
     const filtered = filterIncidentReports(incidentReports);
     return sortIncidentReports(filtered, sortOption);
@@ -248,7 +268,6 @@ export default function LGUBarangayReports() {
   }, [socket, profile]);
 
 
-
   // =================================================
   //  DELETE REPORT
   // =================================================
@@ -289,30 +308,122 @@ export default function LGUBarangayReports() {
     }
   };
 
-
-  const openImagesModal = (user) => {
-    setModalUser(user);
-    setShowImagesModal(true);
-  };
-
-  const openLocationModal = (user) => {
-    setModalUser(user);
-    setShowLocationModal(true);
-  };
-
   const closeModal = () => {
     setIsClosing(true);
     setTimeout(() => {
-      setShowImagesModal(false);
-      setShowLocationModal(false);
       setModalUser(null);
       setIsClosing(false);
     }, 200);
   };
 
+  const openReportModal = (user) => {
+
+    const logs = Array.isArray(user.status_history) ? user.status_history : [];
+
+    logs.forEach((log, index) => {
+      const date = new Date(log.updated_at).toLocaleString();
+      console.log(
+        `   #${index + 1} → Status: ${log.label}, Updated by: ${log.updated_by}, When: ${date}`
+      );
+    });
+
+    setModalUser({
+      ...user,
+      statusLogs: logs,
+    });
+
+    console.log("modalUser set with logs:", {
+      ...user,
+      statusLogs: logs,
+    });
+
+    setShowBarangayReportDetailsModal(true);
+  };
+
+  // =================================================
+  //  EXPORT REPORTS AS CSV
+  // =================================================
+  const handleExport = () => {
+    if (!displayIncidentReports || displayIncidentReports.length === 0) {
+      toast.warning("No reports available to export.");
+      return;
+    }
+
+    const headers = [
+      "ID",
+      "Latitude",
+      "Longitude",
+      "Barangay",
+      "City",
+      "Province",
+      "Category",
+      "Incident Type",
+      "Description",
+      "Reported Person",
+      "Date Reported",
+      "Media URLs",
+      "Status",
+      "Incident Date",
+      "Incident Time",
+      "Reported By",
+      "Proof Files (URLs)"
+    ];
+
+    const rows = displayIncidentReports.map((r) => {
+      const proofFiles =
+        Array.isArray(r.proof_files) && r.proof_files.length > 0
+          ? r.proof_files.map((file) => file.url).join(" | ")
+          : "";
+
+      const mediaUrls =
+        Array.isArray(r.media_urls) && r.media_urls.length > 0
+          ? r.media_urls.join(" | ")
+          : r.media_urls || "";
+
+      return [
+        `Report-${String(r.id).padStart(5, "0")}`,
+        r.latitude || "",
+        r.longitude || "",
+        r.barangay || "",
+        r.city || "",
+        r.province || "",
+        r.category || "",
+        r.incident_type || "",
+        r.description ? r.description.replace(/\n/g, " ") : "",
+        r.reported_person || "",
+        r.created_at ? format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss") : "",
+        mediaUrls,
+        r.status || "",
+        r.incident_date ? format(new Date(r.incident_date), "yyyy-MM-dd") : "",
+        r.incident_time || "",
+        r.reported_by || "",
+        proofFiles
+      ];
+    });
+
+    const csvContent =
+      [headers, ...rows]
+        .map((row) =>
+          row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    const fileName = `barangay_reports_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    link.href = url;
+    link.setAttribute("download", fileName);
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Reports exported successfully!");
+  };
 
 
-  // Renders the table or no-data animation
   const renderTable = (incidentReports = []) => {
     if (incidentReports.length === 0) {
       return (
@@ -324,9 +435,9 @@ export default function LGUBarangayReports() {
               src={noBarangayAnim}
               style={{ height: '240px', width: '240px' }}
             />
-            <h2 className="no-barangay-title">No Barangay Reports</h2>
+            <h2 className="no-barangay-title">No Barangay Reports Found</h2>
             <p className="no-barangay-subtext">
-              There are currently no barangay reports available. Please add one to get started.
+              There are no barangay reports to display at the moment.
             </p>
           </div>
         </div>
@@ -343,9 +454,6 @@ export default function LGUBarangayReports() {
                 <th className="table-header" style={{ width: '300px' }}>Incident Type</th>
                 <th className="table-header" style={{ width: '300px' }}>Incident Date</th>
                 <th className="table-header" style={{ width: '100px' }}>Incident Time</th>
-                <th className="table-header" style={{ width: '200px' }}>Region</th>
-                <th className="table-header" style={{ width: '200px' }}>Province</th>
-                <th className="table-header" style={{ width: '200px' }}>City</th>
                 <th className="table-header" style={{ width: '200px' }}>Barangay</th>
                 <th className="table-header" style={{ width: '200px' }}>Reported By</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
@@ -356,7 +464,8 @@ export default function LGUBarangayReports() {
             {incidentReports.map((user) => (
               <tr
                 key={user.id}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: "pointer" }}
+                onClick={() => openReportModal(user)}
               >
                 <td className="table-cell">
                   {`Report-${String(user.id).padStart(5, '0')}`}
@@ -375,13 +484,9 @@ export default function LGUBarangayReports() {
                     : ""}
                 </td>
 
-                <td className="table-cell">{capitalizeWords(user.region)}</td>
-                <td className="table-cell">{capitalizeWords(user.province)}</td>
-                <td className="table-cell">{capitalizeWords(user.city)}</td>
                 <td className="table-cell">{capitalizeWords(user.barangay)}</td>
                 <td className="table-cell">{capitalizeWords(user.reported_by)}</td>
 
-                {/* Status select */}
                 <td className="table-cell" style={{ minWidth: 130 }}>
                   <Select
                     value={statusOptions.find(opt => opt.value === (user.status || 'pending'))}
@@ -393,7 +498,6 @@ export default function LGUBarangayReports() {
                   />
                 </td>
 
-                {/* Delete icon (stop row modal) */}
                 <td className="table-cell" style={styles.cell}>
                   <div style={styles.row}>
                     {[
@@ -405,8 +509,6 @@ export default function LGUBarangayReports() {
                           setShowDeleteConfirm(true);
                         },
                       },
-                      { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
-                      { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
                     ].map((icon, idx) => (
                       <img
                         key={idx}
@@ -425,7 +527,6 @@ export default function LGUBarangayReports() {
               </tr>
             ))}
           </tbody>
-
         </table>
       </div>
     );
@@ -447,8 +548,8 @@ export default function LGUBarangayReports() {
           <div
             className="main-content mainContent-slide-right"
             style={{
-              marginLeft: isSidebarCollapsed ? 80 : 270,
-              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)',
+              marginLeft: isSidebarCollapsed ? 80 : 300,
+              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)',
             }}
           >
             <ToastContainer
@@ -482,6 +583,11 @@ export default function LGUBarangayReports() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                <button className="add-barangay-button"
+                  onClick={() => setShowExportConfirm(true)}
+                >
+                  Export CSV
+                </button>
               </div>
             </div>
 
@@ -503,7 +609,6 @@ export default function LGUBarangayReports() {
           </div>
         </div>
       </div>
-
 
       {/* DELETE CONFIRMATION MODAL */}
       {showDeleteConfirm && reportToDelete && (
@@ -574,186 +679,386 @@ export default function LGUBarangayReports() {
         </div>
       )}
 
-      {/* VIEW LOCATION MODAL */}
-      {showLocationModal && modalUser && (
-        <div className="modal-overlay" onClick={closeModal}>
+      {/* EXPORT CONFIRMATION MODAL */}
+      {showExportConfirm && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsClosing(true);
+            setTimeout(() => {
+              setShowExportConfirm(false);
+              setIsClosing(false);
+            }, 200);
+          }}
+        >
           <div
-            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '350px' }}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              maxWidth: "50%",
-              maxHeight: "90%",
-              overflow: "auto",
-              textAlign: "center",
-            }}
           >
-            <h2 className="modal-title">
-              {`${modalUser.incident_type}`}
-            </h2>
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowExportConfirm(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            />
 
-            {/* OpenStreetMap section */}
-            {modalUser.latitude && modalUser.longitude && (
-              <div style={{ height: "300px", marginTop: "20px", borderRadius: "8px", overflow: "hidden", marginBottom: "20px" }}>
-                <MapContainer
-                  center={[modalUser.latitude, modalUser.longitude]}
-                  zoom={15}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <Marker position={[modalUser.latitude, modalUser.longitude]}>
-                    <Popup>{`${modalUser.first_name} ${modalUser.last_name}'s Report Location`}</Popup>
-                  </Marker>
-                </MapContainer>
-              </div>
-            )}
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Export Barangay Reports</h3>
+            <p className="sub-title" style={{ textAlign: 'center' }}>
+              Are you sure you want to export all reports as a CSV file?
+            </p>
 
-            <button onClick={closeModal} className="modal-cancel-button">
-              Close
-            </button>
+            <div className="button-container">
+              <button
+                className="cancel-button"
+                onClick={() => {
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowExportConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button-export"
+                onClick={() => {
+                  handleExport();
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowExportConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* VIEW IMAGES MODAL */}
-      {showImagesModal && modalUser && (
+      {/* VIEW BARANGAY REPORT MODAL */}
+      {showBarangayReportDetailsModal && modalUser && (
         <div className="modal-overlay" onClick={closeModal}>
           <div
             className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+            style={{ maxWidth: "600px", width: "90%" }}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "500px",
-              height: "600px",
-              overflow: "hidden",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              position: "relative",
-            }}
           >
-            <h2 className="modal-title">{modalUser.incident_type}</h2>
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={closeModal}
+            />
+            <h3 className="modal-title" style={{ textAlign: "center" }}>
+              {modalUser.incident_type}
+            </h3>
+
             <div
+              className="mini-navbar"
               style={{
-                width: "100%",
-                height: "400px",
                 display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                position: "relative",
-                margin: "20px 0",
-                overflow: "hidden",
+                gap: "30px",
+                margin: "15px 0",
+                borderBottom: "1px solid #eee",
               }}
             >
-            {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
-              <>
-                {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={modalUser.media_urls[currentImageIndex]}
-                    alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                      cursor: "zoom-in",
-                      transition: "transform 0.3s ease",
-                    }}
-                    onClick={() =>
-                      window.open(modalUser.media_urls[currentImageIndex], "_blank")
-                    }
-                  />
-                ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                  <video
-                    controls
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                    }}
-                  >
-                    <source
-                      src={modalUser.media_urls[currentImageIndex]}
-                      type="video/mp4"
-                    />
-                    Your browser does not support the video tag.
-                  </video>
-                ) : (
-                  <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
-                )}
-
-                {/* Left arrow */}
-                {currentImageIndex > 0 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex - 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8592;
-                  </div>
-                )}
-
-                {/* Right arrow */}
-                {currentImageIndex < modalUser.media_urls.length - 1 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex + 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8594;
-                  </div>
-                )}
-              </>
-            ) : (
-              <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
-            )}
+              {["details", "media", "map"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveMiniTab(tab)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: activeMiniTab === tab ? "600" : "400",
+                    color: activeMiniTab === tab ? "#007bff" : "#555",
+                    borderBottom:
+                      activeMiniTab === tab
+                        ? "2px solid #007bff"
+                        : "2px solid transparent",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
             </div>
-            <button
-              onClick={closeModal}
-              className="modal-cancel-button"
-              style={{ marginBottom: "10px" }}
+
+            <div
+              className="modal-body"
+              style={{
+                padding: "20px 25px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                fontFamily: "Poppins, sans-serif",
+                fontSize: "14px",
+                color: "#374856",
+              }}
             >
-              Close
-            </button>
+              {activeMiniTab === "details" && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Reported By:</span>
+                    <span className="modal-value">
+                      <b>{modalUser.reported_by}</b>
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Date & Time:</span>
+                    <span className="modal-value">
+                      <b>
+                        {modalUser.incident_date && modalUser.incident_time
+                          ? new Date(
+                              `${modalUser.incident_date.split("T")[0]}T${
+                                modalUser.incident_time
+                              }`
+                            ).toLocaleString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Not specified"}
+                      </b>
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span className="modal-label" style={{ marginBottom: "5px" }}>
+                      Report Description:
+                    </span>
+                    <div className="modal-value">
+                      <b>{modalUser.description}</b>
+                    </div>
+                  </div>
+
+                  {modalUser.statusLogs?.length > 0 && (
+                    <div style={{ marginTop: "20px" }}>
+                      <h3
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: "600",
+                          marginBottom: "12px",
+                          borderBottom: "1px solid #eee",
+                          paddingBottom: "4px",
+                          color: "#333",
+                        }}
+                      >
+                        Status History
+                      </h3>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {modalUser.statusLogs.map((log, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              padding: "10px 14px",
+                              border: "1px solid #eee",
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontWeight: "bold",
+                                fontSize: "14px",
+                                color: "#111",
+                                marginBottom: "4px",
+                                textTransform: "capitalize",
+                              }}
+                            >
+                              {log.label}
+                            </span>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: "13px",
+                                color: "#555",
+                              }}
+                            >
+                              <span>{new Date(log.updated_at).toLocaleString()}</span>
+                              <em>{log.updated_by}</em>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Date Reported:</span>
+                    <div className="modal-value">
+                      <b>
+                        {modalUser.created_at
+                          ? new Date(modalUser.created_at).toLocaleString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Not specified"}
+                      </b>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {activeMiniTab === "media" && (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "400px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+                    <>
+                      {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                        <img
+                          src={modalUser.media_urls[currentImageIndex]}
+                          alt={`Report-${modalUser.id}`}
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                            objectFit: "contain",
+                            cursor: "zoom-in",
+                          }}
+                          onClick={() =>
+                            window.open(modalUser.media_urls[currentImageIndex], "_blank")
+                          }
+                        />
+                      ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
+                        <video
+                          controls
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                            objectFit: "contain",
+                          }}
+                        >
+                          <source
+                            src={modalUser.media_urls[currentImageIndex]}
+                            type="video/mp4"
+                          />
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <p style={{ color: "#999" }}>Unsupported file type</p>
+                      )}
+
+                      {currentImageIndex > 0 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex - 1);
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: "10px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "24px",
+                            cursor: "pointer",
+                            backgroundColor: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            padding: "5px",
+                          }}
+                        >
+                          &#8592;
+                        </div>
+                      )}
+
+                      {currentImageIndex < modalUser.media_urls.length - 1 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex + 1);
+                          }}
+                          style={{
+                            position: "absolute",
+                            right: "10px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "24px",
+                            cursor: "pointer",
+                            backgroundColor: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            padding: "5px",
+                          }}
+                        >
+                          &#8594;
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ color: "#999" }}>No media available.</p>
+                  )}
+                </div>
+              )}
+
+              {activeMiniTab === "map" && (
+                <>
+                  {modalUser.latitude && modalUser.longitude ? (
+                    <div
+                      style={{
+                        height: "300px",
+                        marginTop: "10px",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <MapContainer
+                        center={[modalUser.latitude, modalUser.longitude]}
+                        zoom={15}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={[modalUser.latitude, modalUser.longitude]}>
+                          <Popup>{`${modalUser.first_name} ${modalUser.last_name}'s Report Location`}</Popup>
+                        </Marker>
+                      </MapContainer>
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: "center", color: "#999" }}>
+                      No location data available.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -881,6 +1186,5 @@ const bounceEffect = (el) => {
   setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
   setTimeout(() => (el.style.transform = "translateY(0)"), 450);
 };
-
 
 

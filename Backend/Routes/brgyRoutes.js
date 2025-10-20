@@ -102,7 +102,6 @@ const proofUpload = multer({
 // =================================================
 // MULTER SETUP FOR OFFICIALS PROFILE PICTURE
 // =================================================
-// Storage
 const officialStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const folder = "uploads/officials";
@@ -149,8 +148,6 @@ const {
 } = require('../Controller/BARANGAY/mobileUserRegistry');
 
 router.use(authenticateToken);
-
-// POST upload front/back ID for mobile user
 router.post(
   '/mobile-user-profile/:userId/upload-id',
   uploadWithSupabase([{ name: 'files', maxCount: 2 }]), // max 2 files (front/back)
@@ -179,43 +176,52 @@ router.get('/mobile-user-registry', getAllMobileUsers);
 
 router.delete('/delete-mobile-user/:id', deleteMobileUser);
 router.patch('/update-mobile-user-status/:id', updateMobileUserStatus);
+router.put('/notifications/:id/mark-read', markAsRead);
+router.get('/notifications', getNotificationsByLocation);
+router.delete('/notifications/:id', deleteNotification);
+router.get('/mobile-notifications/:userId', getMobileUserNotifications);
+router.patch('/notifications/:notificationId/read', markMobileNotificationAsRead);
 
 // =================================================
 //  INCIDENT REPORTING
 // =================================================
 const {
     submitReport,
+    userBlocking,
     getAllPins,
     getBarangayReports,
     getBarangayReportsForMobile,
-
-    // Web
     getReportsByLocation,
     deleteIncidentReport,
     updateReportStatus,
     uploadProof,
     transferReport,
-    getBarangayReportById
+    getBarangayReportById,
+    getUserBlockingStatus
 } = require('../Controller/BARANGAY/incidentReporting');
 
-// POST Incident Report (max 5 files: images/videos)
+// Mobile
 router.post(
   '/submit-incident-report',
-  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), // handle up to 5 media files
+  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), 
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'media');
-
-      if (uploadedFiles.length === 0) {
+      const allFiles = [];
+      for (const key in req.supabaseFiles) {
+        if (Array.isArray(req.supabaseFiles[key])) {
+          allFiles.push(...req.supabaseFiles[key]);
+        }
+      }
+      
+      const uploadedFiles = allFiles.filter(f => f.field === 'media');  // Ensure 'field' matches
+      
+       if (uploadedFiles.length === 0) {
         return res.status(400).json({ message: 'No media files uploaded.' });
       }
-
-      // Get Supabase private URLs (signed URLs for sensitive incident reports)
+      
       const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
-
-      // Call your existing report handler, passing mediaUrls
+      
       await submitReport(req, res, { mediaUrls });
-
     } catch (err) {
       console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
       res.status(500).json({ message: 'Incident report upload failed' });
@@ -224,26 +230,15 @@ router.post(
 );
 
 
-router.get('/all-report-pins', getAllPins);
 
+router.get('/all-report-pins', getAllPins);
 router.get('/barangay-get-all-reports', authenticateToken, getBarangayReports);
 router.get('/all-barangay-reports', authenticateToken, getBarangayReportsForMobile);
 
-// GET proof files for a report
-//router.get('/proof-files-report/:id', fetchProofFilesBackend);
-
-
-
-
-// Blockings
-router.get('/reports/:id', getBarangayReportById);
-
-//Web
+// Web
 router.get('/barangay-incident-reports', getReportsByLocation);
 router.delete('/barangay-delete-incident-report/:id', deleteIncidentReport);
 router.patch('/update-barangay-report-status/:id', updateReportStatus);
-
-
 router.post(
   '/upload-proof/:id',
   authenticateToken,
@@ -267,6 +262,8 @@ router.post(
 );
 
 router.patch('/transfer-report/:id', transferReport);
+router.get('/reports/:id', getBarangayReportById);
+
 
 // =================================================
 //  DOCUMENT REQUEST
@@ -287,7 +284,6 @@ router.patch('/update-document-request-status/:id', updateDocumentRequestStatus)
 router.patch('/reject-document-request/:requestId', rejectDocumentRequest);
 
 
-
 // =================================================
 //  ANNOUNCEMENTS
 // =================================================
@@ -306,7 +302,9 @@ const {
   deleteOfficial,
   getBarangayOfficialsForMobile,
   unfollowBarangay,
-  deleteAnnouncement
+  deleteAnnouncement,
+  sendAlert,
+  getMobileNotifications
 } = require('../Controller/BARANGAY/announcements');
 
 // Announcements (always public bucket)
@@ -368,49 +366,66 @@ router.post(
 );
 
 router.get("/get-officials", getOfficials);
-
-// Using DELETE method
 router.delete("/delete-official/:id", deleteOfficial);
+router.get('/officials/mobile', getBarangayOfficialsForMobile);
+router.post('/unfollow-barangay', unfollowBarangay);
 
-
-
-
-// ================= GET ALL MOBILE USERS BY LOCATION ==================
-
-
-
-// Get all notifications
-router.get('/notifications', getNotificationsByLocation);
-
-// ================= DELETE NOTIFICATION ==================
-router.delete('/notifications/:id', deleteNotification);
-
-
-// ================= MARK AS READ ==================
-router.put('/notifications/:id/mark-read', markAsRead);
-
-
-
-
-
-
-
-
-
-
-router.get('/mobile-notifications/:userId', getMobileUserNotifications);
-
-router.patch('/notifications/:notificationId/read', markMobileNotificationAsRead);
-
-
+// Send Alert
+router.post('/send-alert', authenticateToken, sendAlert);
+router.get('/alert-notifications/:userId', getMobileNotifications);
 
 
 
 // =================================================
-router.get('/officials/mobile', getBarangayOfficialsForMobile);
+//  BLOCKING RULE
+// =================================================
+router.post('/user-blocking/apply', async (req, res) => {
+  const { userId, invalidCount } = req.body;
+
+  if (!userId || invalidCount == null) {
+    return res.status(400).json({ message: "Missing userId or invalidCount" });
+  }
+
+  try {
+    const result = await applyBlockingRules(userId, invalidCount);
+    res.json({
+      message: "Blocking rules applied successfully",
+      userId,
+      ...result
+    });
+  } catch (err) {
+    console.error("Error applying blocking rules:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 
-router.post('/unfollow-barangay', unfollowBarangay);
+router.get('/user-blocking/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const blockData = await getUserBlockingStatus(userId);
+    if (blockData) {
+      res.status(200).json(blockData);  // e.g., { invalid_count: 0, blocked_until: null, permanently_blocked: false }
+    } else {
+      res.status(404).json({ message: 'No blocking status found for this user.' });
+    }
+  } catch (err) {
+    console.error('Error fetching user blocking status:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+//Mark Notifications as Read
+router.patch('/notifications/:notificationId/read', async (req, res) => {
+  const notificationId = req.params.notificationId;
+  try {
+    const result = await markMobileNotificationAsRead(notificationId);
+    res.status(200).json({ message: 'Notification marked as read', result });
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 
 

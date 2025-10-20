@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Player } from '@lottiefiles/react-lottie-player';
 import BRGYNavbar from '../../../components/NavBar/BRGY-Navbar';
 import BRGYSidebar from '../../../components/SideBar/BRGY-Sidebar';
-import developmentAnimation from '@/assets/animations/Software Development.json';
 import '../../../components/SideBar/styles.css';
-import { motion } from 'framer-motion';
 import axios from '../../../axios/axiosInstance';
 import defaultProfile from '@/assets/icons/default.png';
-import DefaultIcon from "@/assets/icons/default.png";
-import { ToastContainer } from "react-toastify";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from 'react-toastify';
 
 export default function BRGYProfile() {
   const [BRGYProfile, setBRGYProfile] = useState(null);
@@ -19,11 +12,10 @@ export default function BRGYProfile() {
   const [error, setError] = useState(null);
   const userId = localStorage.getItem('userId');
   const token = localStorage.getItem('token');
-  const navigate = useNavigate();
 
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isDevelopmentOngoing, setIsDevelopmentOngoing] = useState(true);
   const [activeTab, setActiveTab] = useState('Announcement');
+  const [hovered, setHovered] = useState(null);
 
   const [isAnnouncementModalOpen, setAnnouncementModalOpen] = useState(false);
   const [announcementText, setAnnouncementText] = useState('');
@@ -32,15 +24,12 @@ export default function BRGYProfile() {
   const [isClosing, setIsClosing] = useState(false);
   const [isViewAnnouncementModalOpen, setViewAnnouncementModalOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [isSendAlertModalOpen, setIsSendAlertModalOpen] = useState(false);
 
 
-
-  const [isEditProfileModalOpen, setEditProfileModalOpen] = useState(false);
-
-
-
-
-  // Fetch Barangay Profile
+  // =================================================
+  //  FETCH BARANGAY PROFILE
+  // =================================================
   useEffect(() => {
     if (!userId || !token) {
       setError('User not logged in.');
@@ -67,340 +56,354 @@ export default function BRGYProfile() {
   }, [userId, token]);
 
 
+  // =================================================
+  //  CREATE ANNOUNCEMENT
+  // =================================================
+  const handlePostAnnouncement = async (e) => {
+    e.preventDefault();
 
-const handlePostAnnouncement = async (e) => {
-  e.preventDefault();
-
-  if (!announcementTitle && !announcementText && !announcementImage) {
-    alert('Please add a title, text, or image for the announcement.');
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append('title', announcementTitle);
-    formData.append('text', announcementText);
-
-    // Add who posted it
-    const userId = localStorage.getItem('userId');
-    const userName = `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim();
-    formData.append('posted_by_id', userId);
-    formData.append('posted_by_name', userName);
-
-    // Add location info
-    formData.append('region', BRGYProfile?.region || '');
-    formData.append('province', BRGYProfile?.province || '');
-    formData.append('city', BRGYProfile?.city || '');
-    formData.append('barangay', BRGYProfile?.barangay || '');
-
-    if (announcementImage) {
-      Array.from(announcementImage).forEach(file => {
-        formData.append('images', file); // Must match backend 'images'
-      });
+    if (!announcementTitle && !announcementText && !announcementImage) {
+      alert('Please add a title, text, or image for the announcement.');
+      return;
     }
 
-    const token = localStorage.getItem('token');
-
-    const response = await axios.post('/api/brgy/create-announcements', formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data', // Axios handles boundaries
-      },
-    });
-
-    console.log('Announcement created:', response.data);
-
-    // ✅ Immediately add new announcement to state
-    const newAnnouncement = response.data.announcement || response.data; // depends on backend response
-    setAnnouncements(prev => [newAnnouncement, ...prev]);
-
-    // Reset modal
-    setIsClosing(true);
-    setTimeout(() => {
-      setAnnouncementModalOpen(false);
-      setIsClosing(false);
-      setAnnouncementText('');
-      setAnnouncementTitle('');
-      setAnnouncementImage(null);
-    }, 300);
-
-  } catch (error) {
-    console.error('Error posting announcement:', error);
-    alert(error.response?.data?.message || error.message);
-  }
-};
-
-
-
-const [announcements, setAnnouncements] = useState([]);
-const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
-const [announcementError, setAnnouncementError] = useState(null);
-
-useEffect(() => {
-  const fetchAnnouncements = async () => {
-    setLoadingAnnouncements(true);
-    setAnnouncementError(null);
     try {
-      const response = await axios.get('/api/brgy/get-announcements', {
+      const formData = new FormData();
+      formData.append('title', announcementTitle);
+      formData.append('text', announcementText);
+
+      const userId = localStorage.getItem('userId');
+      const userName = `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim();
+      formData.append('posted_by_id', userId);
+      formData.append('posted_by_name', userName);
+
+      formData.append('region', BRGYProfile?.region || '');
+      formData.append('province', BRGYProfile?.province || '');
+      formData.append('city', BRGYProfile?.city || '');
+      formData.append('barangay', BRGYProfile?.barangay || '');
+
+      if (announcementImage) {
+        Array.from(announcementImage).forEach(file => {
+          formData.append('images', file);
+        });
+      }
+
+      const token = localStorage.getItem('token');
+
+      const response = await axios.post('/api/brgy/create-announcements', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
       });
 
-      let allAnnouncements = response.data; // Assuming array
-      if (BRGYProfile) {
-        // Filter by exact match
-        allAnnouncements = allAnnouncements.filter(
-          ann =>
-            ann.region === BRGYProfile.region &&
-            ann.province === BRGYProfile.province &&
-            ann.city === BRGYProfile.city &&
-            ann.barangay === BRGYProfile.barangay
-        );
-      }
+      toast.success('Announcement posted successfully!');
 
-      setAnnouncements(allAnnouncements);
+      const newAnnouncement = response.data.announcement || response.data;
+      setAnnouncements(prev => [newAnnouncement, ...prev]);
+
+      setIsClosing(true);
+      setTimeout(() => {
+        setAnnouncementModalOpen(false);
+        setIsClosing(false);
+        setAnnouncementText('');
+        setAnnouncementTitle('');
+        setAnnouncementImage(null);
+      }, 300);
+
     } catch (error) {
-      console.error('Failed to fetch announcements:', error);
-      setAnnouncementError('Failed to load announcements.');
-    } finally {
-      setLoadingAnnouncements(false);
+      console.error('Error posting announcement:', error);
+      alert(error.response?.data?.message || error.message);
     }
   };
 
-  if (BRGYProfile) {
-    fetchAnnouncements();
-  }
-}, [token, BRGYProfile]);
+  // =================================================
+  //  FETCH ANNOUNEMENTS
+  // =================================================
+  const [announcements, setAnnouncements] = useState([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [announcementError, setAnnouncementError] = useState(null);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      setLoadingAnnouncements(true);
+      setAnnouncementError(null);
+      try {
+        const response = await axios.get('/api/brgy/get-announcements', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let allAnnouncements = response.data;
+        if (BRGYProfile) {
+          allAnnouncements = allAnnouncements.filter(
+            ann =>
+              ann.region === BRGYProfile.region &&
+              ann.province === BRGYProfile.province &&
+              ann.city === BRGYProfile.city &&
+              ann.barangay === BRGYProfile.barangay
+          );
+        }
+
+        setAnnouncements(allAnnouncements);
+      } catch (error) {
+        console.error('Failed to fetch announcements:', error);
+        setAnnouncementError('Failed to load announcements.');
+      } finally {
+        setLoadingAnnouncements(false);
+      }
+    };
+    if (BRGYProfile) {
+      fetchAnnouncements();
+    }
+  }, [token, BRGYProfile]);
 
 
+  // =================================================
+  //  BARANGAY OFFICIALS
+  // =================================================
+  const [isAddOfficialsModalOpen, setAddOfficialsModalOpen] = useState(false);
+  const [officialName, setOfficialName] = useState("");
+  const [officialPosition, setOfficialPosition] = useState("");
+  const [officialContact, setOfficialContact] = useState("");
+  const [officialImage, setOfficialImage] = useState(null);
+  const [selectedOfficial, setSelectedOfficial] = useState(null);
 
-// Barangay Officials
-const [isAddOfficialsModalOpen, setAddOfficialsModalOpen] = useState(false);
-const [officialName, setOfficialName] = useState("");
-const [officialPosition, setOfficialPosition] = useState("");
-const [officialContact, setOfficialContact] = useState("");
-const [officialImage, setOfficialImage] = useState(null);
-const [selectedOfficial, setSelectedOfficial] = useState(null); // null initially
+  const handleAddOfficial = async (e) => {
+    e.preventDefault();
 
-
-const handleAddOfficial = async (e) => {
-  e.preventDefault();
-
-  if (!officialName || !officialPosition || !officialContact) {
-    alert("Please fill out all required fields.");
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append("name", officialName);
-    formData.append("position", officialPosition);
-    formData.append("contact_number", officialContact);
-
-    // Profile picture
-    if (officialImage) {
-      formData.append("image", officialImage);
+    if (!officialName || !officialPosition || !officialContact || !officialImage) {
+      alert("Please fill out all required fields.");
+      return;
     }
 
-    // Add location + creator from profile
-    formData.append("region", BRGYProfile?.region || "");
-    formData.append("province", BRGYProfile?.province || "");
-    formData.append("city", BRGYProfile?.city || "");
-    formData.append("barangay", BRGYProfile?.barangay || "");
+    try {
+      const formData = new FormData();
+      formData.append("name", officialName);
+      formData.append("position", officialPosition);
+      formData.append("contact_number", officialContact);
 
-    const userId = localStorage.getItem("userId");
-    formData.append("created_by", userId);
+      if (officialImage) {
+        formData.append("image", officialImage);
+      }
 
-    const token = localStorage.getItem("token");
+      formData.append("region", BRGYProfile?.region || "");
+      formData.append("province", BRGYProfile?.province || "");
+      formData.append("city", BRGYProfile?.city || "");
+      formData.append("barangay", BRGYProfile?.barangay || "");
 
-    const response = await axios.post("/api/brgy/create-official", formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    });
+      const userId = localStorage.getItem("userId");
+      formData.append("created_by", userId);
 
-    console.log("✅ Official created:", response.data);
+      const token = localStorage.getItem("token");
 
-    const officialData = response.data.official;
+      const response = await axios.post("/api/brgy/create-official", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    // Use temporary local URL if uploading new image
-    const imageUrl = officialImage
-      ? URL.createObjectURL(officialImage) // <-- instant preview
-      : officialData.image
-      ? `/uploads/officials/${officialData.image}`
-      : DefaultIcon;
+      console.log("Official created:", response.data);
+      toast.success('Official added successfully!');
 
-    const newOfficial = {
-      id: officialData.id,
-      name: officialData.name || "",
-      position: officialData.position || "",
-      contact_number: officialData.contact_number || "",
-      profile_picture: {
-        url: imageUrl,
-      },
-      region: officialData.region || "",
-      province: officialData.province || "",
-      city: officialData.city || "",
-      barangay: officialData.barangay || "",
-      created_by: officialData.created_by || "",
+      const officialData = response.data.official;
+
+      const imageUrl = officialImage
+        ? URL.createObjectURL(officialImage)
+        : officialData.image
+        ? `/uploads/officials/${officialData.image}`
+        : "/icons/default.png";
+
+      const newOfficial = {
+        id: officialData.id,
+        name: officialData.name || "",
+        position: officialData.position || "",
+        contact_number: officialData.contact_number || "",
+        profile_picture: {
+          url: imageUrl,
+        },
+        region: officialData.region || "",
+        province: officialData.province || "",
+        city: officialData.city || "",
+        barangay: officialData.barangay || "",
+        created_by: officialData.created_by || "",
+      };
+      setOfficials(prev => [newOfficial, ...prev]);
+
+      setOfficialName("");
+      setOfficialPosition("");
+      setOfficialContact("");
+      setOfficialImage(null);
+      setAddOfficialsModalOpen(false);
+
+    } catch (error) {
+      console.error("Error adding official:", error);
+      alert(error.response?.data?.message || error.message);
+    }
+  };
+
+  const [officials, setOfficials] = useState([]);
+
+  useEffect(() => {
+    const fetchOfficials = async () => {
+      if (!token) return;
+
+      try {
+        const response = await axios.get("/api/brgy/get-officials", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let allOfficials = response.data;
+
+        if (BRGYProfile) {
+          allOfficials = allOfficials.filter(
+            o =>
+              o.barangay === BRGYProfile.barangay &&
+              o.city === BRGYProfile.city &&
+              o.province === BRGYProfile.province &&
+              o.region === BRGYProfile.region
+          );
+        }
+
+        setOfficials(allOfficials);
+      } catch (err) {
+        console.error("Error fetching officials:", err);
+      }
     };
 
-    // Update UI immediately
-    setOfficials(prev => [newOfficial, ...prev]);
+    fetchOfficials();
+  }, [BRGYProfile, token]);
 
 
-    // Reset modal
-    setOfficialName("");
-    setOfficialPosition("");
-    setOfficialContact("");
-    setOfficialImage(null);
-    setAddOfficialsModalOpen(false);
+  // =================================================
+  //  DELETE ANNOUNCEMENT
+  // =================================================
+  const [officialToDelete, setOfficialToDelete] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  } catch (error) {
-    console.error("❌ Error adding official:", error);
-    alert(error.response?.data?.message || error.message);
-  }
-};
-
-const [officials, setOfficials] = useState([]);
-
-
-useEffect(() => {
-  const fetchOfficials = async () => {
-    if (!token) return;
+  const deleteOfficial = async (officialId) => {
+    if (!officialId) return;
 
     try {
-      const response = await axios.get("/api/brgy/get-officials", {
+      const token = localStorage.getItem("token");
+
+      await axios.delete(`/api/brgy/delete-official/${officialId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOfficials((prev) => prev.filter((o) => o.id !== officialId));
+
+      setShowDeleteConfirm(false);
+      setOfficialToDelete(null);
+
+      console.log("Official deleted successfully!");
+      toast.success('Official deleted successfully!');
+    } catch (error) {
+      console.error("Failed to delete official:", error);
+      alert(error.response?.data?.message || "Failed to delete official");
+    }
+  };
+
+
+  // =================================================
+  //  HANDLE COMMENTS
+  // =================================================
+  const [comments, setComments] = useState([]);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!selectedAnnouncement) return;
+      try {
+        const response = await axios.get(`/api/brgy/get-comments/${selectedAnnouncement.id}`);
+        setComments(response.data);
+      } catch (error) {
+        console.error("Failed to fetch comments:", error);
+      }
+    };
+
+    fetchComments();
+  }, [selectedAnnouncement]);
+
+
+  // =================================================
+  //  DELETE ANNOUNCEMENT
+  // =================================================
+  const [announcementToDelete, setAnnouncementToDelete] = useState(null);
+  const [showDeleteAnnouncementConfirm, setShowDeleteAnnouncementConfirm] = useState(false);
+
+  const handleDeleteAnnouncement = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.delete(`/api/brgy/delete-announcement/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      let allOfficials = response.data;
+      console.log("Delete response:", res.data);
+      setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
 
-      // Filter by current barangay
-      if (BRGYProfile) {
-        allOfficials = allOfficials.filter(
-          o =>
-            o.barangay === BRGYProfile.barangay &&
-            o.city === BRGYProfile.city &&
-            o.province === BRGYProfile.province &&
-            o.region === BRGYProfile.region
-        );
-      }
-
-      setOfficials(allOfficials);
+      toast.success("Announcement deleted successfully!");
     } catch (err) {
-      console.error("Error fetching officials:", err);
+      console.error("Failed to delete announcement:", err.response?.data || err.message);
+      toast.error("Failed to delete announcement. Please try again.");
     }
   };
 
-  fetchOfficials();
-}, [BRGYProfile, token]);
+  // =================================================
+  //  ALERT NOTIFICATIONS
+  // =================================================
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
+  const handleSendAlert = async (e) => {
+    e.preventDefault();
 
-//Delete 
-const [officialToDelete, setOfficialToDelete] = useState(null);
-const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    if (!alertTitle && !alertMessage) {
+      alert('Please add a title or message for the alert.');
+      return;
+    }
 
-const deleteOfficial = async (officialId) => {
-  if (!officialId) return;
-
-  try {
-    const token = localStorage.getItem("token");
-
-    await axios.delete(`/api/brgy/delete-official/${officialId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // Remove from UI
-    setOfficials((prev) => prev.filter((o) => o.id !== officialId));
-
-    // Close modal
-    setShowDeleteConfirm(false);
-    setOfficialToDelete(null);
-
-    console.log("Official deleted successfully!");
-  } catch (error) {
-    console.error("Failed to delete official:", error);
-    alert(error.response?.data?.message || "Failed to delete official");
-  }
-};
-
-
-// inside your component
-const [comments, setComments] = useState([]); // initialize as empty array
-const [newComment, setNewComment] = useState(''); // for input field
-
-useEffect(() => {
-  const fetchComments = async () => {
-    if (!selectedAnnouncement) return;
     try {
-      const response = await axios.get(`/api/brgy/get-comments/${selectedAnnouncement.id}`);
-      setComments(response.data);
+      const payload = {
+        title: alertTitle,
+        text: alertMessage,
+        sent_by_id: localStorage.getItem('userId'),
+        sent_by_name: `${BRGYProfile.first_name || ''} ${BRGYProfile.last_name || ''}`.trim(),
+        region: BRGYProfile?.region || '',
+        province: BRGYProfile?.province || '',
+        city: BRGYProfile?.city || '',
+        barangay: BRGYProfile?.barangay || ''
+      };
+
+      const token = localStorage.getItem('token');
+
+      const response = await axios.post('/api/brgy/send-alert', payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('Alert sent:', response.data);
+      toast.success('Alert sent successfully!');
+
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsSendAlertModalOpen(false);
+        setIsClosing(false);
+        setAlertTitle('');
+        setAlertMessage('');
+      }, 300);
+
     } catch (error) {
-      console.error("Failed to fetch comments:", error);
+      console.error('Error sending alert:', error);
+      alert(error.response?.data?.message || error.message);
     }
   };
-
-  fetchComments();
-}, [selectedAnnouncement]);
-
-
-const handleAddComment = async () => {
-  if (!newComment.trim()) return;
-
-  try {
-    const userId = localStorage.getItem("userId"); 
-
-    const response = await axios.post('/api/brgy/add-comment', {
-      userId,
-      announcementId: selectedAnnouncement.id,
-      commentText: newComment,
-    });
-
-    setComments(prev => [...prev, response.data.comment]);
-    setNewComment('');
-  } catch (error) {
-    console.error("Failed to add comment:", error);
-  }
-};
-
-
-const [announcementToDelete, setAnnouncementToDelete] = useState(null);
-const [showDeleteAnnouncementConfirm, setShowDeleteAnnouncementConfirm] = useState(false);
-
-
-const handleDeleteAnnouncement = async (id) => {
-  try {
-    const token = localStorage.getItem("token"); // ✅ use localStorage for web
-
-    const res = await axios.delete(`/api/brgy/delete-announcement/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    console.log("✅ Delete response:", res.data);
-
-    // Update UI
-    setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
-
-    toast.success("✅ Announcement deleted successfully!");
-  } catch (err) {
-    console.error("❌ Failed to delete announcement:", err.response?.data || err.message);
-    toast.error("⚠️ Failed to delete announcement. Please try again.");
-  }
-};
-
-
-
-
-
-
-
 
 
   return (
@@ -416,12 +419,33 @@ const handleDeleteAnnouncement = async (id) => {
         <div 
           className="main-content"
           style={{ 
-            marginLeft: isSidebarCollapsed ? 80 : 270,
-            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)',
+            marginLeft: isSidebarCollapsed ? 80 : 300,
+            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)',
             transition: 'margin-left 0.3s, width 0.3s',
             overflow: 'hidden'
           }}
         >
+          <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="colored"
+            style={{
+              fontFamily: 'Poppins, sans-serif',
+              fontSize: '12px',
+              borderRadius: '8px',
+            }}
+            toastStyle={{
+              borderRadius: '8px',
+              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)',
+            }}
+          />
           <div className="header-row">
             <h2 className="page-title">Barangay Profile</h2>
           </div>
@@ -466,34 +490,34 @@ const handleDeleteAnnouncement = async (id) => {
                     {announcements.length === 1 ? 'Post' : 'Posts'}
                   </p>
                 </div>
-
-
-                {/* Followers */}
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 16 }}>2.5K</p>
-                  <p style={{ margin: 0, fontSize: 14 }}>Followers</p>
-                </div>
               </div>
 
               {/* 2nd row: Announcement button, Edit button */}
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
+                  onClick={() => setAnnouncementModalOpen(true)}
+                  onMouseEnter={() => setHovered('announcement')}
+                  onMouseLeave={() => setHovered(null)}
                   style={{
                     padding: '10px 20px',
                     borderRadius: '5px',
                     border: '1px solid #4894FE',
-                    backgroundColor: '#4894FE',
+                    backgroundColor: hovered === 'announcement' ? '#4894FE' : '#4894FE',
                     color: '#fff',
                     cursor: 'pointer',
                     fontWeight: 'bold',
-                    width: 150
+                    width: 150,
+                    transform: hovered === 'announcement' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'all 0.3s ease',
                   }}
-                  onClick={() => setAnnouncementModalOpen(true)}
                 >
-                  Create Announcement
+                  Announcement
                 </button>
 
                 <button
+                  onClick={() => setIsSendAlertModalOpen(true)}
+                  onMouseEnter={() => setHovered('alert')}
+                  onMouseLeave={() => setHovered(null)}
                   style={{
                     padding: '10px 20px',
                     borderRadius: '5px',
@@ -502,11 +526,12 @@ const handleDeleteAnnouncement = async (id) => {
                     color: '#4894FE',
                     cursor: 'pointer',
                     fontWeight: 'bold',
-                    width: 150
+                    width: 150,
+                    transform: hovered === 'alert' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'all 0.3s ease',
                   }}
-                  onClick={() => setEditProfileModalOpen(true)}
                 >
-                  Placeholder Button
+                  Send Alert
                 </button>
               </div>
             </div>
@@ -524,7 +549,7 @@ const handleDeleteAnnouncement = async (id) => {
                 borderBottom: '1px solid #eee',
               }}
             >
-              {['Announcement', 'Barangay Officials', 'About'].map((tab) => (
+              {['Announcement', 'Barangay Officials'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -574,17 +599,16 @@ const handleDeleteAnnouncement = async (id) => {
                             setViewAnnouncementModalOpen(true);
                           }}
                           style={{
-                            border: '1px solid #eee',
                             borderRadius: '8px',
                             padding: '15px',
-                            backgroundColor: '#f9f9f9',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'flex-start',
                             cursor: 'pointer',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
                           }}
                         >
-                          {/* Image (always rendered) */}
+                          {/* Image*/}
                           <img
                             src={imageUrl}
                             alt="announcement-image"
@@ -611,37 +635,35 @@ const handleDeleteAnnouncement = async (id) => {
                           >
                             {ann.text}
                           </p>
-<div
-  style={{
-    position: "relative", // make parent relative for absolute positioning
-    marginTop: "8px",
-    width: "100%",
-  }}
->
-  <small style={{ color: "#888" }}>
-    Posted by {ann.posted_by_name}
-  </small>
+                          <div
+                            style={{
+                              position: "relative",
+                              marginTop: "8px",
+                              width: "100%",
+                            }}
+                          >
+                            <small style={{ color: "#888" }}>
+                              Posted by {ann.posted_by_name}
+                            </small>
 
-  <img
-    src="/icons/delete.png"
-    alt="Delete"
-    style={{
-      width: "20px",
-      height: "20px",
-      position: "absolute",
-      bottom: "0",   // stick to bottom
-      right: "0",    // stick to right
-      cursor: "pointer",
-    }}
-    onClick={(e) => {
-      e.stopPropagation();
-      setAnnouncementToDelete(ann); // store announcement info
-      setShowDeleteAnnouncementConfirm(true); // open modal
-    }}
-  />
-</div>
-
-
+                            <img
+                              src="/icons/delete.png"
+                              alt="Delete"
+                              style={{
+                                width: "20px",
+                                height: "20px",
+                                position: "absolute",
+                                bottom: "0",
+                                right: "0",
+                                cursor: "pointer",
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAnnouncementToDelete(ann);
+                                setShowDeleteAnnouncementConfirm(true);
+                              }}
+                            />
+                          </div>
                         </div>
                       );
                     })}
@@ -661,7 +683,7 @@ const handleDeleteAnnouncement = async (id) => {
                       marginBottom: "15px",
                     }}
                   >
-                    <h3 style={{ margin: 0 }}>Barangay Officials</h3>
+                    <h3 style={{ margin: 0 }}>Emergency Hotlines</h3>
                     <button
                       onClick={() => setAddOfficialsModalOpen(true)}
                       style={{
@@ -696,14 +718,13 @@ const handleDeleteAnnouncement = async (id) => {
                         <div
                           key={official.id || index}
                           style={{
-                            position: "relative", // Needed for dropdown positioning
+                            position: "relative",
                             display: "flex",
                             alignItems: "center",
                             padding: "10px",
-                            border: "1px solid #ddd",
                             borderRadius: "10px",
-                            backgroundColor: "#f9f9f9",
                             gap: "15px",
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
                           }}
                         >
                           {/* 3-Dots Menu */}
@@ -816,579 +837,593 @@ const handleDeleteAnnouncement = async (id) => {
                 </div>
               )}
               
+              {/*
               {activeTab === 'About' && (
                 <p>Information about the barangay will appear here.</p>
               )}
+              */}
             </div>
           </div>
 
 
-{/* ANNOUNCEMENT MODAL */}
-{isAnnouncementModalOpen && (
-  <div className={`modal-overlay ${isClosing ? '' : ''}`}>
-    <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => setAnnouncementModalOpen(false)}
-      />
-      <h3 className="modal-title">Post Announcement</h3>
-      <p className="modal-subtitle">Write your announcement below to share with the community.</p>
-      <form onSubmit={handlePostAnnouncement}>
-        {/* Title */}
-        <div className="input-group">
-          <label className="input-label">Title</label>
-          <input
-            type="text"
-            placeholder="Enter title"
-            className="modal-input"
-            value={announcementTitle}
-            onChange={(e) => setAnnouncementTitle(e.target.value)}
-          />
-        </div>
+          {/* SEND ALERT MODAL */}
+          {isSendAlertModalOpen && (
+            <div className={`modal-overlay ${isClosing ? '' : ''}`}>
+              <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => setIsSendAlertModalOpen(false)}
+                />
+                <h3 className="modal-title">Send Alert</h3>
+                <p className="modal-subtitle">Write your alert below to notify the community immediately.</p>
+                <form onSubmit={handleSendAlert}>
+                  {/* Alert Title */}
+                  <div className="input-group">
+                    <label className="input-label">Title (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Enter alert title"
+                      className="modal-input"
+                      value={alertTitle}
+                      onChange={(e) => setAlertTitle(e.target.value)}
+                    />
+                  </div>
 
-        {/* Announcement Text */}
-        <div className="input-group">
-          <textarea
-            className="modal-input"
-            placeholder="Type your announcement here..."
-            value={announcementText}
-            onChange={(e) => setAnnouncementText(e.target.value)}
-            rows={5}
-          />
-        </div>
+                  {/* Alert Message */}
+                  <div className="input-group">
+                    <textarea
+                      className="modal-input"
+                      placeholder="Type your alert message here..."
+                      value={alertMessage}
+                      onChange={(e) => setAlertMessage(e.target.value)}
+                      rows={5}
+                    />
+                  </div>
 
-        {/* Image Upload */}
-        <div className="input-group">
-          <label className="input-label">Add Images (Optional, max 5)</label>
-          <div
-            onClick={() => document.getElementById('announcementImageInput').click()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100px',
-              border: '2px dashed #4894FE',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              color: '#4894FE',
-              fontWeight: 'bold',
-              backgroundColor: '#f5f7ff',
-              transition: 'all 0.3s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e6efff')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f5f7ff')}
-          >
-            {announcementImage && announcementImage.length > 0
-              ? `${announcementImage.length} file(s) selected`
-              : 'Click to Upload'}
-          </div>
+                  {/* Buttons */}
+                  <div className="modal-button-row">
+                    <button type="submit" className="modal-add-button">
+                      Send
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSendAlertModalOpen(false);
+                      }}
+                      className="modal-cancel-button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
-          <input
-            id="announcementImageInput"
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              if (e.target.files) {
-                const filesArray = Array.from(e.target.files).slice(0, 5); // limit to 5
-                setAnnouncementImage(filesArray);
-              }
-            }}
-          />
-        </div>
+          {/* ANNOUNCEMENT MODAL */}
+          {isAnnouncementModalOpen && (
+            <div className={`modal-overlay ${isClosing ? '' : ''}`}>
+              <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => setAnnouncementModalOpen(false)}
+                />
+                <h3 className="modal-title">Post Announcement</h3>
+                <p className="modal-subtitle">Write your announcement below to share with the community.</p>
+                <form onSubmit={handlePostAnnouncement}>
+                  {/* Title */}
+                  <div className="input-group">
+                    <label className="input-label">Title (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Enter title"
+                      className="modal-input"
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                    />
+                  </div>
 
-        {/* Image Previews */}
-        {announcementImage && announcementImage.length > 0 && (
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-            {announcementImage.map((file, index) => (
-              <div key={index} style={{ width: '100px', height: '100px', position: 'relative' }}>
-                {file instanceof File ? (
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={`Preview ${index}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <p style={{ fontSize: '10px', color: 'red' }}>Invalid file</p>
-                )}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAnnouncementImage((prev) => prev.filter((_, i) => i !== index))
-                  }
+                  {/* Announcement Text */}
+                  <div className="input-group">
+                    <textarea
+                      className="modal-input"
+                      placeholder="Type your announcement here..."
+                      value={announcementText}
+                      onChange={(e) => setAnnouncementText(e.target.value)}
+                      rows={5}
+                    />
+                  </div>
+
+                  {/* Image Upload */}
+                  <div className="input-group">
+                    <label className="input-label">Add Images (Optional, max 5)</label>
+                    <div
+                      onClick={() => document.getElementById('announcementImageInput').click()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100px',
+                        border: '2px dashed #4894FE',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        color: '#4894FE',
+                        fontWeight: 'bold',
+                        backgroundColor: '#f5f7ff',
+                        transition: 'all 0.3s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e6efff')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f5f7ff')}
+                    >
+                      {announcementImage && announcementImage.length > 0
+                        ? `${announcementImage.length} file(s) selected`
+                        : 'Click to Upload'}
+                    </div>
+
+                    <input
+                      id="announcementImageInput"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const filesArray = Array.from(e.target.files).slice(0, 5); // limit to 5
+                          setAnnouncementImage(filesArray);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Image Previews */}
+                  {announcementImage && announcementImage.length > 0 && (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      {announcementImage.map((file, index) => (
+                        <div key={index} style={{ width: '100px', height: '100px', position: 'relative' }}>
+                          {file instanceof File ? (
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Preview ${index}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <p style={{ fontSize: '10px', color: 'red' }}>Invalid file</p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAnnouncementImage((prev) => prev.filter((_, i) => i !== index))
+                            }
+                            style={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 2,
+                              background: 'rgba(255,0,0,0.8)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 20,
+                              height: 20,
+                              color: '#fff',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Buttons */}
+                  <div className="modal-button-row">
+                    <button type="submit" className="modal-add-button">
+                      Post
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAnnouncementModalOpen(false);
+                        setAnnouncementImage(null);
+                      }}
+                      className="modal-cancel-button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ADD BARANGAY OFFICIALS MODAL */}
+          {isAddOfficialsModalOpen && (
+            <div className={`modal-overlay ${isClosing ? '' : ''}`}>
+              <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => setAddOfficialsModalOpen(false)}
+                />
+                <h3 className="modal-title">Add Barangay Official</h3>
+                <p className="modal-subtitle">Fill in the details of the new official.</p>
+                <form onSubmit={handleAddOfficial}>
+                  
+                  {/* Name */}
+                  <div className="input-group">
+                    <label className="input-label">Full Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter name"
+                      className="modal-input"
+                      value={officialName}
+                      onChange={(e) => setOfficialName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Position */}
+                  <div className="input-group">
+                    <label className="input-label">Position</label>
+                    <input
+                      type="text"
+                      placeholder="Enter position"
+                      className="modal-input"
+                      value={officialPosition}
+                      onChange={(e) => setOfficialPosition(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Contact Number */}
+                  <div className="input-group">
+                    <label className="input-label">Contact Number</label>
+                    <input
+                      type="text"
+                      placeholder="Enter contact number"
+                      className="modal-input"
+                      value={officialContact}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        if (value.includes(' ')) return;
+
+                        // Format and sanitize input
+                        if (!value.startsWith('+639')) {
+                          value = '+639' + value.replace(/\D/g, '').slice(0, 9);
+                        } else {
+                          value = '+639' + value.slice(4).replace(/\D/g, '').slice(0, 9);
+                        }
+
+                        setOfficialContact(value);
+                      }}
+                      required
+                    />
+                  </div>
+
+                  {/* Profile Picture */}
+                  <div className="input-group">
+                    <label className="input-label">Upload a Photo</label>
+                    <div
+                      onClick={() => document.getElementById('officialImageInput').click()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '30%',
+                        height: '100px',
+                        border: '2px dashed #4894FE',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        color: '#4894FE',
+                        fontWeight: 'bold',
+                        backgroundColor: '#f5f7ff',
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {officialImage ? (
+                        <img
+                          src={URL.createObjectURL(officialImage)}
+                          alt="Preview"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '10px',
+                          }}
+                        />
+                      ) : (
+                        ''
+                      )}
+                    </div>
+
+                    <input
+                      id="officialImageInput"
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setOfficialImage(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="modal-button-row">
+                    <button type="submit" className="modal-add-button">
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddOfficialsModalOpen(false);
+                        setOfficialImage(null);
+                      }}
+                      className="modal-cancel-button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* DELETE CONFIRMATION MODAL FOR OFFICIALS */}
+          {showDeleteConfirm && officialToDelete && (
+            <div
+              className="modal-overlay"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowDeleteConfirm(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            >
+              <div
+                className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+                style={{ maxWidth: '400px' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close Button */}
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => {
+                    setIsClosing(true);
+                    setTimeout(() => {
+                      setShowDeleteConfirm(false);
+                      setIsClosing(false);
+                    }, 200);
+                  }}
+                />
+
+                {/* Icon */}
+                <div className="icon-container">
+                  <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
+                </div>
+
+                {/* Title */}
+                <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
+                <p className="sub-title" style={{ textAlign: 'center' }}>
+                  Are you sure you want to delete this official?
+                </p>
+
+                {/* Official Name */}
+                <div className="location-text" style={{ textAlign: 'center', marginBottom: "12px" }}>
+                  {officialToDelete?.name || 'N/A'}
+                </div>
+
+                {/* Buttons */}
+                <div className="button-container">
+                  <button
+                    className="cancel-button"
+                    onClick={() => {
+                      setIsClosing(true);
+                      setTimeout(() => {
+                        setShowDeleteConfirm(false);
+                        setIsClosing(false);
+                      }, 200);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="confirm-button"
+                    onClick={() => deleteOfficial(officialToDelete.id)}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW ANNOUNCEMENT MODAL */}
+          {isViewAnnouncementModalOpen && selectedAnnouncement && (
+            <div
+              className="modal-overlay"
+              onClick={() => setViewAnnouncementModalOpen(false)}
+              style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <div
+                className="modal-content pop-in"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '90%',
+                  maxWidth: '600px',
+                  maxHeight: '80vh',
+                  backgroundColor: '#fff',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {/* Close Button */}
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => setViewAnnouncementModalOpen(false)}
                   style={{
-                    position: 'absolute',
-                    top: 2,
-                    right: 2,
-                    background: 'rgba(255,0,0,0.8)',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 20,
-                    height: 20,
-                    color: '#fff',
                     cursor: 'pointer',
-                    fontSize: 12,
+                    position: 'absolute',
+                    top: '15px',
+                    right: '15px',
+                    width: '12px',
+                    height: '12px',
+                  }}
+                />
+
+                {/* Announcement */}
+                <h3 className="modal-title">{selectedAnnouncement.title || 'No Title'}</h3>
+                <p style={{ color: '#888', marginBottom: '10px' }}>
+                  Posted by {selectedAnnouncement.posted_by_name}
+                </p>
+                {selectedAnnouncement.image_urls?.length > 0 && (
+                  <img
+                    src={selectedAnnouncement.image_urls[0]}
+                    alt="Announcement"
+                    style={{
+                      width: '100%',
+                      maxHeight: '250px',
+                      objectFit: 'cover',
+                      borderRadius: '8px',
+                      marginBottom: '15px',
+                    }}
+                  />
+                )}
+                <p>{selectedAnnouncement.text}</p>
+
+                {/* Comments Section */}
+                <div
+                  style={{
+                    marginTop: '20px',
+                    flex: 1,
+                    overflowY: 'auto',
+                    borderTop: '1px solid #eee',
+                    paddingTop: '10px',
                   }}
                 >
-                  ×
-                </button>
+                  <h4 style={{ marginBottom: '10px' }}>Comments</h4>
+                  {comments.length === 0 && <p>No comments yet.</p>}
+                  {comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      style={{
+                        padding: '8px',
+                        borderRadius: '6px',
+                      }}
+                    >
+                      <strong>
+                        {comment.first_name} {comment.last_name}
+                      </strong>{' '}
+                      <small style={{ color: '#666', fontSize: '12px' }}>
+                        {new Date(comment.created_at).toLocaleString()}
+                      </small>
+                      <p style={{ marginTop: '4px' }}>{comment.comment_text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Buttons */}
-        <div className="modal-button-row">
-          <button type="submit" className="modal-add-button">
-            Post
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAnnouncementModalOpen(false);
-              setAnnouncementImage(null);
-            }}
-            className="modal-cancel-button"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
-
-
-{/* ADD BARANGAY OFFICIALS MODAL */}
-{isAddOfficialsModalOpen && (
-  <div className={`modal-overlay ${isClosing ? '' : ''}`}>
-    <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => setAddOfficialsModalOpen(false)}
-      />
-      <h3 className="modal-title">Add Barangay Official</h3>
-      <p className="modal-subtitle">Fill in the details of the new official.</p>
-      <form onSubmit={handleAddOfficial}>
-        
-        {/* Name */}
-        <div className="input-group">
-          <label className="input-label">Full Name</label>
-          <input
-            type="text"
-            placeholder="Enter name"
-            className="modal-input"
-            value={officialName}
-            onChange={(e) => setOfficialName(e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Position */}
-        <div className="input-group">
-          <label className="input-label">Position</label>
-          <input
-            type="text"
-            placeholder="Enter position"
-            className="modal-input"
-            value={officialPosition}
-            onChange={(e) => setOfficialPosition(e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Contact Number */}
-        <div className="input-group">
-          <label className="input-label">Contact Number</label>
-          <input
-            type="text"
-            placeholder="Enter contact number"
-            className="modal-input"
-            value={officialContact}
-            onChange={(e) => setOfficialContact(e.target.value)}
-            required
-          />
-        </div>
-
-{/* Profile Picture */}
-{/* Profile Picture */}
-<div className="input-group">
-  <label className="input-label">Upload a Photo</label>
-  <div
-    onClick={() => document.getElementById('officialImageInput').click()}
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '30%',
-      height: '100px',
-      border: '2px dashed #4894FE',
-      borderRadius: '10px',
-      cursor: 'pointer',
-      color: '#4894FE',
-      fontWeight: 'bold',
-      backgroundColor: '#f5f7ff',
-      position: 'relative',
-      overflow: 'hidden',
-    }}
-  >
-    {officialImage ? (
-      <img
-        src={URL.createObjectURL(officialImage)}
-        alt="Preview"
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          borderRadius: '10px',
-        }}
-      />
-    ) : (
-      ''
-    )}
-  </div>
-
-  <input
-    id="officialImageInput"
-    type="file"
-    accept="image/*"
-    style={{ display: 'none' }}
-    onChange={(e) => {
-      if (e.target.files && e.target.files[0]) {
-        setOfficialImage(e.target.files[0]);
-      }
-    }}
-  />
-</div>
-
-
-
-
-        {/* Buttons */}
-        <div className="modal-button-row">
-          <button type="submit" className="modal-add-button">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAddOfficialsModalOpen(false);
-              setOfficialImage(null);
-            }}
-            className="modal-cancel-button"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
-
-
-{/* DELETE CONFIRMATION MODAL FOR OFFICIALS */}
-{showDeleteConfirm && officialToDelete && (
-  <div
-    className="modal-overlay"
-    onClick={() => {
-      setIsClosing(true);
-      setTimeout(() => {
-        setShowDeleteConfirm(false);
-        setIsClosing(false);
-      }, 200);
-    }}
-  >
-    <div
-      className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
-      style={{ maxWidth: '400px' }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Close Button */}
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => {
-          setIsClosing(true);
-          setTimeout(() => {
-            setShowDeleteConfirm(false);
-            setIsClosing(false);
-          }, 200);
-        }}
-      />
-
-      {/* Icon */}
-      <div className="icon-container">
-        <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
-      </div>
-
-      {/* Title */}
-      <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
-      <p className="sub-title" style={{ textAlign: 'center' }}>
-        Are you sure you want to delete this official?
-      </p>
-
-      {/* Official Name */}
-      <div className="location-text" style={{ textAlign: 'center', marginBottom: "12px" }}>
-        {officialToDelete?.name || 'N/A'}
-      </div>
-
-      {/* Buttons */}
-      <div className="button-container">
-        <button
-          className="cancel-button"
-          onClick={() => {
-            setIsClosing(true);
-            setTimeout(() => {
-              setShowDeleteConfirm(false);
-              setIsClosing(false);
-            }, 200);
-          }}
-        >
-          Cancel
-        </button>
-        <button
-          className="confirm-button"
-          onClick={() => deleteOfficial(officialToDelete.id)}
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* VIEW ANNOUNCEMENT MODAL */}
-{isViewAnnouncementModalOpen && selectedAnnouncement && (
-  <div
-    className="modal-overlay"
-    onClick={() => setViewAnnouncementModalOpen(false)}
-    style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-  >
-    <div
-      className="modal-content pop-in"
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: '90%',
-        maxWidth: '600px',
-        maxHeight: '80vh',
-        backgroundColor: '#fff',
-        borderRadius: '10px',
-        padding: '20px',
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Close Button */}
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => setViewAnnouncementModalOpen(false)}
-        style={{
-          cursor: 'pointer',
-          position: 'absolute',
-          top: '15px',
-          right: '15px',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-
-      {/* Announcement */}
-      <h3 className="modal-title">{selectedAnnouncement.title || 'No Title'}</h3>
-      <p style={{ color: '#888', marginBottom: '10px' }}>
-        Posted by {selectedAnnouncement.posted_by_name}
-      </p>
-      {selectedAnnouncement.image_urls?.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            gap: '10px',
-            overflowX: 'auto',
-            marginBottom: '15px',
-          }}
-        >
-          {selectedAnnouncement.image_urls.map((url, index) => (
-            <img
-              key={index}
-              src={url}
-              alt={`Announcement media ${index + 1}`}
-              style={{
-                flex: '0 0 auto',
-                width: '150px',
-                height: '150px',
-                objectFit: 'cover',
-                borderRadius: '8px',
+          {/* DELETE CONFIRMATION MODAL */}
+          {showDeleteAnnouncementConfirm && announcementToDelete && (
+            <div
+              className="modal-overlay"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowDeleteAnnouncementConfirm(false);
+                  setIsClosing(false);
+                  setAnnouncementToDelete(null);
+                }, 200);
               }}
-            />
-          ))}
-        </div>
-      )}
-      <p>{selectedAnnouncement.text}</p>
+            >
+              <div
+                className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+                style={{ maxWidth: "400px" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close Button */}
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => {
+                    setIsClosing(true);
+                    setTimeout(() => {
+                      setShowDeleteAnnouncementConfirm(false);
+                      setIsClosing(false);
+                      setAnnouncementToDelete(null);
+                    }, 200);
+                  }}
+                />
 
-      {/* Comments Section */}
-      <div
-        style={{
-          marginTop: '20px',
-          flex: 1,
-          overflowY: 'auto',
-          borderTop: '1px solid #eee',
-          paddingTop: '10px',
-        }}
-      >
-        <h4 style={{ marginBottom: '10px' }}>Comments</h4>
-        {comments.length === 0 && <p>No comments yet.</p>}
-        {comments.map((comment) => (
-          <div
-            key={comment.id}
-            style={{
-              padding: '8px',
-              borderRadius: '6px',
-            }}
-          >
-            <strong>
-              {comment.first_name} {comment.last_name}
-            </strong>{' '}
-            <small style={{ color: '#666', fontSize: '12px' }}>
-              {new Date(comment.created_at).toLocaleString()}
-            </small>
-            <p style={{ marginTop: '4px' }}>{comment.comment_text}</p>
-          </div>
-        ))}
-      </div>
+                {/* Icon */}
+                <div className="icon-container">
+                  <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
+                </div>
 
-      {/* Add Comment 
-      <div style={{ display: 'flex', marginTop: '10px', gap: '5px' }}>
-        <input
-          type="text"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          style={{
-            flex: 1,
-            padding: '8px',
-            borderRadius: '6px',
-            border: '1px solid #ccc',
-          }}
-        />
-        <button
-          onClick={handleAddComment}
-          style={{
-            padding: '8px 12px',
-            borderRadius: '6px',
-            backgroundColor: '#007bff',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          Post
-        </button>
-      </div>
-      */}
-    </div>
-  </div>
-)}
+                {/* Title */}
+                <h3 className="modal-title" style={{ textAlign: "center" }}>
+                  Delete Announcement
+                </h3>
+                <p className="sub-title" style={{ textAlign: "center" }}>
+                  Are you sure you want to delete this announcement?
+                </p>
 
+                {/* Announcement Title */}
+                <div
+                  className="location-text"
+                  style={{ textAlign: "center", marginBottom: "12px" }}
+                >
+                  {announcementToDelete?.title || "Untitled"}
+                </div>
 
-{/* DELETE CONFIRMATION MODAL FOR ANNOUNCEMENTS */}
-{showDeleteAnnouncementConfirm && announcementToDelete && (
-  <div
-    className="modal-overlay"
-    onClick={() => {
-      setIsClosing(true);
-      setTimeout(() => {
-        setShowDeleteAnnouncementConfirm(false);
-        setIsClosing(false);
-        setAnnouncementToDelete(null);
-      }, 200);
-    }}
-  >
-    <div
-      className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
-      style={{ maxWidth: "400px" }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Close Button */}
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => {
-          setIsClosing(true);
-          setTimeout(() => {
-            setShowDeleteAnnouncementConfirm(false);
-            setIsClosing(false);
-            setAnnouncementToDelete(null);
-          }, 200);
-        }}
-      />
-
-      {/* Icon */}
-      <div className="icon-container">
-        <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
-      </div>
-
-      {/* Title */}
-      <h3 className="modal-title" style={{ textAlign: "center" }}>
-        Delete Announcement
-      </h3>
-      <p className="sub-title" style={{ textAlign: "center" }}>
-        Are you sure you want to delete this announcement?
-      </p>
-
-      {/* Announcement Title */}
-      <div
-        className="location-text"
-        style={{ textAlign: "center", marginBottom: "12px" }}
-      >
-        {announcementToDelete?.title || "Untitled"}
-      </div>
-
-      {/* Buttons */}
-      <div className="button-container">
-        <button
-          className="cancel-button"
-          onClick={() => {
-            setIsClosing(true);
-            setTimeout(() => {
-              setShowDeleteAnnouncementConfirm(false);
-              setIsClosing(false);
-              setAnnouncementToDelete(null);
-            }, 200);
-          }}
-        >
-          Cancel
-        </button>
-        <button
-          className="confirm-button"
-          onClick={() => {
-            handleDeleteAnnouncement(announcementToDelete.id);
-            setShowDeleteAnnouncementConfirm(false);
-            setAnnouncementToDelete(null);
-          }}
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-
-
-
-
-
+                {/* Buttons */}
+                <div className="button-container">
+                  <button
+                    className="cancel-button"
+                    onClick={() => {
+                      setIsClosing(true);
+                      setTimeout(() => {
+                        setShowDeleteAnnouncementConfirm(false);
+                        setIsClosing(false);
+                        setAnnouncementToDelete(null);
+                      }, 200);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="confirm-button"
+                    onClick={() => {
+                      handleDeleteAnnouncement(announcementToDelete.id);
+                      setShowDeleteAnnouncementConfirm(false);
+                      setAnnouncementToDelete(null);
+                    }}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
