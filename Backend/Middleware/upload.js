@@ -94,51 +94,51 @@ const uploadAnnouncements = multer({
 
 function uploadWithSupabase(fields, isAnnouncement = false) {
   const handler = isAnnouncement ? uploadAnnouncements.fields(fields) : uploadPrivate.fields(fields);
-
   return (req, res, next) => {
     handler(req, res, async (err) => {
       if (err) 
         return next(err);
-
       try {
         req.supabaseFiles = {};
-
         for (const field of fields) {
-  const files = req.files[field.name];
-  if (!files) continue;
-
-  for (const f of files) {
-    // Decide subfolder from fieldname
-    const folder = FIELD_TO_FOLDER[field.name] || FIELD_TO_FOLDER.default;
-    const relativePath = `${folder}/${f.filename}`;
-
-    // Bucket selection
-    let bucketName = PRIVATE_BUCKET;
-    let isPublic = false;
-    if (field.name === 'images' && isAnnouncement) {
-      bucketName = PUBLIC_BUCKET;
-      isPublic = true;
-    }
-
-    let url = null;
-    try {
-      url = await uploadToSupabase(f.path, relativePath, bucketName, isPublic);
-    } catch (uploadErr) {
-      console.error(`[UPLOAD] Supabase upload failed for ${relativePath}:`, uploadErr.message);
-      return next(uploadErr);
-    }
-
-    // Clean up local file
-    deleteLocalFile(f.path);
-
-    // Save in req.supabaseFiles
-    if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
-    req.supabaseFiles[field.name].push({
-      supabaseUrl: url,
-      isPublic,
-      relativePath
+          
+          const files = req.files[field.name];
+          if (!files) continue;
+          for (const f of files) {
+            const localPath = path.join(f.destination, f.filename);
+                            
+            // Determine bucket and relative path
+            let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
+            let relativePath;
+            let isPublic = isAnnouncement;
+            if (isAnnouncement) {
+              relativePath = `announcements/${f.filename}`;  // Public bucket: announcements/
+            } else {
+              // Private bucket: Dynamic path under uploads/ (e.g., uploads/reports/filename.jpg)
+              relativePath = path.join(f.destination, f.filename);  // f.destination is 'uploads/subfolder', so this gives 'uploads/subfolder/filename'
+            }
+                        // Upload to Supabase (no signed URL generation here)
+            await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
+            // Delete local file
+            deleteLocalFile(localPath);
+            
+            // Store relativePath instead of signed URL
+            if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
+            req.supabaseFiles[field.name].push({
+              field: field.name,
+              relativePath,  // Store this for later URL generation
+              filename: f.filename,
+              isPublic
+            });
+          }
+        }
+        next();
+      } catch (e) {
+        console.error('[UPLOAD] Fatal Supabase sync error:', e.message);
+        next(e);
+      }
     });
-  }
+  };
 }
 
         // for (const field of fields) {
@@ -177,15 +177,15 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
         //     });
         //   }
         // }
-        next();
+//         next();
 
-      } catch (e) {
-        console.error('[UPLOAD] Fatal Supabase sync error:', e.message);
-        next(e);
-      }
-    });
-  };
-}
+//       } catch (e) {
+//         console.error('[UPLOAD] Fatal Supabase sync error:', e.message);
+//         next(e);
+//       }
+//     });
+//   };
+// }
 
 
 module.exports = { uploadWithSupabase, uploadPrivate, uploadAnnouncements };

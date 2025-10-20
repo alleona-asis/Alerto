@@ -2,28 +2,26 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
-const { generateSignedUrl } = require('../utils/supabase');
+const { generateSignedUrl } = require('../utils/supabase'); // Use your utility for consistency
 
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 router.get('/signed-url', async (req, res) => {
   try {
-    const { filePath } = req.query;
-    if (!filePath) {
-      return res.status(400).json({ error: 'filePath query parameter is required' });
+    const { relativePath } = req.query; // Renamed from 'filePath' for clarity; assume it's already clean (e.g., 'uploads/reports/filename.jpg')
+    
+    // Validate input
+    if (!relativePath || typeof relativePath !== 'string') {
+      return res.status(400).json({ error: 'relativePath query parameter is required and must be a string' });
     }
 
-    const signedUrl = await generateSignedUrl(filePath, 3600); // 1 hour expiry
-
-    // Disable caching for this response
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.set('Surrogate-Control', 'no-store');
+    // Generate fresh signed URL using your utility (with shorter expiry)
+    const signedUrl = await generateSignedUrl(relativePath, 3600); // 1 hour expiry for better security
     
-    return res.json({ signedUrl });
+    res.json({ signedUrl });
   } catch (err) {
-    console.error('Signed URL endpoint error:', err);
-    return res.status(500).json({ error: 'Failed to create signed URL' });
+    console.error('Signed URL endpoint error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 module.exports = router;

@@ -62,7 +62,7 @@ function deleteLocalFile(localPath) {
   });
 }
 
-async function generateSignedUrl(relativePath, expiresInSeconds = 3600) {
+async function generateSignedUrl(relativePath, expiresInSeconds = 3600 * 24 * 7) {
   try {
     const { data, error } = await supabase.storage
       .from(PRIVATE_BUCKET)

@@ -20,6 +20,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
+import { fetchSignedUrl } from '../../../api/files';
+
 const getStatusColor = (status) => {
   switch (status.toLowerCase()) {
     case 'pending': return '#FF9800';
@@ -62,6 +64,44 @@ export default function ADMINBarangayReports() {
   const [modalUser, setModalUser] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const [mediaSignedUrls, setMediaSignedUrls] = useState([]); // Array of fetched signed URLs
+  const [mediaLoading, setMediaLoading] = useState(false); // Loading state for fetching
+  const [mediaError, setMediaError] = useState(null); // Error state
+
+  // Helper to fetch all signed URLs for the modal
+const loadMediaUrls = async () => {
+  if (!modalUser?.media_urls || modalUser.media_urls.length === 0) return;
+  setMediaLoading(true);
+  setMediaError(null);
+  try {
+    // Fetch URLs for all relativePaths in parallel
+    const urls = await Promise.all(
+      modalUser.media_urls.map(async (relativePath) => {
+        return await fetchSignedUrl(relativePath); // Your function from files.js
+      })
+    );
+    setMediaSignedUrls(urls);
+  } catch (error) {
+    console.error('Error fetching media URLs:', error);
+    setMediaError('Failed to load media. Please try again.');
+  } finally {
+    setMediaLoading(false);
+  }
+};
+
+// Helper to re-fetch a single URL on error (for expiration handling)
+const refetchSingleUrl = async (index) => {
+  try {
+    const newUrl = await fetchSignedUrl(modalUser.media_urls[index]);
+    const updatedUrls = [...mediaSignedUrls];
+    updatedUrls[index] = newUrl;
+    setMediaSignedUrls(updatedUrls);
+  } catch (error) {
+    console.error(`Failed to refetch URL for index ${index}:`, error);
+    // Optionally show a toast or alert
+  }
+};
 
 
   // Helper to capitalize words
@@ -240,8 +280,14 @@ export default function ADMINBarangayReports() {
 
   const openImagesModal = (user) => {
     setModalUser(user);
+    setCurrentImageIndex(0); // Reset index
+    setMediaSignedUrls([]); // Clear previous URLs
+    setMediaLoading(false);
+    setMediaError(null);
     setShowImagesModal(true);
-  };
+    // Fetch URLs after setting modalUser
+    setTimeout(() => loadMediaUrls(), 0); // Slight delay to ensure modalUser is set
+};
 
   const openLocationModal = (user) => {
     setModalUser(user);
@@ -569,143 +615,152 @@ export default function ADMINBarangayReports() {
         </div>
       )}
 
-      {/* VIEW IMAGES MODAL */}
-      {showImagesModal && modalUser && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div
-            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "500px",
-              height: "600px",
-              overflow: "hidden",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              position: "relative",
-            }}
-          >
-            <h2 className="modal-title">{modalUser.incident_type}</h2>
+        {/* VIEW IMAGES MODAL */}
+        {showImagesModal && modalUser && (
+          <div className="modal-overlay" onClick={closeModal}>
             <div
+              className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                width: "100%",
-                height: "400px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                position: "relative",
-                margin: "20px 0",
+                backgroundColor: "#fff",
+                padding: "20px",
+                borderRadius: "8px",
+                width: "500px",
+                height: "600px",
                 overflow: "hidden",
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                position: "relative",
               }}
             >
-            {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
-              <>
-                {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={modalUser.media_urls[currentImageIndex]}
-                    alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                      cursor: "zoom-in",
-                      transition: "transform 0.3s ease",
-                    }}
-                    onClick={() =>
-                      window.open(modalUser.media_urls[currentImageIndex], "_blank")
-                    }
-                  />
-                ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                  <video
-                    controls
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                    }}
-                  >
-                    <source
-                      src={modalUser.media_urls[currentImageIndex]}
-                      type="video/mp4"
-                    />
-                    Your browser does not support the video tag.
-                  </video>
+              <h2 className="modal-title">{modalUser.incident_type}</h2>
+              <div
+                style={{
+                  width: "100%",
+                  height: "400px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  position: "relative",
+                  margin: "20px 0",
+                  overflow: "hidden",
+                }}
+              >
+                {mediaLoading ? (
+                  <p>Loading media...</p>
+                ) : mediaError ? (
+                  <div>
+                    <p style={{ color: 'red' }}>{mediaError}</p>
+                    <button onClick={loadMediaUrls}>Retry</button>
+                  </div>
+                ) : modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+                  <>
+                    {mediaSignedUrls[currentImageIndex]?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                      <img
+                        src={mediaSignedUrls[currentImageIndex]}
+                        alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          borderRadius: "12px",
+                          boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                          objectFit: "contain",
+                          cursor: "zoom-in",
+                          transition: "transform 0.3s ease",
+                        }}
+                        onClick={() =>
+                          window.open(mediaSignedUrls[currentImageIndex], "_blank")
+                        }
+                        onError={() => refetchSingleUrl(currentImageIndex)} // Re-fetch on load failure
+                      />
+                    ) : mediaSignedUrls[currentImageIndex]?.match(/\.(mp4|webm|ogg)$/i) ? (
+                      <video
+                        controls
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          borderRadius: "12px",
+                          boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                          objectFit: "contain",
+                        }}
+                        onError={() => refetchSingleUrl(currentImageIndex)} // Re-fetch on load failure
+                      >
+                        <source
+                          src={mediaSignedUrls[currentImageIndex]}
+                          type="video/mp4"
+                        />
+                        Your browser does not support the video tag.
+                      </video>
+                    ) : (
+                      <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
+                    )}
+
+                    {/* Left arrow */}
+                    {currentImageIndex > 0 && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImageIndex(currentImageIndex - 1);
+                        }}
+                        style={{
+                          position: "absolute",
+                          left: "10px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          fontSize: "24px",
+                          cursor: "pointer",
+                          userSelect: "none",
+                          backgroundColor: "rgba(0,0,0,0.3)",
+                          color: "#fff",
+                          borderRadius: "50%",
+                          padding: "5px",
+                        }}
+                      >
+                        &#8592;
+                      </div>
+                    )}
+
+                    {/* Right arrow */}
+                    {currentImageIndex < modalUser.media_urls.length - 1 && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImageIndex(currentImageIndex + 1);
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: "10px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          fontSize: "24px",
+                          cursor: "pointer",
+                          userSelect: "none",
+                          backgroundColor: "rgba(0,0,0,0.3)",
+                          color: "#fff",
+                          borderRadius: "50%",
+                          padding: "5px",
+                        }}
+                      >
+                        &#8594;
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
+                  <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
                 )}
-
-                {/* Left arrow */}
-                {currentImageIndex > 0 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex - 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8592;
-                  </div>
-                )}
-
-                {/* Right arrow */}
-                {currentImageIndex < modalUser.media_urls.length - 1 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex + 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8594;
-                  </div>
-                )}
-              </>
-            ) : (
-              <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
-            )}
+              </div>
+              <button
+                onClick={closeModal}
+                className="modal-cancel-button"
+                style={{ marginBottom: "10px" }}
+              >
+                Close
+              </button>
             </div>
-            <button
-              onClick={closeModal}
-              className="modal-cancel-button"
-              style={{ marginBottom: "10px" }}
-            >
-              Close
-            </button>
           </div>
-        </div>
-      )}
+        )}
     </>
   );
 }
