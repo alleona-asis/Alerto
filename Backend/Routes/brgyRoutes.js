@@ -260,8 +260,6 @@ router.post(
       
       await uploadProof(req, res);
       
-      console.log('[UPLOAD PROOF] Success');
-      res.status(200).json({ message: 'Proof uploaded successfully', proof_urls: proofUrls });
     } catch (err) {
       console.error('[UPLOAD PROOF] Failed:', err.message, err.stack);
       if (!res.headersSent) {
