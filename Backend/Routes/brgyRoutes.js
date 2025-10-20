@@ -245,18 +245,30 @@ router.post(
   uploadWithSupabase([{ name: 'proof', maxCount: 5 }]), // private by default
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'proof');
 
+      console.log(`[UPLOAD PROOF] Starting for report: ${req.params.id}`);
+
+      // Fix: req.supabaseFiles is an object, not an array. Access the 'proof' key.
+      const uploadedFiles = req.supabaseFiles?.proof || [];
+      
       if (uploadedFiles.length === 0) {
+        console.error('[UPLOAD PROOF] No files in supabaseFiles.proof');
         return res.status(400).json({ message: 'No proof files uploaded.' });
       }
-
+      
       const proofUrls = uploadedFiles.map(f => f.supabaseUrl);
-
+      console.log(`[UPLOAD PROOF] URLs: ${proofUrls.join(', ')}`);
+      
+      // Ensure uploadProof is defined and handles errors (e.g., DB update)
       await uploadProof(req, res, { proofUrls });
+      
+      console.log('[UPLOAD PROOF] Success');
+      res.status(200).json({ message: 'Proof uploaded successfully', proof_urls: proofUrls });
     } catch (err) {
-      console.error('[UPLOAD PROOF] Failed:', err.message);
-      res.status(500).json({ message: 'Proof upload failed' });
+      console.error('[UPLOAD PROOF] Failed:', err.message, err.stack);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Proof upload failed', error: err.message });
+      }
     }
   }
 );

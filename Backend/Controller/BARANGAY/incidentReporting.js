@@ -509,35 +509,31 @@ const uploadProof = async (req, res) => {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    const uploadedFiles = req.files;
-    //console.log("Files received:", uploadedFiles);
-    //console.log("Number of files to upload:", uploadedFiles.length);
+    // Fix: Use req.supabaseFiles instead of req.files (set by uploadWithSupabase)
+    const uploadedFiles = req.supabaseFiles?.proof || [];
+    if (uploadedFiles.length === 0) {
+      console.error('[UPLOAD PROOF] No files in req.supabaseFiles.proof');
+      return res.status(400).json({ message: "No proof files uploaded" });
+    }
+    console.log(`[UPLOAD PROOF] Processing ${uploadedFiles.length} files for report ${id}`);
 
-    const proofFiles = uploadedFiles.map(file => {
-      const uploadsDir = "uploads/proof";
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-      const filePath = file.path;
-      const url = `${BASE_URL}/${file.filename}`;
-      console.log("File ready for DB:", { name: file.originalname, path: filePath, url });
-
-      return {
-        filename: file.originalname,
-        path: filePath,
-        url,
-        type: file.mimetype.startsWith("image") ? "image" : "video",
-      };
-    });
-
+        // Map Supabase files to the format expected by your DB
+    const proofFiles = uploadedFiles.map(file => ({
+      filename: file.filename || file.originalname,  // Use filename from Supabase or fallback
+      path: file.relativePath || '',  // Optional: relative path in Supabase
+      url: file.supabaseUrl,  // Signed URL from Supabase
+      type: file.mimetype.startsWith("image") ? "image" : "video",  
+    }));
+    // Fetch current proof_files from DB
     const { rows } = await pool.query(
       `SELECT proof_files FROM incident_reports WHERE id = $1`,
       [id]
     );
     const currentProofs = rows[0]?.proof_files || [];
-
+    // Append new proofs
     const updatedProofs = [...currentProofs, ...proofFiles];
-
-    const updateResult = await pool.query(
+    // Update DB
+        const updateResult = await pool.query(
       `UPDATE incident_reports
        SET proof_files = $1::jsonb,
            updated_at = NOW()
@@ -545,23 +541,23 @@ const uploadProof = async (req, res) => {
        RETURNING *`,
       [JSON.stringify(updatedProofs), id]
     );
-
     const updatedReport = updateResult.rows[0];
-
     // Emit via Socket.io
     const io = getIo();
     io.emit("proofUploaded", {
       reportId: updatedReport.id,
       proof_files: updatedReport.proof_files,
     });
-
+    console.log('[UPLOAD PROOF] Success');
     res.status(200).json({
       message: "Proof uploaded successfully",
       report: updatedReport,
     });
-  } catch (error) {
-    console.error("[uploadProof] Error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+      } catch (error) {
+    console.error("[UPLOAD PROOF] Error:", error.message, error.stack);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
   }
 };
 
