@@ -121,28 +121,58 @@ const {
 
 router.post(
   '/submit-feedback',
+
+  // Debug: confirm multipart on device
   (req, res, next) => {
     console.log('[LGU FEEDBACK] CT:', req.headers['content-type']);
     next();
   },
+
+  authenticateToken,
+
+  // Accept up to 5 files under "files" but do not require them
   uploadWithSupabase([{ name: 'files', maxCount: 5 }]),
+
   async (req, res) => {
     try {
       console.log('[UPLOAD FEEDBACK] Starting submission');
-      const uploadedFiles = req.supabaseFiles?.files || [];  // Correct: Access as object key
-      if (uploadedFiles.length === 0) {
-        console.error('[UPLOAD FEEDBACK] No files uploaded');
-        return res.status(400).json({ message: 'No feedback files uploaded.' });
+
+      // Supabase middleware shape: req.supabaseFiles = { files: [ ... ] } (or undefined)
+      const list = Array.isArray(req.supabaseFiles?.files) ? req.supabaseFiles.files : [];
+
+      // Build rich objects for DB (path/url/type/name)
+      const images = [];
+      let video = null;
+
+      for (const f of list) {
+        const mime = String(f.mimetype || '').toLowerCase();
+        const entry = {
+          path: f.relativePath || '',
+          url:  f.supabaseUrl || '',
+          type: mime,
+          name: f.filename || undefined,
+        };
+        if (mime.startsWith('image/')) images.push(entry);
+        else if (mime.startsWith('video/')) video = entry;
       }
-      // Collect signed URLs
-      const fileUrls = uploadedFiles.map(f => f.supabaseUrl);
-      console.log('[UPLOAD FEEDBACK] File URLs:', fileUrls);
-      // Call controller with fileUrls
+
+      // Make them available to the controller
+      req.lguFiles = { images, video };
+
+      // Also provide simple URL list as a fallback path
+      const fileUrls = list.map(f => f.supabaseUrl);
+      console.log('[UPLOAD FEEDBACK] Files:', { count: list.length });
+      if (fileUrls.length) console.log('[UPLOAD FEEDBACK] File URLs:', fileUrls);
+
+      // IMPORTANT: do NOT early-return 400 if there are no files.
+      // Let the controller validate only the required TEXT fields.
       await submitLGUFeedback(req, res, { fileUrls });
+
     } catch (err) {
-      console.error('[FEEDBACK UPLOAD] Failed:', err.message, err.stack);
+      console.error('[FEEDBACK UPLOAD] Failed:', err?.message, err?.stack);
       if (!res.headersSent) {
-        res.status(500).json({ message: 'Feedback upload failed', error: err.message });
+        // Return a JSON error, not HTML, so the app can show it nicely
+        res.status(500).json({ error: 'Feedback upload failed', details: err?.message });
       }
     }
   }
