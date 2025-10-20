@@ -121,6 +121,10 @@ const {
 
 router.post(
   '/submit-feedback',
+  (req, res, next) => {
+    console.log('[LGU FEEDBACK] CT:', req.headers['content-type']);
+    next();
+  },
   uploadWithSupabase([{ name: 'files', maxCount: 5 }]),
   async (req, res) => {
     try {
