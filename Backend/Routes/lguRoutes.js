@@ -92,25 +92,54 @@ const {
 
 
 // ============= SUBMIT LGU FEEDBACK ===============
+// router.post(
+//   '/submit-feedback',
+//   authenticateToken,
+//   uploadWithSupabase([{ name: 'files', maxCount: 5 }]),
+//   async (req, res) => {
+//     try {
+
+//         console.log(`[UPLOAD FEEDBACK] Starting for report: ${req.params.id}`);
+
+//         const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
+
+//         if (!uploadedFiles.length) {
+//           return res.status(400).json({ message: 'No feedback files uploaded.' });
+//         }
+
+//         // Collect signed URLs for feedback
+//         const fileUrls = uploadedFiles.map(f => f.supabaseUrl);
+
+//         // Pass fileUrls to your feedback controller
+//         await submitLGUFeedback(req, res, { fileUrls });
+//       } catch (err) {
+//         console.error('[FEEDBACK UPLOAD] Failed:', err.message);
+//         res.status(500).json({ message: 'Feedback upload failed' });
+//       }
+//     }
+//   );
+
 router.post(
   '/submit-feedback',
-  uploadWithSupabase([{ name: 'files', maxCount: 5 }]), // private bucket
+  uploadWithSupabase([{ name: 'files', maxCount: 5 }]),
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
-
-      if (!uploadedFiles.length) {
+      console.log('[UPLOAD FEEDBACK] Starting submission');
+      const uploadedFiles = req.supabaseFiles?.files || [];  // Correct: Access as object key
+      if (uploadedFiles.length === 0) {
+        console.error('[UPLOAD FEEDBACK] No files uploaded');
         return res.status(400).json({ message: 'No feedback files uploaded.' });
       }
-
-      // Collect signed URLs for feedback
+      // Collect signed URLs
       const fileUrls = uploadedFiles.map(f => f.supabaseUrl);
-
-      // Pass fileUrls to your feedback controller
+      console.log('[UPLOAD FEEDBACK] File URLs:', fileUrls);
+      // Call controller with fileUrls
       await submitLGUFeedback(req, res, { fileUrls });
     } catch (err) {
-      console.error('[FEEDBACK UPLOAD] Failed:', err.message);
-      res.status(500).json({ message: 'Feedback upload failed' });
+      console.error('[FEEDBACK UPLOAD] Failed:', err.message, err.stack);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Feedback upload failed', error: err.message });
+      }
     }
   }
 );

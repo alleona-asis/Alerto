@@ -111,6 +111,12 @@ const fileFilter = (req, file, cb) => {
           allowedVideoTypes.includes(file.mimetype)
       ) return cb(null, true);
       break;
+    case 'files':
+      if (allowedImageTypes.includes(file.mimetype) ||
+          allowedDocTypes.includes(file.mimetype) ||
+          allowedVideoTypes.includes(file.mimetype)
+      ) return cb(null, true);
+      break;
     default:
       cb(new Error(`Unsupported field: ${file.fieldname}`));
   }
