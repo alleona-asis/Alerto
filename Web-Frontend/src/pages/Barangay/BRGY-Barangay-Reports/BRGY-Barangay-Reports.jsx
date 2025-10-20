@@ -1037,7 +1037,7 @@ export default function BRGYDashboard() {
                         }
                       })()}
 
-                      {/* Navigation arrows (unchanged) */}
+                      {/* Navigation arrows */}
                       {currentImageIndex > 0 && (
                         <div
                           onClick={(e) => {
@@ -1061,7 +1061,7 @@ export default function BRGYDashboard() {
                         </div>
                       )}
 
-                              {currentImageIndex < modalUser.media_urls.length - 1 && (
+                        {currentImageIndex < modalUser.media_urls.length - 1 && (
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
