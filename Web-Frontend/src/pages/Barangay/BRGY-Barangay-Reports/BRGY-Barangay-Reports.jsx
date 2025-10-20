@@ -985,43 +985,59 @@ export default function BRGYDashboard() {
                 >
                   {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
                     <>
-                      {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                        <img
-                          src={modalUser.media_urls[currentImageIndex]}
-                          alt={`Report-${modalUser.id}`}
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "100%",
-                            borderRadius: "12px",
-                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                            objectFit: "contain",
-                            cursor: "zoom-in",
-                          }}
-                          onClick={() =>
-                            window.open(modalUser.media_urls[currentImageIndex], "_blank")
+                      {/* Helper function to get file extension */}
+                      {(() => {
+                        const getFileExtension = (url) => {
+                          try {
+                            const pathname = new URL(url).pathname; // Get the path part, ignoring query params
+                            const extension = pathname.split('.').pop().toLowerCase();
+                            return extension;
+                          } catch (error) {
+                            console.error('Invalid URL:', url, error);
+                            return '';
                           }
-                        />
-                      ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                        <video
-                          controls
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "100%",
-                            borderRadius: "12px",
-                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                            objectFit: "contain",
-                          }}
-                        >
-                          <source
-                            src={modalUser.media_urls[currentImageIndex]}
-                            type="video/mp4"
-                          />
-                          Your browser does not support the video tag.
-                        </video>
-                      ) : (
-                        <p style={{ color: "#999" }}>Unsupported file type</p>
-                      )}
+                        };
 
+                        const currentUrl = modalUser.media_urls[currentImageIndex];
+                        const ext = getFileExtension(currentUrl);
+                        if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                          return (
+                            <img
+                              src={currentUrl}
+                              alt={`Report-${modalUser.id}`}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                                cursor: "zoom-in",
+                              }}
+                              onClick={() => window.open(currentUrl, "_blank")}
+                            />
+                          );
+                        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                          return (
+                            <video
+                              controls
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                              }}
+                            >
+                              <source src={currentUrl} type={`video/${ext}`} />
+                              Your browser does not support the video tag.
+                            </video>
+                          );
+                        } else {
+                          return <p style={{ color: "#999" }}>Unsupported file type</p>;
+                        }
+                      })()}
+
+                      {/* Navigation arrows (unchanged) */}
                       {currentImageIndex > 0 && (
                         <div
                           onClick={(e) => {
@@ -1045,7 +1061,7 @@ export default function BRGYDashboard() {
                         </div>
                       )}
 
-                      {currentImageIndex < modalUser.media_urls.length - 1 && (
+                              {currentImageIndex < modalUser.media_urls.length - 1 && (
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1072,7 +1088,8 @@ export default function BRGYDashboard() {
                     <p style={{ color: "#999" }}>No media available.</p>
                   )}
                 </div>
-              )}
+                )}
+
 
               {activeMiniTab === "map" && (
                 <>
