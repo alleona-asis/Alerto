@@ -157,6 +157,10 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
   const handler = isAnnouncement ? uploadAnnouncements.fields(fields) : uploadPrivate.fields(fields);
   return (req, res, next) => {
     handler(req, res, async (err) => {
+
+        console.log('[MULTER] CT:', req.headers['content-type']);
+        console.log('[MULTER] files keys:', Object.keys(req.files || {}));
+
       if (err) 
         return next(err);
       try {
