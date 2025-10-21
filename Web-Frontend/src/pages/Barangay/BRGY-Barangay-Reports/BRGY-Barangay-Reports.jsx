@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from '../../../axios/axiosInstance';
-import { useNavigate } from 'react-router-dom';
 import BRGYNavbar from '../../../components/NavBar/BRGY-Navbar';
 import BRGYSidebar from '../../../components/SideBar/BRGY-Sidebar';
 import { ToastContainer, toast } from 'react-toastify';
@@ -45,7 +44,6 @@ export default function BRGYDashboard() {
   const token = localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
   const [profile, setProfile] = useState(null);
-  const navigate = useNavigate();
   const socket = useMemo(() => 
   io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
     transports: ["websocket", "polling"],
@@ -56,7 +54,6 @@ export default function BRGYDashboard() {
 
   // State hooks
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [incidentReports, setIncidentReports] = useState([]);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -64,6 +61,7 @@ export default function BRGYDashboard() {
   const [sortOption, setSortOption] = useState('first-name-asc');
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
   const [reportToDelete, setReportToDelete] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -81,8 +79,8 @@ export default function BRGYDashboard() {
   const [selectedReportToTransfer, setSelectedReportToTransfer] = useState(null);
   const [barangayDirectory, setBarangayDirectory] = useState([]);
 
-
   const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
+  const [activeMiniTab, setActiveMiniTab] = useState("details");
 
   // Helper to capitalize words
   const capitalizeWords = (str) =>
@@ -125,8 +123,7 @@ export default function BRGYDashboard() {
 
   // Sort options
   const sortOptions = [
-    { value: 'first-name-asc', label: 'Sort by First Name' },
-    { value: 'last-name-asc', label: 'Sort by Last Name' },
+    { value: 'incident-type-asc', label: 'Sort by Incident Type' },
     { value: 'date-desc', label: 'Sort by Date' },
     { value: 'status-asc', label: 'Sort by Status' },
     { value: 'id-asc', label: 'Sort by ID' },
@@ -152,20 +149,39 @@ export default function BRGYDashboard() {
   // Filtering function
   const filterIncidentReports = (users) => {
     const query = searchQuery.toLowerCase();
-    return users.filter((user) =>
-      [
-        user.id?.toString(),
+
+    return users.filter((user) => {
+      const formattedId = user.id ? `Report-${String(user.id).padStart(5, "0")}` : "";
+
+      let formattedDate = "";
+      if (user.incident_date) {
+        try {
+          const dateObj = new Date(user.incident_date);
+          formattedDate = dateObj.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        } catch (err) {
+          formattedDate = "";
+        }
+      }
+
+      const fields = [
+        formattedId,
+        formattedDate,
         user.incident_type,
-        user.status,
-        user.province,
-        user.city,
+        user.incident_time,
         user.barangay,
-        user.first_name,
-        user.last_name,
-      ]
+        user.reported_by,
+        user.status,
+      ];
+
+      return fields
         .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(query))
-    );
+        .some((field) => field.toString().toLowerCase().includes(query));
+    });
   };
 
   // Memoized filtered + sorted reports
@@ -174,63 +190,6 @@ export default function BRGYDashboard() {
     return sortIncidentReports(filtered, sortOption);
   }, [incidentReports, searchQuery, sortOption]);
 
-  // =================================================
-  //  FETCH BARANGAY STAFF PROFILE
-  // =================================================
-  /*
-    useEffect(() => {
-      if (!userId || !token) {
-        setError('User not logged in.');
-        setLoading(false);
-        return;
-      }
-
-      const fetchProfile = async () => {
-        try {
-          const response = await axios.get(`/api/auth/barangay-staff-profile/${userId}`);
-          if (Array.isArray(response.data) && response.data.length > 0) {
-            setBRGYProfile(response.data[0]);
-          } else {
-            setError('No profile found');
-          }
-        } catch (error) {
-          setError('Failed to load profile.');
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchProfile();
-    }, [userId, token]);
-
-  // Fetch Incident Reports based on profile
-    const fetchBarangayIncidentReports = async () => {
-      if (!BRGYProfile) return;
-      const { region, province, city, barangay } = BRGYProfile;
-
-      if (!region || !province || !city || !barangay) return;
-
-      setLoading(true);
-      try {
-        const response = await axios.get('api/brgy/barangay-incident-reports', {
-          params: { region, province, city, barangay },
-        });
-        setIncidentReports(response.data);
-        setError(null);
-      } catch (err) {
-        setError('Failed to load mobile users.');
-        setIncidentReports([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    useEffect(() => {
-      if (token && BRGYProfile) {
-        fetchBarangayIncidentReports();
-      }
-    }, [token, BRGYProfile]);
-  */
 
   // =================================================
   //  FETCH USER PROFILE
@@ -247,7 +206,6 @@ export default function BRGYDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Assuming API returns an array, take the first element
         const data = Array.isArray(res.data) ? res.data[0] : res.data;
 
         setProfile({
@@ -446,7 +404,6 @@ export default function BRGYDashboard() {
         return;
       }
 
-
       const payload = { status: newStatus.toLowerCase(), first_name, last_name };
       await axios.patch(`/api/brgy/update-barangay-report-status/${userId}`, payload);
 
@@ -552,62 +509,88 @@ export default function BRGYDashboard() {
     }
   };
 
-/*
-  const handleStatusChange = async (userId, newStatus) => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      console.log("Logged-in user from localStorage:", user);
 
-      const first_name = user?.firstName || "";
-      const last_name = user?.lastName || "";
-      console.log("Sending first_name:", first_name, "last_name:", last_name);
-
-      const payload = {
-        status: newStatus.toLowerCase(),
-        first_name,
-        last_name
-      };
-      console.log("PATCH payload:", payload);
-
-      // Send request to backend
-      const response = await axios.patch(
-        `/api/brgy/update-barangay-report-status/${userId}`,
-        payload
-      );
-
-      console.log("Backend response:", response.data);
-
-      // Update state immediately so UI reflects new status
-      setIncidentReports(prev =>
-        prev.map(user =>
-          user.id === userId ? { ...user, status: newStatus } : user
-        )
-      );
-      console.log("Updated local state for user:", userId, "to status:", newStatus);
-
-    } catch (error) {
-      if (error.response) {
-        console.error(
-          `Update failed: ${error.response.status} - ${JSON.stringify(error.response.data)}`
-        );
-      } else if (error.request) {
-        console.error("No response received:", error.request);
-      } else {
-        console.error("Error:", error.message);
-      }
+  // =================================================
+  //  EXPORT REPORTS AS CSV
+  // =================================================
+  const handleExport = () => {
+    if (!displayIncidentReports || displayIncidentReports.length === 0) {
+      toast.warning("No reports available to export.");
+      return;
     }
-  };
-*/
 
+    const headers = [
+      "ID",
+      "Latitude",
+      "Longitude",
+      "Barangay",
+      "City",
+      "Province",
+      "Category",
+      "Incident Type",
+      "Description",
+      "Reported Person",
+      "Date Reported",
+      "Media URLs",
+      "Status",
+      "Incident Date",
+      "Incident Time",
+      "Reported By",
+      "Proof Files (URLs)"
+    ];
 
-  const openImagesModal = (user) => {
-    setModalUser(user);
-    setShowImagesModal(true);
-  };
+    const rows = displayIncidentReports.map((r) => {
+      const proofFiles =
+        Array.isArray(r.proof_files) && r.proof_files.length > 0
+          ? r.proof_files.map((file) => file.url).join(" | ")
+          : "";
 
-  const openLocationModal = (user) => {
-    setModalUser(user);
-    setShowLocationModal(true);
+      const mediaUrls =
+        Array.isArray(r.media_urls) && r.media_urls.length > 0
+          ? r.media_urls.join(" | ")
+          : r.media_urls || "";
+
+      return [
+        `Report-${String(r.id).padStart(5, "0")}`,
+        r.latitude || "",
+        r.longitude || "",
+        r.barangay || "",
+        r.city || "",
+        r.province || "",
+        r.category || "",
+        r.incident_type || "",
+        r.description ? r.description.replace(/\n/g, " ") : "",
+        r.reported_person || "",
+        r.created_at ? format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss") : "",
+        mediaUrls,
+        r.status || "",
+        r.incident_date ? format(new Date(r.incident_date), "yyyy-MM-dd") : "",
+        r.incident_time || "",
+        r.reported_by || "",
+        proofFiles
+      ];
+    });
+
+    const csvContent =
+      [headers, ...rows]
+        .map((row) =>
+          row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    const fileName = `barangay_reports_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    link.href = url;
+    link.setAttribute("download", fileName);
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Reports exported successfully!");
   };
 
   const closeModal = () => {
@@ -622,9 +605,7 @@ export default function BRGYDashboard() {
 
 
   const openReportModal = (user) => {
-
     const logs = Array.isArray(user.status_history) ? user.status_history : [];
-
     logs.forEach((log, index) => {
       const date = new Date(log.updated_at).toLocaleString();
       console.log(
@@ -647,10 +628,6 @@ export default function BRGYDashboard() {
 
 
 
-
-
-
-  // Renders the table or no-data animation
   const renderTable = (incidentReports = []) => {
     if (incidentReports.length === 0) {
       return (
@@ -662,9 +639,9 @@ export default function BRGYDashboard() {
               src={noBarangayAnim}
               style={{ height: '240px', width: '240px' }}
             />
-            <h2 className="no-barangay-title">No Barangay Reports</h2>
+            <h2 className="no-barangay-title">No Barangay Reports Found</h2>
             <p className="no-barangay-subtext">
-              There are currently no barangay reports available. Please add one to get started.
+              There are no barangay reports to display at the moment.
             </p>
           </div>
         </div>
@@ -682,7 +659,6 @@ export default function BRGYDashboard() {
                 <th className="table-header" style={{ width: '300px' }}>Date</th>
                 <th className="table-header" style={{ width: '150px' }}>Time</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
-                <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -692,7 +668,9 @@ export default function BRGYDashboard() {
                 style={{ cursor: "pointer" }}
                 onClick={() => openReportModal(user)}
               >
-                <td className="table-cell">{`Report-${String(user.id).padStart(5, "0")}`}</td>
+                <td className="table-cell">
+                  {`Report-${String(user.id).padStart(5, "0")}`}
+                </td>
                 <td className="table-cell">{user.incident_type}</td>
 
                 <td className="table-cell">
@@ -708,7 +686,7 @@ export default function BRGYDashboard() {
                 </td>
 
                 {/* Status dropdown */}
-                <td className="table-cell" style={{ minWidth: 160 }}>
+                <td className="table-cell" style={{ minWidth: 130 }}>
                   <div
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
@@ -729,40 +707,7 @@ export default function BRGYDashboard() {
                     />
                   </div>
                 </td>
-
-                {/* Action buttons */}
-                <td className="table-cell" style={styles.cell}>
-                  <div style={styles.row}>
-                    {[
-                      /*
-                        {
-                          src: "/icons/delete-row.png",
-                          alt: "Delete",
-                          action: () => {
-                            setReportToDelete(user);
-                            setShowDeleteConfirm(true);
-                          },
-                        },
-                      */
-                      { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
-                      { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
-                    ].map((icon, idx) => (
-                      <img
-                        key={idx}
-                        src={icon.src}
-                        alt={icon.alt}
-                        style={styles.icon}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          icon.action();
-                        }}
-                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
-                      />
-                    ))}
-                  </div>
-                </td>
               </tr>
-
               ))}
           </tbody>
         </table>
@@ -786,8 +731,8 @@ export default function BRGYDashboard() {
           <div
             className="main-content mainContent-slide-right"
             style={{
-              marginLeft: isSidebarCollapsed ? 80 : 270,
-              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)',
+              marginLeft: isSidebarCollapsed ? 80 : 300,
+              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)',
             }}
           >
             <ToastContainer
@@ -822,6 +767,11 @@ export default function BRGYDashboard() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                <button className="add-barangay-button"
+                  onClick={() => setShowExportConfirm(true)}
+                >
+                  Export CSV
+                </button>
               </div>
             </div>
 
@@ -847,13 +797,10 @@ export default function BRGYDashboard() {
 
       {/* VIEW BARANGAY REPORT MODAL */}
       {showBarangayReportDetailsModal && modalUser && (
-        <div
-          className="modal-overlay"
-          onClick={closeModal}
-        >
+        <div className="modal-overlay" onClick={closeModal}>
           <div
-            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
-            style={{ maxWidth: '500px' }}
+            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+            style={{ maxWidth: "600px", width: "90%" }}
             onClick={(e) => e.stopPropagation()}
           >
             <img
@@ -862,155 +809,329 @@ export default function BRGYDashboard() {
               className="modal-close-btn"
               onClick={closeModal}
             />
-            <h3 className="modal-title" style={{ textAlign: 'center' }}>{modalUser.incident_type}</h3>
-           
-           
-            {/* Details Text */}
+            <h3 className="modal-title" style={{ textAlign: "center" }}>
+              {modalUser.incident_type}
+            </h3>
+
+            <div
+              className="mini-navbar"
+              style={{
+                display: "flex",
+                gap: "30px",
+                margin: "15px 0",
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              {["details", "media", "map"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveMiniTab(tab)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: activeMiniTab === tab ? "600" : "400",
+                    color: activeMiniTab === tab ? "#007bff" : "#555",
+                    borderBottom:
+                      activeMiniTab === tab
+                        ? "2px solid #007bff"
+                        : "2px solid transparent",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
             <div
               className="modal-body"
               style={{
-                padding: '20px 25px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                fontFamily: 'Poppins, sans-serif',
-                fontSize: '14px',
-                color: '#374856',
+                padding: "20px 25px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                fontFamily: "Poppins, sans-serif",
+                fontSize: "14px",
+                color: "#374856",
               }}
             >
+              {activeMiniTab === "details" && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Reported By:</span>
+                    <span className="modal-value">
+                      <b>{modalUser.reported_by}</b>
+                    </span>
+                  </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="modal-label">Reported By:</span>
-                <span className="modal-value"><b>{modalUser.reported_by}</b></span>
-              </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Date & Time:</span>
+                    <span className="modal-value">
+                      <b>
+                        {modalUser.incident_date && modalUser.incident_time
+                          ? new Date(
+                              `${modalUser.incident_date.split("T")[0]}T${
+                                modalUser.incident_time
+                              }`
+                            ).toLocaleString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Not specified"}
+                      </b>
+                    </span>
+                  </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="modal-label">Date & Time:</span>
-                <span className="modal-value">
-                  <b>
-                    {modalUser.incident_date && modalUser.incident_time ? (() => {
-                      try {
-                        const datePart = modalUser.incident_date.split("T")[0];
-                        const combined = `${datePart}T${modalUser.incident_time}`;
-                        const dateObj = new Date(combined);
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span className="modal-label" style={{ marginBottom: "5px" }}>
+                      Report Description:
+                    </span>
+                    <div className="modal-value">
+                      <b>{modalUser.description}</b>
+                    </div>
+                  </div>
 
-                        return dateObj.toLocaleString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        });
-                      } catch (err) {
-                        console.error("Failed to format date & time:", err);
-                        return "Invalid date/time";
-                      }
-                    })() : "Not specified"}
-                  </b>
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span 
-                  className="modal-label" 
-                  style={{ marginBottom: '5px' }}
-                >
-                  Report Description:
-                </span>
-                <div className="modal-value">
-                  <b>{modalUser.description}</b>
-                </div>
-              </div>
-
-              {/* Status History */}
-              {modalUser.statusLogs && modalUser.statusLogs.length > 0 && (
-                <div style={{ marginTop: "20px" }}>
-                  <h3
-                    style={{
-                      fontSize: "16px",
-                      fontWeight: "600",
-                      marginBottom: "12px",
-                      borderBottom: "1px solid #eee",
-                      paddingBottom: "4px",
-                      color: "#333",
-                    }}
-                  >
-                    Status History
-                  </h3>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {modalUser.statusLogs.map((log, idx) => (
-                      <div
-                        key={idx}
+                  {modalUser.statusLogs?.length > 0 && (
+                    <div style={{ marginTop: "20px" }}>
+                      <h3
                         style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          padding: "10px 14px",
-                          border: "1px solid #eee",
-                          borderRadius: "8px",
+                          fontSize: "16px",
+                          fontWeight: "600",
+                          marginBottom: "12px",
+                          borderBottom: "1px solid #eee",
+                          paddingBottom: "4px",
+                          color: "#333",
                         }}
                       >
-                        {/* Status */}
-                        <span
-                          style={{
-                            fontWeight: "bold",
-                            fontSize: "14px",
-                            color: "#111",
-                            marginBottom: "4px",
-                            textTransform: "capitalize",
-                          }}
-                        >
-                          {log.label}
-                        </span>
-
-                        {/* Date + Updated By */}
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: "13px",
-                            color: "#555",
-                          }}
-                        >
-                          <span>{new Date(log.updated_at).toLocaleString()}</span>
-                          <em>{log.updated_by}</em>
-                        </div>
+                        Status History
+                      </h3>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {modalUser.statusLogs.map((log, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              padding: "10px 14px",
+                              border: "1px solid #eee",
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontWeight: "bold",
+                                fontSize: "14px",
+                                color: "#111",
+                                marginBottom: "4px",
+                                textTransform: "capitalize",
+                              }}
+                            >
+                              {log.label}
+                            </span>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: "13px",
+                                color: "#555",
+                              }}
+                            >
+                              <span>{new Date(log.updated_at).toLocaleString()}</span>
+                              <em>{log.updated_by}</em>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Date Reported:</span>
+                    <div className="modal-value">
+                      <b>
+                        {modalUser.created_at
+                          ? new Date(modalUser.created_at).toLocaleString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Not specified"}
+                      </b>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
+              {activeMiniTab === "media" && (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "400px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+                    <>
+                      {/* Helper function to get file extension */}
+                      {(() => {
+                        const getFileExtension = (url) => {
+                          try {
+                            const pathname = new URL(url).pathname;
+                            const extension = pathname.split('.').pop().toLowerCase();
+                            return extension;
+                          } catch (error) {
+                            console.error('Invalid URL:', url, error);
+                            return '';
+                          }
+                        };
 
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="modal-label">Date Reported:</span>
-                <div className="modal-value">
-                  <b>
-                    {modalUser.created_at ? (() => {
-                      try {
-                        const dateObj = new Date(modalUser.created_at);
+                        const currentUrl = modalUser.media_urls[currentImageIndex];
+                        const ext = getFileExtension(currentUrl);
+                        if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) {
+                          return (
+                            <img
+                              src={currentUrl}
+                              alt={`Report-${modalUser.id}`}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                                cursor: "zoom-in",
+                              }}
+                              onClick={() => window.open(currentUrl, "_blank")}
+                            />
+                          );
+                        } else if (['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(ext)) {
+                          const type = ext === "mov" ? "video/quicktime" :
+                                      ext === "m4v" ? "video/mp4" :
+                                      `video/${ext}`;
+                          return (
+                            <video
+                              controls
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                              }}
+                            >
+                              <source src={currentUrl} type={type} />
+                              Your browser does not support the video tag.
+                            </video>
+                          );
+                        } else {
+                          return <p style={{ color: "#999" }}>Unsupported file type</p>;
+                        }
+                      })()}
 
-                        return dateObj.toLocaleString("en-US", {
-                          month: "long",   // e.g., September
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        });
-                      } catch (err) {
-                        console.error("Failed to format created_at:", err);
-                        return "Invalid date";
-                      }
-                    })() : "Not specified"}
-                  </b>
+                      {/* Navigation arrows */}
+                      {currentImageIndex > 0 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex - 1);
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: "10px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "24px",
+                            cursor: "pointer",
+                            backgroundColor: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            padding: "5px",
+                            userSelect: "none",
+                          }}
+                        >
+                          &#8592;
+                        </div>
+                      )}
+
+                        {currentImageIndex < modalUser.media_urls.length - 1 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex + 1);
+                          }}
+                          style={{
+                            position: "absolute",
+                            right: "10px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "24px",
+                            cursor: "pointer",
+                            backgroundColor: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            padding: "5px",
+                            userSelect: "none",
+                          }}
+                        >
+                          &#8594;
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ color: "#999" }}>No media available.</p>
+                  )}
                 </div>
-              </div>
+              )}
+              
 
 
+              {activeMiniTab === "map" && (
+                <>
+                  {modalUser.latitude && modalUser.longitude ? (
+                    <div
+                      style={{
+                        height: "300px",
+                        marginTop: "10px",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <MapContainer
+                        center={[modalUser.latitude, modalUser.longitude]}
+                        zoom={15}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={[modalUser.latitude, modalUser.longitude]}>
+                          <Popup>{`${modalUser.first_name} ${modalUser.last_name}'s Report Location`}</Popup>
+                        </Marker>
+                      </MapContainer>
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: "center", color: "#999" }}>
+                      No location data available.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
-
           </div>
         </div>
       )}
@@ -1549,11 +1670,77 @@ export default function BRGYDashboard() {
         </div>
       )}
 
+      {/* EXPORT CONFIRMATION MODAL */}
+      {showExportConfirm && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsClosing(true);
+            setTimeout(() => {
+              setShowExportConfirm(false);
+              setIsClosing(false);
+            }, 200);
+          }}
+        >
+          <div
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '350px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowExportConfirm(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            />
+
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Export Barangay Reports</h3>
+            <p className="sub-title" style={{ textAlign: 'center' }}>
+              Are you sure you want to export all reports as a CSV file?
+            </p>
+
+            <div className="button-container">
+              <button
+                className="cancel-button"
+                onClick={() => {
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowExportConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button-export"
+                onClick={() => {
+                  handleExport();
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowExportConfirm(false);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
     </>
   );
 }
+
 
 const sortDropdownStyles = {
   control: (base) => ({
@@ -1648,31 +1835,13 @@ const updateStatusStyles = (status) => {
     option: (provided, state) => ({
       ...provided,
       textTransform: 'capitalize',
-      backgroundColor: state.isFocused ? color + '30' : 'white',  // slightly lighter on hover
+      backgroundColor: state.isFocused ? color + '30' : 'white',
       color: state.isFocused ? color : 'black',
       cursor: 'pointer',
       fontSize: '12px',
       padding: '6px 10px',
     }),
   };
-};
-
-const styles = {
-  cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
-  row: { display: "flex", alignItems: "center", gap: "15px" },
-  icon: {
-    width: "20px",
-    height: "20px",
-    cursor: "pointer",
-    transition: "transform 0.15s ease",
-  },
-};
-
-const bounceEffect = (el) => {
-  el.style.transform = "translateY(-6px)";
-  setTimeout(() => (el.style.transform = "translateY(2px)"), 150);
-  setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
-  setTimeout(() => (el.style.transform = "translateY(0)"), 450);
 };
 
 const dropdownStyles = {
@@ -1715,4 +1884,3 @@ const dropdownStyles = {
   zIndex: 20,
   }),
 };
-

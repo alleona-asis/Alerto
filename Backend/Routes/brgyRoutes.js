@@ -203,27 +203,32 @@ const {
 // Mobile
 router.post(
   '/submit-incident-report',
-  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), // handle up to 5 media files
+  uploadWithSupabase([{ name: 'media', maxCount: 5 }]), 
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'media');
-
-      if (uploadedFiles.length === 0) {
+      const allFiles = [];
+      for (const key in req.supabaseFiles) {
+        if (Array.isArray(req.supabaseFiles[key])) {
+          allFiles.push(...req.supabaseFiles[key]);
+        }
+      }
+      
+      const uploadedFiles = allFiles.filter(f => f.field === 'media');  // Ensure 'field' matches
+      
+       if (uploadedFiles.length === 0) {
         return res.status(400).json({ message: 'No media files uploaded.' });
       }
-
-      // Get Supabase private URLs (signed URLs for sensitive incident reports)
+      
       const mediaUrls = uploadedFiles.map(f => f.supabaseUrl);
-
-      // Call your existing report handler, passing mediaUrls
+      
       await submitReport(req, res, { mediaUrls });
-
     } catch (err) {
       console.error('[INCIDENT REPORT UPLOAD] Failed:', err.message);
       res.status(500).json({ message: 'Incident report upload failed' });
     }
   }
 );
+
 
 
 router.get('/all-report-pins', getAllPins);
@@ -237,21 +242,29 @@ router.patch('/update-barangay-report-status/:id', updateReportStatus);
 router.post(
   '/upload-proof/:id',
   authenticateToken,
-  uploadWithSupabase([{ name: 'proof', maxCount: 5 }]), // private by default
+  uploadWithSupabase([{ name: 'proof', maxCount: 5 }]), 
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'proof');
 
+      console.log(`[UPLOAD PROOF] Starting for report: ${req.params.id}`);
+
+      const uploadedFiles = req.supabaseFiles?.proof || [];
+      
       if (uploadedFiles.length === 0) {
+        console.error('[UPLOAD PROOF] No files in supabaseFiles.proof');
         return res.status(400).json({ message: 'No proof files uploaded.' });
       }
-
+      
       const proofUrls = uploadedFiles.map(f => f.supabaseUrl);
-
-      await uploadProof(req, res, { proofUrls });
+      console.log(`[UPLOAD PROOF] URLs: ${proofUrls.join(', ')}`);
+      
+      await uploadProof(req, res);
+      
     } catch (err) {
-      console.error('[UPLOAD PROOF] Failed:', err.message);
-      res.status(500).json({ message: 'Proof upload failed' });
+      console.error('[UPLOAD PROOF] Failed:', err.message, err.stack);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Proof upload failed', error: err.message });
+      }
     }
   }
 );

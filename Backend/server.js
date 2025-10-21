@@ -30,9 +30,14 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],  
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], 
-  credentials: true,
-  optionsSuccessStatus: 200
+  allowedHeaders: [
+    "Authorization",
+    "Content-Type",
+    "X-Requested-With",
+    "Accept",
+    "Origin"
+  ],
+  exposedHeaders: ["Content-Length", "Content-Range"]
 }));
 
 

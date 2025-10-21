@@ -1,16 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import LGUNavbar from '../../../components/NavBar/LGU-Navbar';
 import LGUSidebar from '../../../components/SideBar/LGU-Sidebar';
 import axios from '../../../axios/axiosInstance';
-import './LGU-Support-Tickets.css';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
 import noDataAnim from '@/assets/animations/non data found.json';
 import Select from 'react-select';
 
 export default function LGUManageFeedback() {
-  const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const token = localStorage.getItem('token');
@@ -53,101 +50,99 @@ export default function LGUManageFeedback() {
     fetchProfile();
   }, [userId, token]);
 
-// Fetch Feedbacks by LGU Location
-const fetchFeedbacks = async () => {
-  if (!LGUProfile) return;
-  try {
-    const res = await axios.get('/api/lgu/all-feedback', {
-      params: {
-        region: LGUProfile.region,
-        province: LGUProfile.province,
-        city: LGUProfile.city,
-      },
-    });
+  // Fetch Feedbacks by LGU Location
+  const fetchFeedbacks = async () => {
+    if (!LGUProfile) return;
+    try {
+      const res = await axios.get('/api/lgu/all-feedback', {
+        params: {
+          region: LGUProfile.region,
+          province: LGUProfile.province,
+          city: LGUProfile.city,
+        },
+      });
 
-    console.log('Raw response data:', res.data);
+      console.log('Raw response data:', res.data);
 
-    // Filter by city to ensure LGU sees only their city
-    const cityFiltered = Array.isArray(res.data.feedbacks)
-      ? res.data.feedbacks.filter(f => f.city === LGUProfile.city)
-      : [];
+      const cityFiltered = Array.isArray(res.data.feedbacks)
+        ? res.data.feedbacks.filter(f => f.city === LGUProfile.city)
+        : [];
 
-    console.log('Processed feedback array (filtered by city):', cityFiltered);
-    setFeedbacks(cityFiltered);
-  } catch (err) {
-    console.error('Error fetching feedbacks:', err);
-    setFeedbacks([]);
-  }
-};
-
-
-
+      console.log('Processed feedback array (filtered by city):', cityFiltered);
+      setFeedbacks(cityFiltered);
+    } catch (err) {
+      console.error('Error fetching feedbacks:', err);
+      setFeedbacks([]);
+    }
+  };
   useEffect(() => {
     if (LGUProfile) fetchFeedbacks();
   }, [LGUProfile]);
 
   // Search & Sort
-const filteredFeedbacks = useMemo(() => {
-  const list = Array.isArray(feedbacks) ? feedbacks : [];
-  let result = list.filter(fb =>
-    fb.feedback_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    fb.messages?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    fb.concerned_barangay?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFeedbacks = useMemo(() => {
+    const list = Array.isArray(feedbacks) ? feedbacks : [];
+    const q = (searchQuery || '').toLowerCase();
 
-  switch (sortOption) {
-    case 'date-desc':
-      result.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
-      break;
-    case 'date-asc':
-      result.sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
-      break;
-    case 'barangay-asc':
-      result.sort((a, b) => a.concerned_barangay?.localeCompare(b.concerned_barangay));
-      break;
-    case 'barangay-desc':
-      result.sort((a, b) => b.concerned_barangay?.localeCompare(a.concerned_barangay));
-      break;
-  }
-  return result;
-}, [feedbacks, searchQuery, sortOption]);
-
-const deleteIncidentReport = async (id) => {
-  if (!id) return;
-
-  try {
-    // Call backend API to delete feedback
-    const res = await axios.delete(`/api/lgu/feedback/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
+    let result = list.filter((fb) => {
+      const idStr = fb?.id != null ? `FB-${String(fb.id).padStart(5, '0')}` : '';
+      return (
+        idStr.toLowerCase().includes(q) ||
+        (fb?.feedback_type || '').toLowerCase().includes(q) ||
+        (fb?.messages || '').toLowerCase().includes(q) ||
+        (fb?.concerned_barangay || '').toLowerCase().includes(q) ||
+        (fb?.first_name || '').toLowerCase().includes(q) ||
+        (fb?.middle_name || '').toLowerCase().includes(q) ||
+        (fb?.last_name || '').toLowerCase().includes(q)
+      );
     });
 
-    console.log('Deleted feedback:', res.data);
+    switch (sortOption) {
+      case 'date-desc':
+        result.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+        break;
+      case 'date-asc':
+        result.sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
+        break;
+      case 'barangay-asc':
+        result.sort((a, b) => a.concerned_barangay?.localeCompare(b.concerned_barangay));
+        break;
+      case 'barangay-desc':
+        result.sort((a, b) => b.concerned_barangay?.localeCompare(a.concerned_barangay));
+        break;
+    }
+    return result;
+  }, [feedbacks, searchQuery, sortOption]);
 
-    // Remove deleted feedback from state
-    setFeedbacks(prev => prev.filter(fb => fb.id !== id));
+  const deleteIncidentReport = async (id) => {
+    if (!id) return;
 
-    // Close modal
-    setShowDeleteConfirm(false);
-    setReportToDelete(null);
+    try {
+      const res = await axios.delete(`/api/lgu/feedback/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    // Optional: show a toast notification
-    // toast.success('Feedback deleted successfully!');
-  } catch (err) {
-    console.error('Failed to delete feedback:', err);
-    // Optional: show a toast notification
-    // toast.error('Failed to delete feedback.');
-  }
-};
+      console.log('Deleted feedback:', res.data);
+      setFeedbacks(prev => prev.filter(fb => fb.id !== id));
+      setShowDeleteConfirm(false);
+      setReportToDelete(null);
 
-const closeModal = () => {
-  setIsClosing(true);
-  setTimeout(() => {
-    setShowImagesModal(false);
-    setIsClosing(false);
-    setModalUser(null);
-    setCurrentImageIndex(0);
-  }, 200);
-};
+      toast.success('Feedback deleted successfully!');
+    } catch (err) {
+      console.error('Failed to delete feedback:', err);
+      toast.error('Failed to delete feedback.');
+    }
+  };
+
+  const closeModal = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setShowImagesModal(false);
+      setIsClosing(false);
+      setModalUser(null);
+      setCurrentImageIndex(0);
+    }, 200);
+  };
 
 
   // Render Table
@@ -178,60 +173,66 @@ const closeModal = () => {
             <thead className="table-head">
               <tr>
                 <th className="table-header">ID</th>
+                <th className="table-header">Name</th>
                 <th className="table-header">Type</th>
                 <th className="table-header">Messages</th>
                 <th className="table-header">Barangay</th>
-                <th className="table-header">Images / Video</th>
                 <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {filteredFeedbacks.map(fb => (
-                <tr key={fb.id}>
-                  <td className="table-cell">{`FB-${String(fb.id).padStart(5, '0')}`}</td>
-                  <td className="table-cell">{fb.feedback_type}</td>
-                  <td className="table-cell">{fb.messages}</td>
-                  <td className="table-cell">{fb.concerned_barangay}</td>
-                  <td className="table-cell">
-                    {(fb.images?.length > 0 || fb.video) && (
-                      <img
-                        src="/icons/view.png"
-                        alt="View"
-                        style={{ width: 20, height: 16, cursor: 'pointer' }}
-                        onClick={() => {
-                          setModalUser({
-                            ...fb,
-                            media_urls: [
-                              ...(fb.images?.map(img => img.url) || []),
-                              ...(fb.video ? [fb.video.url] : [])
-                            ]
-                          });
-                          setCurrentImageIndex(0);
-                          setShowImagesModal(true);
-                        }}
-                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
-                      />
-                    )}
-                  </td>
+              {filteredFeedbacks.map((fb, idx) => {
+                  const rowKey = fb?.id ?? fb?.feedback_id ?? fb?._id ?? `row-${idx}`;
+                  const displayName = [fb?.first_name, fb?.middle_name, fb?.last_name].filter(Boolean).join(' ');
 
-                  <td className="table-cell" style={styles.cell}>
-                    <div style={styles.row}>
-                      <img
-                        src="/icons/delete-row.png"
-                        alt="Delete"
-                        style={{ width: 18, height: 20, cursor: 'pointer' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setReportToDelete(fb);
-                          setShowDeleteConfirm(true);
-                        }}
-                        onMouseEnter={(e) => bounceEffect(e.currentTarget)}
-                      />
-                    </div>
-                  </td>
+                  const mediaUrls = [
+                    ...(Array.isArray(fb?.images) ? fb.images.map(i => i?.url).filter(Boolean) : []),
+                    ...(fb?.video?.url ? [fb.video.url] : []),
+                  ];
 
-                </tr>
-              ))}
+                  const mediaTypes = [
+                    ...(Array.isArray(fb?.images) ? fb.images.map(i => (i?.type || '').toLowerCase()) : []),
+                    ...(fb?.video?.url ? [(fb?.video?.type || '').toLowerCase()] : []),
+                  ];
+
+                  return (
+                    <tr
+                      key={rowKey}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setModalUser({
+                          ...fb,
+                          media_urls: mediaUrls,     
+                          media_types: mediaTypes,   
+                        });
+                        setCurrentImageIndex(0);
+                        setShowImagesModal(true);
+                      }}
+                    >
+                      <td className="table-cell">{`FB-${String(fb.id ?? '').padStart(5, '0')}`}</td>
+                      <td className="table-cell">{displayName}</td>
+                      <td className="table-cell">{fb.feedback_type}</td>
+                      <td className="table-cell">{fb.messages}</td>
+                      <td className="table-cell">{fb.concerned_barangay}</td>
+
+                      <td className="table-cell" style={styles.cell}>
+                        <div style={styles.row}>
+                          <img
+                            src="/icons/delete-row.png"
+                            alt="Delete"
+                            style={{ width: 18, height: 20, cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportToDelete(fb);
+                              setShowDeleteConfirm(true);
+                            }}
+                            onMouseEnter={(e) => bounceEffect(e.currentTarget)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -251,11 +252,31 @@ const closeModal = () => {
           <div
             className="main-content mainContent-slide-right"
             style={{
-              marginLeft: isSidebarCollapsed ? 80 : 270,
-              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)'
+              marginLeft: isSidebarCollapsed ? 80 : 300,
+              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)'
             }}
           >
-            <ToastContainer />
+            <ToastContainer
+              position="top-right"
+              autoClose={4000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="colored"
+              style={{
+                fontFamily: 'Poppins, sans-serif',
+                fontSize: '12px',
+                borderRadius: '8px',
+              }}
+              toastStyle={{
+                borderRadius: '8px',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)',
+              }}
+            />
             <div className="header-row">
               <h2 className="page-title">Support Tickets</h2>
               <div>
@@ -266,7 +287,6 @@ const closeModal = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                {/* Optional button for future actions */}
               </div>
             </div>
 
@@ -368,143 +388,194 @@ const closeModal = () => {
         </div>
       )}
 
-      {/* VIEW IMAGES MODAL */}
-      {showImagesModal && modalUser && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div
-            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "500px",
-              height: "600px",
-              overflow: "hidden",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              position: "relative",
-            }}
-          >
-            <h2 className="modal-title">{modalUser.incident_type}</h2>
-            <div
-              style={{
-                width: "100%",
-                height: "400px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                position: "relative",
-                margin: "20px 0",
-                overflow: "hidden",
-              }}
-            >
-            {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
-              <>
-                {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={modalUser.media_urls[currentImageIndex]}
-                    alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                      cursor: "zoom-in",
-                      transition: "transform 0.3s ease",
-                    }}
-                    onClick={() =>
-                      window.open(modalUser.media_urls[currentImageIndex], "_blank")
-                    }
-                  />
-                ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                  <video
-                    controls
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                    }}
-                  >
-                    <source
-                      src={modalUser.media_urls[currentImageIndex]}
-                      type="video/mp4"
-                    />
-                    Your browser does not support the video tag.
-                  </video>
-                ) : (
-                  <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
-                )}
-
-                {/* Left arrow */}
-                {currentImageIndex > 0 && (
+            {/* VIEW IMAGES MODAL */}
+            {showImagesModal && modalUser && (
+              <div className="modal-overlay" onClick={closeModal}>
+                <div
+                  className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    backgroundColor: "#fff",
+                    padding: "20px",
+                    borderRadius: "8px",
+                    width: "500px",
+                    height: "600px",
+                    overflow: "hidden",
+                    textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    position: "relative",
+                  }}
+                >
+                  <h2 className="modal-title">{modalUser.feedback_type || modalUser.incident_type || "Media"}</h2>
                   <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex - 1);
-                    }}
                     style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
+                      width: "100%",
+                      height: "400px",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      position: "relative",
+                      margin: "20px 0",
+                      overflow: "hidden",
                     }}
                   >
-                    &#8592;
-                  </div>
-                )}
+                    {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+                      <>
+                        {(() => {
+                          const inferTypeFromUrl = (u = "") => {
+                            const clean = String(u).split("?")[0].toLowerCase();
+                            const ext = clean.split(".").pop();
+                            switch (ext) {
+                              case "jpg": case "jpeg": case "png": case "gif": case "webp": case "heic": case "heif":
+                                return ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+                              case "mp4": return "video/mp4";
+                              case "webm": return "video/webm";
+                              case "ogg": return "video/ogg";
+                              case "3gp":
+                              case "3gpp": return "video/3gpp";
+                              case "mkv": return "video/x-matroska";
+                              default: return "";
+                            }
+                          };
 
-                {/* Right arrow */}
-                {currentImageIndex < modalUser.media_urls.length - 1 && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(currentImageIndex + 1);
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                      color: "#fff",
-                      borderRadius: "50%",
-                      padding: "5px",
-                    }}
-                  >
-                    &#8594;
+                          const url = modalUser.media_urls[currentImageIndex] || "";
+                          const urlForMatch = url.split("?")[0];
+                          const sidecarType = Array.isArray(modalUser.media_types)
+                            ? (modalUser.media_types[currentImageIndex] || "").toLowerCase()
+                            : "";
+                          const type = sidecarType || inferTypeFromUrl(url);
+
+                          const isImage =
+                            (type.startsWith("image/")) ||
+                            /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(urlForMatch);
+
+                          const isVideo =
+                            (type.startsWith("video/")) ||
+                            /\.(mp4|webm|ogg|3gp|3gpp|mkv)$/i.test(urlForMatch);
+
+                          if (isImage) {
+                            return (
+                              <img
+                                src={url}
+                                alt={`Report-${String(modalUser.id ?? "").padStart(5, "0")}`}
+                                style={{
+                                  maxWidth: "100%",
+                                  maxHeight: "100%",
+                                  borderRadius: "12px",
+                                  boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                  objectFit: "contain",
+                                  cursor: "zoom-in",
+                                  transition: "transform 0.3s ease",
+                                }}
+                                onClick={() => window.open(url, "_blank")}
+                                onError={(e) => {
+                                  const el = e.currentTarget;
+                                  const parent = el.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML =
+                                      '<p style="font-style:italic;color:#999">This image format isn’t supported by your browser. <a href="' +
+                                      url +
+                                      '" target="_blank" rel="noreferrer">Open in new tab</a></p>';
+                                  }
+                                }}
+                              />
+                            );
+                          }
+
+                          if (isVideo) {
+                            return (
+                              <video
+                                controls
+                                style={{
+                                  maxWidth: "100%",
+                                  maxHeight: "100%",
+                                  borderRadius: "12px",
+                                  boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                  objectFit: "contain",
+                                }}
+                              >
+                                <source src={url} type={type || undefined} />
+                                Your browser does not support the video tag.
+                              </video>
+                            );
+                          }
+
+                          return (
+                            <p style={{ fontStyle: "italic", color: "#999" }}>
+                              Unsupported file type{type ? ` (${type})` : ""}.{" "}
+                              <a href={url} target="_blank" rel="noreferrer">
+                                Open anyway
+                              </a>
+                            </p>
+                          );
+                        })()}
+
+                        {/* Left arrow */}
+                        {currentImageIndex > 0 && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex(currentImageIndex - 1);
+                            }}
+                            style={{
+                              position: "absolute",
+                              left: "10px",
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              fontSize: "24px",
+                              cursor: "pointer",
+                              userSelect: "none",
+                              backgroundColor: "rgba(0,0,0,0.3)",
+                              color: "#fff",
+                              borderRadius: "50%",
+                              padding: "5px",
+                            }}
+                          >
+                            &#8592;
+                          </div>
+                        )}
+
+                        {/* Right arrow */}
+                        {currentImageIndex < modalUser.media_urls.length - 1 && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex(currentImageIndex + 1);
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: "10px",
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              fontSize: "24px",
+                              cursor: "pointer",
+                              userSelect: "none",
+                              backgroundColor: "rgba(0,0,0,0.3)",
+                              color: "#fff",
+                              borderRadius: "50%",
+                              padding: "5px",
+                            }}
+                          >
+                            &#8594;
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
-              <p style={{ fontStyle: "italic", color: "#999" }}>No media available.</p>
+                  <button
+                    onClick={closeModal}
+                    className="modal-cancel-button"
+                    style={{ marginBottom: "10px" }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             )}
-            </div>
-            <button
-              onClick={closeModal}
-              className="modal-cancel-button"
-              style={{ marginBottom: "10px" }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
 
     </>
   );
@@ -526,47 +597,6 @@ const bounceEffect = (el) => {
   setTimeout(() => (el.style.transform = "translateY(2px)"), 150);
   setTimeout(() => (el.style.transform = "translateY(-2px)"), 300);
   setTimeout(() => (el.style.transform = "translateY(0)"), 450);
-};
-
-const dropdownStyles = {
-  control: (base, state) => ({
-    ...base,
-    borderRadius: 8,
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(0,111,253,0.2)' : 'none',
-    padding: '4px 3px',
-    paddingLeft: '10px',
-    marginTop: 3,
-    marginBottom: 15,
-    fontSize: 14,
-    fontWeight: 500,
-    minHeight: '38px',
-    border: '1px solid #ccc',
-    alignSelf: 'flex-start',
-    textAlign: 'left',
-  }),
-  option: (base, { isFocused, isSelected }) => ({
-    ...base,
-    backgroundColor: isSelected
-      ? '#8696BB'
-      : isFocused
-      ? '#f3f4f6'
-      : '#ffffff',
-    color: isSelected ? '#ffffff' : '#111827',
-    cursor: 'pointer',
-    fontSize: 14,
-    textAlign: 'left',
-  }),
-  singleValue: (base) => ({
-    ...base,
-    color: '#111827',
-    textAlign: 'left',
-  }),
-  menu: (base) => ({
-  ...base,
-  borderRadius: 8,
-  boxShadow: '0 0 0 2px rgba(0,111,253,0.2)',
-  zIndex: 20,
-  }),
 };
 
 const sortDropdownStyles = {

@@ -42,14 +42,19 @@ const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
   }
 
   // Return public URL if public bucket
-  if (isPublic) {
+    if (isPublic) {
     const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(relativePath);
     return publicUrlData.publicUrl;
-  }
+  } else {
+    // For private buckets, return a signed URL instead of a public placeholder
+    const { data, error } = await supabase
+      .storage
+      .from(bucket)
+      .createSignedUrl(relativePath,  60 * 60 * 24 * 7) // 7 days validity
 
-  // For private bucket, you can generate a signed URL or return a path
-  // Here, returning a path placeholder; adjust as needed
-  return `/storage/v1/object/public/${bucket}/${relativePath}`;
+    if (error) throw new Error(`Supabase signed URL error: ${error.message}`);
+    return data.signedUrl;
+  }
 }
 
 /**
@@ -62,7 +67,7 @@ function deleteLocalFile(localPath) {
   });
 }
 
-async function generateSignedUrl(relativePath, expiresInSeconds = 3600) {
+async function generateSignedUrl(relativePath, expiresInSeconds = 3600 * 24 * 7) { //7 days validity
   try {
     const { data, error } = await supabase.storage
       .from(PRIVATE_BUCKET)

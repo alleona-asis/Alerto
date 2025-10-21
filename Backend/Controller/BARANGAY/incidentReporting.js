@@ -8,7 +8,7 @@ const {supabase} = require('../../PostgreSQL/supabaseClient');
 // =================================================
 //  SUBMIT BARANGAY REPORT
 // =================================================
-const submitReport = async (req, res) => {
+const submitReport = async (req, res, { mediaUrls = [] }) => {
   try {
 
     const mobileUserId = req.body.mobile_user_id || req.user?.id;
@@ -80,18 +80,19 @@ const submitReport = async (req, res) => {
     // =======================
     // Handle uploaded files
     // =======================
-    const uploadedFiles = req.files || [];
-    const BASE_URL = process.env.BASE_URL || "http://localhost:5000"; 
 
-    const media = uploadedFiles.map(file => ({
-      filename: file.filename,
-      url: `${BASE_URL}/uploads/reports/${file.filename}`,
-      mimetype: file.mimetype
-    }));
+   const supabaseMedia = Array.isArray(req.supabaseFiles?.media)
+        ? req.supabaseFiles.media
+        : [];
 
-    const mediaFilenames = media.map(m => m.filename);
-    const mediaUrls = media.map(m => m.url);
+      const media = supabaseMedia.map(f => ({
+        filename: f.filename,
+        url: f.supabaseUrl,  // signed URL
+        mimetype: f.mimetype || (f.filename.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
+      }));
 
+      const mediaFilenames = media.map(m => m.filename);
+      const mediaUrls = media.map(m => m.url);
     // =======================
     // Parse date & boolean
     // =======================
@@ -280,7 +281,7 @@ const getAllPins = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORTS FOR MOBILE
+//  GET ALL BARANGAY REPORT FOR MOBILE
 // =================================================
 const getBarangayReportsForMobile = async (req, res) => {
   try {
@@ -301,7 +302,7 @@ const getBarangayReportsForMobile = async (req, res) => {
 
 
 // =================================================
-//  GET ALL BARANGAY REPORTS FOR WEB
+//  GET ALL BARANGAY REPORT FOR WEB
 // =================================================
 const getBarangayReports = async (req, res) => {
   try {
@@ -450,17 +451,27 @@ const updateReportStatus = async (req, res) => {
     }
 
 
-    // --- Emit notification ONLY to the mobile user ---
-    if (notification) {
-      const io = getIo();
-      io.to(`user_${updatedReport.mobile_user_id}`).emit(
-        "reportStatusUpdate",
-        {
-          ...notification,
-          type: "barangay_report_status",
-        }
-      );
-    }
+// after you compute updatedReport and (optionally) save notification
+const io = getIo();
+
+// optional: keep a dedicated channel for the inbox feed
+if (notification) {
+  io.to(`user_${updatedReport.mobile_user_id}`).emit('notification', {
+    ...notification,
+    type: 'barangay_report_status',
+  });
+}
+
+// ✅ send the actual report update for the UI list/modal
+io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
+  id: updatedReport.id,                 // the client accepts id OR reportId
+  reportId: updatedReport.id,
+  status: updatedReport.status,
+  status_history: updatedReport.status_history,
+  updated_by: updatedReport.updated_by,
+  updated_at: updatedReport.updated_at,
+});
+
 
     res.status(200).json({
       message: "Status updated successfully",
@@ -498,35 +509,34 @@ const uploadProof = async (req, res) => {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    const uploadedFiles = req.files;
-    //console.log("Files received:", uploadedFiles);
-    //console.log("Number of files to upload:", uploadedFiles.length);
+    const uploadedFiles = req.supabaseFiles?.proof || [];
+    if (uploadedFiles.length === 0) {
+      console.error('[UPLOAD PROOF] No files in req.supabaseFiles.proof');
+      return res.status(400).json({ message: "No proof files uploaded" });
+    }
+    console.log(`[UPLOAD PROOF] Processing ${uploadedFiles.length} files for report ${id}`);
 
-    const proofFiles = uploadedFiles.map(file => {
-      const uploadsDir = "uploads/proof";
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-      const filePath = file.path;
-      const url = `${BASE_URL}/${file.filename}`;
-      console.log("File ready for DB:", { name: file.originalname, path: filePath, url });
-
-      return {
-        filename: file.originalname,
-        path: filePath,
-        url,
-        type: file.mimetype.startsWith("image") ? "image" : "video",
-      };
-    });
-
+    const proofFiles = uploadedFiles.map(file => ({
+      filename: file.filename || file.originalname,  
+      path: file.relativePath || '', 
+      url: file.supabaseUrl,  
+      type: file.mimetype.startsWith("image") ? "image" : "video",  
+    }));
+    // Fetch current proof_files from DB
     const { rows } = await pool.query(
       `SELECT proof_files FROM incident_reports WHERE id = $1`,
       [id]
     );
     const currentProofs = rows[0]?.proof_files || [];
 
-    const updatedProofs = [...currentProofs, ...proofFiles];
+    if (!rows.length) {
+      return res.status(404).json({ message: "Report not found" });
+    }
 
-    const updateResult = await pool.query(
+    // Append new proofs
+    const updatedProofs = [...currentProofs, ...proofFiles];
+    // Update DB
+        const updateResult = await pool.query(
       `UPDATE incident_reports
        SET proof_files = $1::jsonb,
            updated_at = NOW()
@@ -534,23 +544,23 @@ const uploadProof = async (req, res) => {
        RETURNING *`,
       [JSON.stringify(updatedProofs), id]
     );
-
     const updatedReport = updateResult.rows[0];
-
     // Emit via Socket.io
     const io = getIo();
     io.emit("proofUploaded", {
       reportId: updatedReport.id,
       proof_files: updatedReport.proof_files,
     });
-
+    console.log('[UPLOAD PROOF] Success');
     res.status(200).json({
       message: "Proof uploaded successfully",
       report: updatedReport,
     });
-  } catch (error) {
-    console.error("[uploadProof] Error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+      } catch (error) {
+    console.error("[UPLOAD PROOF] Error:", error.message, error.stack);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
   }
 };
 
@@ -727,11 +737,11 @@ const getUserBlockingStatus = async (userId) => {
     if (result.rows.length > 0) {
       return result.rows[0];  // Return { invalid_count, blocked_until, permanently_blocked }
     } else {
-      return null;  // Or throw an error if preferred
+      return null; 
     }
   } catch (error) {
     console.error('Error fetching user blocking status:', error);
-    throw error;  // Propagate for route handling
+    throw error; 
   }
 };
 

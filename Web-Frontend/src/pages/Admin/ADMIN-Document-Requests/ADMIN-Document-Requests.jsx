@@ -274,9 +274,6 @@ useEffect(() => {
       );
     }
 
-
-  
-
     return (
       <>
       <div className="table-wrapper">

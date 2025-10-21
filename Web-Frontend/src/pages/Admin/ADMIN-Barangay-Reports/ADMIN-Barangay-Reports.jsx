@@ -7,7 +7,7 @@ import '../../../components/SideBar/styles.css';
 import './ADMIN-Barangay-Reports.css'
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
-import noBarangayAnim from "@/assets/animations/non data found.json";
+import noBarangayAnim from '@/assets/animations/non data found.json';
 import Select from 'react-select';
 import { io } from 'socket.io-client';
 import { format } from "date-fns";
@@ -63,6 +63,8 @@ export default function ADMINBarangayReports() {
   const [isClosing, setIsClosing] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
+  const [activeMiniTab, setActiveMiniTab] = useState("details");
 
   // Helper to capitalize words
   const capitalizeWords = (str) =>
@@ -237,11 +239,26 @@ export default function ADMINBarangayReports() {
     }
   };
 
+  const openReportModal = (user) => {
+  const logs = Array.isArray(user.status_history) ? user.status_history : [];
+
+  console.log("modalUser set with logs:", { ...user, statusLogs: logs });
+
+  setModalUser({ 
+    ...user, 
+    statusLogs: logs });
+
+  setShowBarangayReportDetailsModal(true);
+  setActiveMiniTab("details");
+  setCurrentImageIndex(0);
+};
+
 
   const openImagesModal = (user) => {
-    setModalUser(user);
-    setShowImagesModal(true);
-  };
+  setCurrentImageIndex(0);
+  setModalUser(user);
+  setShowImagesModal(true);
+};
 
   const openLocationModal = (user) => {
     setModalUser(user);
@@ -272,9 +289,9 @@ export default function ADMINBarangayReports() {
               src={noBarangayAnim}
               style={{ height: '240px', width: '240px' }}
             />
-            <h2 className="no-barangay-title">No Barangay Reports</h2>
+            <h2 className="no-barangay-title">No Barangay Reports Found</h2>
             <p className="no-barangay-subtext">
-              There are currently no barangay reports available. Please add one to get started.
+              There are no barangay reports to display at the moment.
             </p>
           </div>
         </div>
@@ -305,6 +322,7 @@ export default function ADMINBarangayReports() {
               <tr
                 key={user.id}
                 style={{ cursor: 'pointer' }}
+                onClick={() => openReportModal(user)}
               >
                 <td className="table-cell">
                   {`Report-${String(user.id).padStart(5, '0')}`}
@@ -353,8 +371,6 @@ export default function ADMINBarangayReports() {
                           setShowDeleteConfirm(true);
                         },
                       },
-                      { src: "/icons/images.png", alt: "View Images", action: () => openImagesModal(user) },
-                      { src: "/icons/location.png", alt: "View Location", action: () => openLocationModal(user) },
                     ].map((icon, idx) => (
                       <img
                         key={idx}
@@ -378,6 +394,7 @@ export default function ADMINBarangayReports() {
       </div>
     );
   };
+  
 
   return (
     <>
@@ -453,6 +470,347 @@ export default function ADMINBarangayReports() {
       </div>
 
 
+      {/* VIEW BARANGAY REPORT MODAL */}
+      {showBarangayReportDetailsModal && modalUser && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div
+            className={`modal-content ${isClosing ? "pop-out" : "pop-in"}`}
+            style={{ maxWidth: "600px", width: "90%" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={closeModal}
+            />
+            <h3 className="modal-title" style={{ textAlign: "center" }}>
+              {modalUser.incident_type}
+            </h3>
+
+            <div
+              className="mini-navbar"
+              style={{
+                display: "flex",
+                gap: "30px",
+                margin: "15px 0",
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              {["details", "media", "map"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveMiniTab(tab)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: activeMiniTab === tab ? "600" : "400",
+                    color: activeMiniTab === tab ? "#007bff" : "#555",
+                    borderBottom:
+                      activeMiniTab === tab
+                        ? "2px solid #007bff"
+                        : "2px solid transparent",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="modal-body"
+              style={{
+                padding: "20px 25px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                fontFamily: "Poppins, sans-serif",
+                fontSize: "14px",
+                color: "#374856",
+              }}
+            >
+              {activeMiniTab === "details" && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Reported By:</span>
+                    <span className="modal-value">
+                      <b>{modalUser.reported_by}</b>
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Date & Time:</span>
+                    <span className="modal-value">
+                      <b>
+                        {modalUser.incident_date && modalUser.incident_time
+                          ? new Date(
+                              `${modalUser.incident_date.split("T")[0]}T${
+                                modalUser.incident_time
+                              }`
+                            ).toLocaleString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Not specified"}
+                      </b>
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span className="modal-label" style={{ marginBottom: "5px" }}>
+                      Report Description:
+                    </span>
+                    <div className="modal-value">
+                      <b>{modalUser.description}</b>
+                    </div>
+                  </div>
+
+                  {modalUser.statusLogs?.length > 0 && (
+                    <div style={{ marginTop: "20px" }}>
+                      <h3
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: "600",
+                          marginBottom: "12px",
+                          borderBottom: "1px solid #eee",
+                          paddingBottom: "4px",
+                          color: "#333",
+                        }}
+                      >
+                        Status History
+                      </h3>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {modalUser.statusLogs.map((log, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              padding: "10px 14px",
+                              border: "1px solid #eee",
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontWeight: "bold",
+                                fontSize: "14px",
+                                color: "#111",
+                                marginBottom: "4px",
+                                textTransform: "capitalize",
+                              }}
+                            >
+                              {log.label}
+                            </span>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: "13px",
+                                color: "#555",
+                              }}
+                            >
+                              <span>{new Date(log.updated_at).toLocaleString()}</span>
+                              <em>{log.updated_by}</em>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="modal-label">Date Reported:</span>
+                    <div className="modal-value">
+                      <b>
+                        {modalUser.created_at
+                          ? new Date(modalUser.created_at).toLocaleString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Not specified"}
+                      </b>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {activeMiniTab === "media" && (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "400px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+                    <>
+                      {/* Helper function to get file extension */}
+                      {(() => {
+                        const getFileExtension = (url) => {
+                          try {
+                            const pathname = new URL(url).pathname;
+                            const extension = pathname.split('.').pop().toLowerCase();
+                            return extension;
+                          } catch (error) {
+                            console.error('Invalid URL:', url, error);
+                            return '';
+                          }
+                        };
+
+                        const currentUrl = modalUser.media_urls[currentImageIndex];
+                        const ext = getFileExtension(currentUrl);
+                        if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+                          return (
+                            <img
+                              src={currentUrl}
+                              alt={`Report-${modalUser.id}`}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                                cursor: "zoom-in",
+                              }}
+                              onClick={() => window.open(currentUrl, "_blank")}
+                            />
+                          );
+                        } else if (["mp4", "webm", "ogg", "mov", "m4v"].includes(ext)) {
+                          // try to set the correct mimetype
+                          const type = ext === "mov" ? "video/quicktime" :
+                                      ext === "m4v" ? "video/mp4" :
+                                      `video/${ext}`;
+                          return (
+                            <video
+                              controls
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                              }}
+                            >
+                              <source src={currentUrl} type={type} />
+                              Your browser does not support the video tag.
+                            </video>
+                          );
+                        } else {
+                          return <p style={{ color: "#999" }}>Unsupported file type</p>;
+                        }
+                      })()}
+
+                      {/* Navigation arrows */}
+                      {currentImageIndex > 0 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex - 1);
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: "10px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "24px",
+                            cursor: "pointer",
+                            backgroundColor: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            padding: "5px",
+                            userSelect: "none",
+                          }}
+                        >
+                          &#8592;
+                        </div>
+                      )}
+
+                        {currentImageIndex < modalUser.media_urls.length - 1 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex + 1);
+                          }}
+                          style={{
+                            position: "absolute",
+                            right: "10px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "24px",
+                            cursor: "pointer",
+                            backgroundColor: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            padding: "5px",
+                            userSelect: "none",
+                          }}
+                        >
+                          &#8594;
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ color: "#999" }}>No media available.</p>
+                  )}
+                </div>
+                )}
+
+
+              {activeMiniTab === "map" && (
+                <>
+                  {modalUser.latitude && modalUser.longitude ? (
+                    <div
+                      style={{
+                        height: "300px",
+                        marginTop: "10px",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <MapContainer
+                        center={[modalUser.latitude, modalUser.longitude]}
+                        zoom={15}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={[modalUser.latitude, modalUser.longitude]}>
+                          <Popup>{`${modalUser.first_name} ${modalUser.last_name}'s Report Location`}</Popup>
+                        </Marker>
+                      </MapContainer>
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: "center", color: "#999" }}>
+                      No location data available.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DELETE CONFIRMATION MODAL */}
       {showDeleteConfirm && reportToDelete && (
         <div
@@ -484,7 +842,11 @@ export default function ADMINBarangayReports() {
             />
 
             <div className="icon-container">
-              <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
+              <img
+                src="/icons/delete.png"
+                alt="Delete"
+                className="icon-delete"
+              />
             </div>
 
             <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
@@ -492,7 +854,10 @@ export default function ADMINBarangayReports() {
               Are you sure you want to delete this report?
             </p>
 
-            <div className="location-text" style={{ textAlign: 'center', marginBottom: "12px" }}>
+            <div 
+              className="location-text" 
+              style={{ textAlign: 'center',
+               marginBottom: "12px" }}>
               {reportToDelete?.incident_type
                 ? capitalizeWords(reportToDelete.incident_type)
                 : 'N/A'}
@@ -601,45 +966,51 @@ export default function ADMINBarangayReports() {
                 overflow: "hidden",
               }}
             >
-            {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
-              <>
-                {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={modalUser.media_urls[currentImageIndex]}
-                    alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                      cursor: "zoom-in",
-                      transition: "transform 0.3s ease",
-                    }}
-                    onClick={() =>
-                      window.open(modalUser.media_urls[currentImageIndex], "_blank")
+              {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
+                <>
+                  {(() => {
+                    const currentUrl = modalUser.media_urls[currentImageIndex];
+                    const ext = getFileExtension(currentUrl);
+                    if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+                      return (
+                        <img
+                          src={currentUrl}
+                          alt={`Report-${String(modalUser.id).padStart(5, "0")}`}
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                            objectFit: "contain",
+                            cursor: "zoom-in",
+                            transition: "transform 0.3s ease",
+                          }}
+                          onClick={() => window.open(currentUrl, "_blank")}
+                        />
+                      );
+                    } else if (["mp4", "webm", "ogg", "mov", "m4v"].includes(ext)) {
+                      const type = ext === "mov" ? "video/quicktime" :
+                                  ext === "m4v" ? "video/mp4" :
+                                  `video/${ext}`;
+                      return (
+                        <video
+                          controls
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                            objectFit: "contain",
+                          }}
+                        >
+                          <source src={currentUrl} type={type} />
+                          Your browser does not support the video tag.
+                        </video>
+                      );
+                    } else {
+                      return <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>;
                     }
-                  />
-                ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                  <video
-                    controls
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                      objectFit: "contain",
-                    }}
-                  >
-                    <source
-                      src={modalUser.media_urls[currentImageIndex]}
-                      type="video/mp4"
-                    />
-                    Your browser does not support the video tag.
-                  </video>
-                ) : (
-                  <p style={{ fontStyle: "italic", color: "#999" }}>Unsupported file type</p>
-                )}
+                  })()}
 
                 {/* Left arrow */}
                 {currentImageIndex > 0 && (

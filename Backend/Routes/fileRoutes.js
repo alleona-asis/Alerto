@@ -4,26 +4,30 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { generateSignedUrl } = require('../utils/supabase');
 
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 router.get('/signed-url', async (req, res) => {
   try {
     const { filePath } = req.query;
     if (!filePath) {
-      return res.status(400).json({ error: 'filePath query parameter is required' });
+      return res.status(400).json({ error: 'filePath is required' });
+    }
+    // Clean the path: Remove the bucket name prefix (e.g., 'Alerto-private/') to get the relative path
+    const bucketName = 'Alerto-private';  // Your bucket name from logs
+    const cleanPath = filePath.replace(new RegExp(`^${bucketName}/`), '');  // Results in 'uploads/72839.jpg'
+    console.log(`Generating signed URL for cleaned path: ${cleanPath}`);  // For debugging
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(cleanPath,  3600 * 24 * 7);  
+    if (error) {
+      console.error('Supabase createSignedUrl error:', error);
+      return res.status(500).json({ error: 'Failed to generate signed URL' });
     }
 
-    const signedUrl = await generateSignedUrl(filePath, 3600); // 1 hour expiry
-
-    // Disable caching for this response
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.set('Surrogate-Control', 'no-store');
-    
-    return res.json({ signedUrl });
+    res.json({ signedUrl: data.signedUrl });
   } catch (err) {
     console.error('Signed URL endpoint error:', err);
-    return res.status(500).json({ error: 'Failed to create signed URL' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 module.exports = router;

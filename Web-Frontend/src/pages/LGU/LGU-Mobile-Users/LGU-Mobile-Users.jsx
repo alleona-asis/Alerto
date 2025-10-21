@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from 'react-router-dom';
 import LGUNavbar from '../../../components/NavBar/LGU-Navbar';
 import LGUSidebar from '../../../components/SideBar/LGU-Sidebar';
 import '../../../components/SideBar/styles.css';
@@ -9,8 +8,6 @@ import { Player } from '@lottiefiles/react-lottie-player';
 import noBarangayAnim from '@/assets/animations/non data found.json';
 import axios from "../../../axios/axiosInstance";
 import { io } from 'socket.io-client';
-import { format } from "date-fns";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -39,53 +36,57 @@ export default function LGUMobileUsers() {
     []
   );
 
-  const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [incidentReports, setIncidentReports] = useState([]);
+  const [mobileUsers, setMobileUsers] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOption, setSortOption] = useState("incident-type-asc");
+  const [sortOption, setSortOption] = useState("last-name-asc");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showImagesModal, setShowImagesModal] = useState(false);
-  const [modalUser, setModalUser] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper to capitalize words
+  // Helper
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
-  // ✅ Status options trimmed down
+  const fileUrl = (u) => {
+    if (!u) return '';
+    if (/^https?:\/\//i.test(u)) return u;
+    const BASE_URL = window.location.origin; 
+    return `${BASE_URL}/${String(u).replace(/^\/+/, '')}`;
+  };
+
   const statusOptions = [
     { value: "verified", label: "Verified" },
     { value: "unverified", label: "Unverified" },
   ];
 
-
-  // Sort options
   const sortOptions = [
-    { value: 'incident-type-asc', label: 'Sort by Incident Type' },
+    { value: 'last-name-asc', label: 'Sort by Last Name' },
     { value: 'date-desc', label: 'Sort by Date' },
     { value: 'status-asc', label: 'Sort by Status' },
     { value: 'id-asc', label: 'Sort by ID' },
+    { value: 'barangay-asc', label: 'Sort by Barangay' },
   ];
 
   // Sorting function
-  const sortIncidentReports = (users, option) => {
+  const sortMobileUsers = (users, option) => {
     const sorted = [...users];
     switch (option) {
-      case 'incident-type-asc':
-        return sorted.sort((a, b) => (a.incident_type || '').localeCompare(b.incident_type || ''));
+      case 'last-name-asc':
+        return sorted.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
       case 'date-desc':
         return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       case 'status-asc':
         return sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
+      case 'barangay-asc':
+        return sorted.sort((a, b) => (a.barangay || '').localeCompare(b.barangay || ''));
       case 'id-asc':
         return sorted.sort((a, b) => (a.id || 0) - (b.id || 0));
       default:
@@ -94,29 +95,34 @@ export default function LGUMobileUsers() {
   };
 
   // Filtering function
-  const filterIncidentReports = (users) => {
-    const query = searchQuery.toLowerCase();
-    return users.filter((user) =>
-      [
-        user.id?.toString(),
-        user.incident_type,
+  const filterMobileUsers = (users) => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return users;
+
+    return users.filter((user) => {
+      const idStr =
+        user.id != null ? `USER-${String(user.id).padStart(5, '0')}` : '';
+
+      const haystack = [
+        idStr,
         user.status,
-        user.province,
-        user.city,
         user.barangay,
         user.first_name,
         user.last_name,
       ]
-        .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(query))
-    );
+        .filter((v) => v != null && v !== '')
+        .map((v) => String(v).toLowerCase());
+
+      return haystack.some((s) => s.includes(q));
+    });
   };
 
+
   // Memoized filtered + sorted reports
-  const displayIncidentReports = useMemo(() => {
-    const filtered = filterIncidentReports(incidentReports);
-    return sortIncidentReports(filtered, sortOption);
-  }, [incidentReports, searchQuery, sortOption]);
+  const displayMobileUsers = useMemo(() => {
+    const filtered = filterMobileUsers(mobileUsers);
+    return sortMobileUsers(filtered, sortOption);
+  }, [mobileUsers, searchQuery, sortOption]);
 
 
   // =================================================
@@ -150,9 +156,9 @@ export default function LGUMobileUsers() {
   }, []);
 
   // =================================================
-  //  FETCH ALL REPORTS BY LOCATION
+  //  FETCH ALL MOBILE USERS BY LOCATION
   // =================================================
-  const fetchReports = async (region, province, city) => {
+  const fetchMobileUsers = async (region, province, city) => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -162,10 +168,10 @@ export default function LGUMobileUsers() {
         params: { region, province, city },
       });
 
-      setIncidentReports(res.data || []);
+      setMobileUsers(res.data || []);
     } catch (error) {
-      console.error("Failed to fetch reports:", error?.response?.data?.message || error.message);
-      setIncidentReports([]);
+      console.error("Failed to fetch users:", error?.response?.data?.message || error.message);
+      setMobileUsers([]);
     } finally {
       setLoading(false);
     }
@@ -179,7 +185,7 @@ export default function LGUMobileUsers() {
 
     const { region, province, city } = profile;
     if (region && province && city) {
-      fetchReports(region, province, city);
+      fetchMobileUsers(region, province, city);
     } else {
       console.warn("Profile missing location. Skipping fetch.");
     }
@@ -187,7 +193,7 @@ export default function LGUMobileUsers() {
 
 
   // =================================================
-  //  SOCKET LISTENER
+  //  SOCKET LISTENER (WRONG)
   // =================================================
   useEffect(() => {
     const handleNewReport = (newReport) => {
@@ -196,7 +202,7 @@ export default function LGUMobileUsers() {
         newReport.province === profile.province &&
         newReport.city === profile.city
       ) {
-        setIncidentReports((prev) => {
+        setMobileUsers((prev) => {
           if (prev.some((r) => r.id === newReport.id)) return prev;
           return [newReport, ...prev];
         });
@@ -219,7 +225,7 @@ export default function LGUMobileUsers() {
       const response = await axios.delete(
         `/api/lgu/delete-mobile-user/${id}`
       );
-      setIncidentReports((prev) => prev.filter((r) => r.id !== id));
+      setMobileUsers((prev) => prev.filter((r) => r.id !== id));
       setShowDeleteConfirm(false);
       setUserToDelete(null);
       toast.success(response.data?.message || "Report successfully deleted.");
@@ -229,54 +235,8 @@ export default function LGUMobileUsers() {
   };
 
 
-  // =================================================
-  //  CHANGE STATUS
-  // =================================================
-  const handleStatusChange = async (userId, newStatus) => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const payload = {
-        status: newStatus.toLowerCase(),
-        first_name: user?.firstName || "",
-        last_name: user?.lastName || "",
-      };
-
-      await axios.patch(`/api/brgy/update-barangay-report-status/${userId}`, payload);
-
-      setIncidentReports((prev) =>
-        prev.map((r) => (r.id === userId ? { ...r, status: newStatus } : r))
-      );
-    } catch (error) {
-      console.error("Status update failed:", error);
-    }
-  };
-
-
-  const openImagesModal = (user) => {
-    setModalUser(user);
-    setShowImagesModal(true);
-  };
-
-  const openLocationModal = (user) => {
-    setModalUser(user);
-    setShowLocationModal(true);
-  };
-
-  const closeModal = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setShowImagesModal(false);
-      setShowLocationModal(false);
-      setModalUser(null);
-      setIsClosing(false);
-    }, 200);
-  };
-
-
-
-  // Renders the table or no-data animation
-  const renderTable = (incidentReports = []) => {
-    if (incidentReports.length === 0) {
+  const renderTable = (mobileUsers = []) => {
+    if (mobileUsers.length === 0) {
       return (
         <div className="no-barangay-wrapper">
           <div className="no-barangay-content">
@@ -286,9 +246,9 @@ export default function LGUMobileUsers() {
               src={noBarangayAnim}
               style={{ height: '240px', width: '240px' }}
             />
-            <h2 className="no-barangay-title"> No mobile users found</h2>
+            <h2 className="no-barangay-title">No Mobile Users Found</h2>
             <p className="no-barangay-subtext">
-             There are currently no mobile user records available.
+              There are no mobile users to display at the moment.
             </p>
           </div>
         </div>
@@ -309,10 +269,14 @@ export default function LGUMobileUsers() {
             </tr>
           </thead>
           <tbody>
-            {incidentReports.map((user) => (
+            {mobileUsers.map((user) => (
               <tr
                 key={user.id}
                 style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setSelectedUser(user);
+                  setShowDetailsModal(true);
+                }}
               >
                 <td className="table-cell">
                   {`USER-${String(user.id).padStart(5, '0')}`}
@@ -326,7 +290,6 @@ export default function LGUMobileUsers() {
                 <td className="table-cell" style={{ minWidth: 130 }}>
                   <Select
                     value={statusOptions.find(opt => opt.value === (user.status || 'pending'))}
-                    onChange={(selected) => handleStatusChange(user.id, selected.value)}
                     options={(user.status || 'pending')}
                     styles={updateStatusStyles(user.status || 'pending')}
                     isSearchable={false}
@@ -364,7 +327,6 @@ export default function LGUMobileUsers() {
               </tr>
             ))}
           </tbody>
-
         </table>
       </div>
     );
@@ -386,8 +348,8 @@ export default function LGUMobileUsers() {
           <div
             className="main-content mainContent-slide-right"
             style={{
-              marginLeft: isSidebarCollapsed ? 80 : 270,
-              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)',
+              marginLeft: isSidebarCollapsed ? 80 : 300,
+              width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)',
             }}
           >
             <ToastContainer
@@ -436,7 +398,7 @@ export default function LGUMobileUsers() {
                     onChange={(option) => setSortOption(option.value)}
                   />
                 </div>
-                {renderTable(displayIncidentReports)}
+                {renderTable(displayMobileUsers)}
               </div>
             </div>
           </div>
@@ -516,6 +478,297 @@ export default function LGUMobileUsers() {
         </div>
       )}
 
+      {/* SHOW DETAILS MODAL */}
+      {showDetailsModal && selectedUser && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsClosing(true);
+            setTimeout(() => {
+              setShowDetailsModal(false);
+              setIsClosing(false);
+            }, 200);
+          }}
+        >
+          <div
+            className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+            style={{ maxWidth: '500px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                setIsClosing(true);
+                setTimeout(() => {
+                  setShowDetailsModal(false);
+                  setIsClosing(false);
+                }, 200);
+              }}
+            />
+
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>
+              Mobile User Details
+            </h3>
+
+            {/* MINI NAVBAR */}
+            <div
+              className="mini-navbar"
+              role="tablist"
+              aria-label="Mobile user details tabs"
+              style={{
+                display: 'flex',
+                gap: 24,
+                margin: '15px 0',
+                borderBottom: '1px solid #eee',
+                overflowX: 'auto',
+                paddingBottom: 2,
+              }}
+            >
+              {[
+                { id: 'details', label: 'Details' },
+                { id: 'id', label: 'Submitted ID' },
+                { id: 'selfie', label: 'Selfie' },
+              ].map((tab) => {
+                const isActive = activeMiniTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`panel-${tab.id}`}
+                    id={`tab-${tab.id}`}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => setActiveMiniTab(tab.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '10px 4px',
+                      cursor: 'pointer',
+                      fontFamily: 'Poppins, sans-serif',
+                      fontSize: 14,
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? '#0b63ff' : '#555',
+                      borderBottom: isActive ? '2px solid #0b63ff' : '2px solid transparent',
+                      transition: 'color .15s ease, border-bottom-color .15s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* DETAILS PANEL */}
+            {activeMiniTab === 'details' && (
+              <div
+                role="tabpanel"
+                id="panel-details"
+                aria-labelledby="tab-details"
+                className="modal-body"
+                style={{
+                  padding: '20px 25px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  fontFamily: 'Poppins, sans-serif',
+                  fontSize: '14px',
+                  color: '#374856',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Full Name:</span>
+                  <span className="modal-value">
+                    <b>
+                      {selectedUser.first_name} {selectedUser.middle_name} {selectedUser.last_name}
+                    </b>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Username:</span>
+                  <span className="modal-value"><b>{selectedUser.username}</b></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Home Address:</span>
+                  <span className="modal-value"><b>{selectedUser.home_address}</b></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Barangay:</span>
+                  <span className="modal-value"><b>{selectedUser.barangay}</b></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Phone Number:</span>
+                  <span className="modal-value"><b>{selectedUser.phone_number}</b></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Date of Birth:</span>
+                  <span className="modal-value">
+                    <b>
+                      {selectedUser.date_of_birth
+                        ? new Date(selectedUser.date_of_birth).toLocaleDateString('en-US')
+                        : ''}
+                    </b>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Age:</span>
+                  <span className="modal-value">
+                    <b>
+                      {selectedUser.date_of_birth
+                        ? Math.floor(
+                            (new Date() - new Date(selectedUser.date_of_birth)) /
+                              (1000 * 60 * 60 * 24 * 365.25)
+                          )
+                        : ''}
+                    </b>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Sex:</span>
+                  <span className="modal-value">
+                    <b>
+                      {selectedUser.sex
+                        ? selectedUser.sex.charAt(0).toUpperCase() + selectedUser.sex.slice(1)
+                        : ''}
+                    </b>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Civil Status:</span>
+                  <span className="modal-value"><b>{selectedUser.civil_status}</b></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="modal-label">Account Created:</span>
+                  <span className="modal-value">
+                    <b>
+                      {selectedUser.created_at
+                        ? new Date(selectedUser.created_at).toLocaleDateString('en-US')
+                        : ''}
+                    </b>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* SUBMITTED ID PANEL */}
+            {activeMiniTab === 'id' && (
+              <div
+                role="tabpanel"
+                id="panel-id"
+                aria-labelledby="tab-id"
+                className="modal-body"
+                style={{ padding: '16px 20px' }}
+              >
+                {(!selectedUser.id_front_url && !selectedUser.id_back_url) ? (
+                  <p style={{ margin: 0, color: '#6b7280' }}>No ID uploaded.</p>
+                ) : (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 12,
+                    }}
+                  >
+                    {selectedUser.id_front_url && (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                          padding: 8,
+                          background: '#fafafa',
+                        }}>
+                          <img
+                            src={fileUrl(selectedUser.id_front_url)}
+                            alt="ID Front"
+                            style={{
+                              width: '100%',
+                              height: 180,
+                              objectFit: 'contain',
+                              borderRadius: 6,
+                              display: 'block',
+                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            onClick={() => window.open(fileUrl(selectedUser.id_front_url), '_blank')}
+                          />
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 12, color: '#374151' }}>Front</div>
+                      </div>
+                    )}
+
+                    {selectedUser.id_back_url && (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                          padding: 8,
+                          background: '#fafafa',
+                        }}>
+                          <img
+                            src={fileUrl(selectedUser.id_back_url)}
+                            alt="ID Back"
+                            style={{
+                              width: '100%',
+                              height: 180,
+                              objectFit: 'contain',
+                              borderRadius: 6,
+                              display: 'block',
+                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            onClick={() => window.open(fileUrl(selectedUser.id_back_url), '_blank')}
+                          />
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 12, color: '#374151' }}>Back</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SELFIE PANEL */}
+            {activeMiniTab === 'selfie' && (
+              <div
+                role="tabpanel"
+                id="panel-selfie"
+                aria-labelledby="tab-selfie"
+                className="modal-body"
+                style={{ padding: '16px 20px' }}
+              >
+                {!selectedUser.selfie_url ? (
+                  <p style={{ margin: 0, color: '#6b7280' }}>No selfie uploaded.</p>
+                ) : (
+                  <div style={{ textAlign: 'center' }}>
+                    <div
+                      style={{
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        padding: 8,
+                        background: '#fafafa',
+                      }}
+                    >
+                      <img
+                        src={fileUrl(selectedUser.selfie_url)}
+                        alt="Selfie"
+                        style={{
+                          width: '100%',
+                          height: 260,
+                          objectFit: 'contain',
+                          borderRadius: 6,
+                          display: 'block',
+                        }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        onClick={() => window.open(fileUrl(selectedUser.selfie_url), '_blank')}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

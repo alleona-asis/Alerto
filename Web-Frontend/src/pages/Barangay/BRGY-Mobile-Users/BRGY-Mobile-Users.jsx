@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from '../../../axios/axiosInstance';
-import { useNavigate } from 'react-router-dom';
 import BRGYNavbar from '../../../components/NavBar/BRGY-Navbar';
 import BRGYSidebar from '../../../components/SideBar/BRGY-Sidebar';
 import { ToastContainer, toast } from 'react-toastify';
@@ -29,8 +28,6 @@ export default function BRGY_MobileUsers() {
   const [error, setError] = useState(null);
   const [mobileUsers, setMobileUsers] = useState([]);
 
-
-  const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [username, setUsername] = useState('');
@@ -41,136 +38,72 @@ export default function BRGY_MobileUsers() {
   const [approvedSortOption, setApprovedSortOption] = useState('default');
 
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
-const [activeTab, setActiveTab] = useState('id'); // 'id' or 'selfie'
-const [idSide, setIdSide] = useState('front'); // 'front' or 'back'
+  const [activeTab, setActiveTab] = useState('id');
+  const [idSide, setIdSide] = useState('front');
   const [selectedDocumentUser , setSelectedDocumentUser ] = useState(null);
-const [rotation, setRotation] = useState(0); // rotation in degrees
-const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [scale, setScale] = useState(1);
 
-const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-const [userToApprove, setUserToApprove] = useState(null);
-
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [userToApprove, setUserToApprove] = useState(null);
+  const s = (v) => String(v ?? '').toLowerCase();
 
   // =================================================
   //  SOCKET CONNECTION AND LISTENER
   // =================================================
-  /*
-  const socket = useMemo(() => io('http://localhost:5000'), []);
-  useEffect(() => {
-    socket.on('mobileUserRegistered', (newUser) => {
-      console.log('[SOCKET] New mobile user received:', newUser);
-
-      setMobileUsers((prevUsers) => {
-        if (prevUsers.some(u => u.id === newUser.id)) return prevUsers;
-        return [...prevUsers, newUser];
-      });
-    });
-
-    // Handle new verification request from mobile user
-    socket.on('newVerificationRequest', (data) => {
-      console.log('[SOCKET] New verification request received:', data);
-
-      // Optional: you could filter by barangay or region if needed
-      setMobileUsers((prevUsers) => {
-        if (prevUsers.some(u => u.id === data.userId)) return prevUsers;
-        return [...prevUsers, { ...data, status: 'pending' }];
-      });
-
-      // Optional: toast notification for real-time alert
-      toast.info(`📩 New verification request from User ID: ${data.userId}`);
-    });
-
-    return () => {
-    socket.off('mobileUserRegistered');
-    socket.off('newVerificationRequest');
-    };
-  }, [socket]);
-
-// =================================================
-// SOCKET CONNECTION AND LISTENER
-// =================================================
-const socket = useMemo(() => io('http://localhost:5000'), []);
-
-useEffect(() => {
-  if (!BRGYProfile?.barangay) return;
-
-  const handleIncomingUser = (incomingUser) => {
-    setMobileUsers((prevUsers) => {
-      const id = incomingUser.id || incomingUser.userId;
-      const index = prevUsers.findIndex(u => u.id === id);
-
-      if (index !== -1) {
-        const updatedUsers = [...prevUsers];
-        updatedUsers[index] = { 
-          ...updatedUsers[index], 
-          ...incomingUser, 
-          status: incomingUser.status || updatedUsers[index].status || 'unverified' 
-        };
-        return updatedUsers;
-      }
-
-      return [{ 
-        id, 
-        ...incomingUser, 
-        status: incomingUser.status || 'unverified'  // not pending yet
-      }, ...prevUsers];
-    });
-  };
-
-
-  socket.on('mobileUserRegistered', handleIncomingUser);
-  socket.on('newVerificationRequest', (data) => {
-    handleIncomingUser(data);
-    toast.info(`New verification request from User ID: ${data.userId}`);
-  });
-
-  return () => {
-    socket.off('mobileUserRegistered', handleIncomingUser);
-    socket.off('newVerificationRequest');
-  };
-}, [socket, BRGYProfile]);
-*/
-const socket = useMemo(() => 
-  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
-    transports: ["websocket", "polling"],
-    withCredentials: true,
-  }), 
+  const socket = useMemo(
+    () => io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    }), 
     []
   );
 
-useEffect(() => {
-  if (!BRGYProfile?.barangay) return;
+  useEffect(() => {
+    if (!BRGYProfile?.barangay) return;
 
-  const handleIncomingUser = (incomingUser) => {
-    let isNewUser = false;
+    const handleIncomingUser = (incomingUser) => {
+      let isNewUser = false;
 
-    setMobileUsers((prevUsers) => {
-      const id = incomingUser.id || incomingUser.userId;
-      const index = prevUsers.findIndex(u => u.id === id);
+      setMobileUsers((prevUsers) => {
+        const id = incomingUser.id || incomingUser.userId;
+        const index = prevUsers.findIndex(u => u.id === id);
 
-      if (index !== -1) {
-        // Existing user — just update
-        const updatedUsers = [...prevUsers];
-        updatedUsers[index] = { 
-          ...updatedUsers[index], 
+        if (index !== -1) {
+          const updatedUsers = [...prevUsers];
+          updatedUsers[index] = { 
+            ...updatedUsers[index], 
+            ...incomingUser, 
+            status: incomingUser.status || updatedUsers[index].status || 'unverified' 
+          };
+          return updatedUsers;
+        }
+
+        isNewUser = true;
+        return [{ 
+          id, 
           ...incomingUser, 
-          status: incomingUser.status || updatedUsers[index].status || 'unverified' 
-        };
-        return updatedUsers;
+          status: incomingUser.status || 'unverified' 
+        }, ...prevUsers];
+      });
+
+      if (isNewUser) {
+        toast.info(`New mobile user registered`, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
+    };
 
-      // New user
-      isNewUser = true;
-      return [{ 
-        id, 
-        ...incomingUser, 
-        status: incomingUser.status || 'unverified' 
-      }, ...prevUsers];
-    });
+    socket.on('mobileUserRegistered', handleIncomingUser);
 
-    // Show toast only for genuinely new users
-    if (isNewUser) {
-      toast.info(`New mobile user registered`, {
+    socket.on('newVerificationRequest', (data) => {
+      handleIncomingUser(data);
+      toast.info(`New verification request`, {
         position: "top-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -178,28 +111,13 @@ useEffect(() => {
         pauseOnHover: true,
         draggable: true,
       });
-    }
-  };
-
-  socket.on('mobileUserRegistered', handleIncomingUser);
-
-  socket.on('newVerificationRequest', (data) => {
-    handleIncomingUser(data);
-    toast.info(`New verification request`, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
     });
-  });
 
-  return () => {
-    socket.off('mobileUserRegistered', handleIncomingUser);
-    socket.off('newVerificationRequest');
-  };
-}, [socket, BRGYProfile]);
+    return () => {
+      socket.off('mobileUserRegistered', handleIncomingUser);
+      socket.off('newVerificationRequest');
+    };
+  }, [socket, BRGYProfile]);
 
 
   // =================================================
@@ -261,13 +179,13 @@ useEffect(() => {
   }, [token, BRGYProfile]);
 
   // =================================================
-  //  SORT FUNCTION (define first)
+  //  SORT FUNCTION
   // =================================================
   const [sortOption, setSortOption] = useState('first-name-asc');
   const sortOptions = [
     { value: 'first-name-asc', label: 'Sort by First Name' },
     { value: 'last-name-asc', label: 'Sort by Last Name' },
-    { value: 'date-desc', label: 'Sort by Date' },
+    { value: 'middle-name-asc', label: 'Sort by Middle Name' },
     { value: 'status-asc', label: 'Sort by Status' },
     { value: 'id-asc', label: 'Sort by ID' },
   ];
@@ -279,8 +197,8 @@ useEffect(() => {
         return sorted.sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
       case 'last-name-asc':
         return sorted.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
-      case 'date-desc':
-        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      case 'middle-name-asc':
+        return sorted.sort((a, b) => (a.middle_name || '').localeCompare(b.middle_name || ''));
       case 'status-asc':
         return sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
       case 'id-asc':
@@ -291,107 +209,95 @@ useEffect(() => {
   };
 
   // =================================================
-  //  SEARCH FUNCTION
+  //  SEARCH, APPLY FILTER, THEN SORT
   // =================================================
   const filterMobileUsers = (users) => {
-    const query = searchQuery.toLowerCase();
+    const query = s(searchQuery).trim();
+    if (!query) return users;
     return users.filter((user) =>
-      (user.first_name?.toLowerCase().includes(query) ||
-      user.last_name?.toLowerCase().includes(query) ||
-      user.region?.toLowerCase().includes(query) ||
-      user.province?.toLowerCase().includes(query) ||
-      user.city?.toLowerCase().includes(query) ||
-      user.barangay?.toLowerCase().includes(query) ||
-      user.email?.toLowerCase().includes(query) ||
-      user.phone_number?.toLowerCase().includes(query))
+      s(user.first_name).includes(query) ||
+      s(user.middle_name).includes(query) ||
+      s(user.last_name).includes(query) ||
+      s(user.phone_number).includes(query) ||
+      s(user.status).includes(query) ||
+      s(`USER-${String(user.id).padStart(5, '0')}`).includes(query)
     );
   };
+
 
   const displayMobileUsers = useMemo(() => {
     const filtered = filterMobileUsers(mobileUsers);
     return sortMobileUsers(filtered, sortOption);
   }, [mobileUsers, searchQuery, sortOption]);
 
-  // =================================================
-  //  APPLY FILTER, THEN SORT
-  // =================================================
+  const displayPendingUsers = useMemo(
+    () => sortMobileUsers(displayMobileUsers.filter(u => s(u.status) === 'pending'), pendingSortOption),
+    [displayMobileUsers, pendingSortOption]
+  );
+
+  const displayDirectoryUsers = useMemo(
+    () => sortMobileUsers(
+      displayMobileUsers.filter(u => {
+        const st = s(u.status);
+        return st === 'verified' || st === 'unverified';
+      }),
+      approvedSortOption
+    ),
+    [displayMobileUsers, approvedSortOption]
+  );
+
   const filteredMobileUsers = filterMobileUsers(mobileUsers);
   const sortedMobileUsers = sortMobileUsers(filteredMobileUsers, sortOption);
 
-  const pendingUsers = sortedMobileUsers.filter(u => u.status === 'pending');
-  const allMobileUsers = sortedMobileUsers.filter(
-    u => u.status === 'verified' || u.status === 'unverified'
-  );
+  // =================================================
+  //  UPDATE MOBILE USER STATUS
+  // =================================================
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [reason, setReason] = useState('');
+  const [customReason, setCustomReason] = useState('');
 
+  const handleStatusChange = (userId, newStatus) => {
+    const user = mobileUsers.find(u => u.id === userId);
+    if (!user) return;
 
+    if (newStatus.toLowerCase() === 'unverified') {
+      setSelectedUser(user);
+      setReason('');
+      setShowReasonModal(true);
+      return;
+    }
 
-// =================================================
-//  UPDATE MOBILE USER STATUS
-// =================================================
+    updateUserStatus(userId, newStatus);
+  };
 
-const [showReasonModal, setShowReasonModal] = useState(false);
-const [selectedUser, setSelectedUser] = useState(null);
-const [reason, setReason] = useState('');
-const [customReason, setCustomReason] = useState('');
+  const rejectionOptions = [
+    { value: 'Invalid ID / Documents', label: 'Invalid ID / Documents' },
+    { value: 'Duplicate Account', label: 'Duplicate Account' },
+    { value: 'Incorrect Information', label: 'Incorrect Information' },
+  ];
 
+  const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
+    try {
+      await axios.patch(`/api/brgy/update-mobile-user-status/${userId}`, {
+        status: newStatus.toLowerCase(),
+        reason_for_rejection: rejectionReason || null,
+      });
 
-const statusOptions = [
-  { value: 'pending', label: 'PENDING' },
-  { value: 'verified', label: 'VERIFIED' },
-  { value: 'unverified', label: 'UNVERIFIED' },
-];
+      setMobileUsers(prev =>
+        prev.map(user =>
+          user.id === userId
+            ? { ...user, status: newStatus, reason: rejectionReason }
+            : user
+        )
+      );
 
-// ✅ Handle status change from dropdown
-const handleStatusChange = (userId, newStatus) => {
-  const user = mobileUsers.find(u => u.id === userId);
-  if (!user) return;
-
-  if (newStatus.toLowerCase() === 'unverified') {
-    // Open modal for rejection reason
-    setSelectedUser(user);
-    setReason('');
-    setShowReasonModal(true);
-    return;
-  }
-
-  // For pending/verified, update immediately
-  updateUserStatus(userId, newStatus);
-};
-
-// Define options for the rejection reasons
-const rejectionOptions = [
-  { value: 'Invalid ID / Documents', label: 'Invalid ID / Documents' },
-  { value: 'Duplicate Account', label: 'Duplicate Account' },
-  { value: 'Incorrect Information', label: 'Incorrect Information' },
-];
-
-
-// ✅ API call helper
-const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
-  try {
-    // Send status and reason_for_rejection to backend
-    await axios.patch(`/api/brgy/update-mobile-user-status/${userId}`, {
-      status: newStatus.toLowerCase(),
-      reason_for_rejection: rejectionReason || null,
-    });
-
-    // Update local state
-    setMobileUsers(prev =>
-      prev.map(user =>
-        user.id === userId
-          ? { ...user, status: newStatus, reason: rejectionReason }
-          : user
-      )
-    );
-
-    toast.success(`User ${newStatus.toLowerCase()} successfully.`);
-  } catch (error) {
-    console.error(error);
-    toast.error('Failed to update status.');
-  }
-};
-
-
+      toast.success(`User ${newStatus.toLowerCase()} successfully.`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update status.');
+    }
+  };
 
   // =================================================
   //  DELETE ACCOUNT
@@ -420,7 +326,6 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
       } else {
         console.error('Request setup error:', error.message);
       }
-
       toast.error(data?.message || 'Failed to delete user. Please try again.');
     }
   };
@@ -461,7 +366,6 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                 <th className="table-header" style={{ width: '250px' }}>Contact Number</th>
                 <th className="table-header"style={{ width: '200px' }}>Documents</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
-                <th className="table-header" style={{ paddingLeft: 100 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -480,68 +384,37 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                   <td className="table-cell">{user.first_name}</td>
                   <td className="table-cell">{user.middle_name}</td>
                   <td className="table-cell">{user.phone_number}</td>
-{/*
                   <td className="table-cell">
-                    {user.date_of_birth
-                      ? Math.floor(
-                          (new Date() - new Date(user.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)
-                        )
-                      : '—'}
-                  </td>
-*/}
+                    <img
+                      src="/icons/view.png"
+                      alt="View Documents"
+                      className="icon-button icon-hover-effect"
+                      style={{ cursor: "pointer", marginLeft: 28 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
 
-
-
-<td className="table-cell">
-  {user.selfie_url || user.id_front_url ? (
-    <img
-      src="/icons/view.png"
-      alt="View Documents"
-      className="icon-button icon-hover-effect"
-      style={{ cursor: 'pointer', marginLeft: 28 }}
-      onClick={(e) => {
-        e.stopPropagation(); // <-- ADD THIS LINE to prevent the row click
-
-        if (user.status === "unverified") {
-          toast.info("This user is not verified.", {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-          });
-          return;
-        }
-
-        // Only open documents modal
-        setSelectedDocumentUser(user);
-        setShowDocumentsModal(true);
-      }}
-    />
-  ) : (
-    <span style={{ color: '#ccc' }}>—</span>
-  )}
-</td>
-
-
-
-                  <td className="table-cell" style={{ minWidth: 130 }}>
-
-                    {/*
-                    <Select
-                      value={statusOptions.find(opt => opt.value === (user.status || 'pending'))}
-                      onChange={(selected) => handleStatusChange(user.id, selected.value)}
-                      options={statusOptions}
-                      styles={updateStatusStyles(user.status || 'pending')}
-                      isSearchable={false}
+                        if (user.status === "unverified") {
+                          toast.info("This user is not verified.", {
+                            position: "top-right",
+                            autoClose: 5000,
+                            hideProgressBar: false,
+                            closeOnClick: true,
+                            pauseOnHover: true,
+                            draggable: true,
+                          });
+                          return;
+                        }
+                        setSelectedDocumentUser(user);
+                        setShowDocumentsModal(true);
+                      }}
                     />
-                    */}
+                  </td>
+                  <td className="table-cell" style={{ minWidth: 130 }}>
                     <span
                       style={{
-                        width: "110px",                // fixed width
-                        height: "25px",                // optional fixed height
-                        display: "inline-flex",        // flex for centering
+                        width: "110px",
+                        height: "25px",
+                        display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
                         borderRadius: "7px",
@@ -552,17 +425,19 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                         color: getStatusColor(user.status || "pending"),
                         border: `1px solid ${getStatusColor(user.status || "pending")}`,
                         textAlign: "center",
-                        overflow: "hidden",            // prevent overflow
-                        textOverflow: "ellipsis",      // truncate if too long
-                        whiteSpace: "nowrap",          // single line only
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {user.status || "pending"}
                     </span>
 
                   </td>
-
-                  <td className="table-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: 100 }}>
+                  <td
+                    className="table-cell"
+                    style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: 100 }}
+                  >
                     {isPending ? (
                       <>
                         <img
@@ -571,11 +446,11 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                           className="icon-button icon-hover-effect"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setUserToApprove(user);   // store the user you want to approve
+                            setUserToApprove(user);
                             setShowApproveConfirm(true);
                           }}
                           style={{
-                            marginTop: 2
+                            marginTop: 2,
                           }}
                         />
                         <img
@@ -585,29 +460,15 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedUser(user);
-                            setReason('');
+                            setReason("");
                             setShowReasonModal(true);
                           }}
                           style={{
-                            marginTop: 2
+                            marginTop: 2,
                           }}
                         />
                       </>
-                    ) : (
-                      <img
-                        src="/icons/delete.png"
-                        alt="Delete"
-                        className="icon-button icon-hover-effect"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUserToDelete(user);
-                          setShowDeleteConfirm(true);
-                        }}
-                        style={{
-                          marginTop: 2
-                        }}
-                      />
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -619,7 +480,6 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
   };
 
 
-  
   return (
     <div className="wrapper">
       <div className="navbar">
@@ -634,8 +494,8 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
         <div
           className="main-content mainContent-slide-right"
           style={{
-            marginLeft: isSidebarCollapsed ? 80 : 270,
-            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 270px)',
+            marginLeft: isSidebarCollapsed ? 80 : 300,
+            width: isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 300px)',
           }}
         >
           <ToastContainer
@@ -683,8 +543,8 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                 />
               </div>
 
-              {pendingUsers.length > 0 ? (
-                renderTable(pendingUsers, true)
+              {displayPendingUsers.length > 0 ? (
+                renderTable(displayPendingUsers, true)
               ) : (
                 <div style={{ textAlign: 'center', padding: '1rem' }}>
                   <div style={{ maxWidth: '100%', width: '220px', margin: '0 auto' }}>
@@ -714,8 +574,8 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                 />
               </div>
 
-              {allMobileUsers.length > 0 ? (
-                renderTable(allMobileUsers, false)
+              {displayDirectoryUsers.length > 0 ? (
+                renderTable(displayDirectoryUsers, false)
               ) : (
                 <div style={{ textAlign: 'center', marginTop: '40px' }}>
                   <Player
@@ -803,7 +663,6 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
               </span>
             </div>
 
-            {/* React Creatable Select for reasons */}
             <CreatableSelect
               value={
                 rejectionOptions.find(opt => opt.value === reason) ||
@@ -816,7 +675,6 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
               isClearable
             />
 
-            {/* Show textarea if "Other" is selected */}
             {reason === 'Other' && (
               <textarea
                 placeholder="Enter custom reason..."
@@ -847,7 +705,7 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
                 onClick={() => {
                   if (!selectedUser) return;
                   const finalReason = reason === 'Other' ? customReason : reason;
-                  if (!finalReason) return; // prevent empty reason
+                  if (!finalReason) return;
                   updateUserStatus(selectedUser.id, 'unverified', finalReason);
                   setShowReasonModal(false);
                   setSelectedUser(null);
@@ -863,96 +721,190 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
         </div>
       )}
 
-{showDocumentsModal && selectedDocumentUser && (
-  <div className="overlay modal-fade" onClick={() => setShowDocumentsModal(false)}>
-    <div className="modal" onClick={(e) => e.stopPropagation()}>
-      <button className="close-btn" onClick={() => setShowDocumentsModal(false)}>×</button>
+      {showDocumentsModal && selectedDocumentUser && (
+        <div className="overlay modal-fade" onClick={() => setShowDocumentsModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowDocumentsModal(false)}>×</button>
 
-      {/* Mini-navbar tabs */}
-      <div style={{ display: 'flex', justifyContent: 'center', borderBottom: '1px solid #ccc', marginBottom: '15px' }}>
-        <span
-          onClick={() => setActiveTab('id')}
-          style={{
-            flex: 1,
-            textAlign: 'center',
-            padding: '10px',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'id' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'id' ? '3px solid #007bff' : 'none',
-          }}
-        >
-          Submitted ID
-        </span>
-        <span
-          onClick={() => setActiveTab('selfie')}
-          style={{
-            flex: 1,
-            textAlign: 'center',
-            padding: '10px',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'selfie' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'selfie' ? '3px solid #007bff' : 'none',
-          }}
-        >
-          Selfie Taken
-        </span>
-      </div>
+            {/* Mini-navbar tabs */}
+            <div style={{ display: 'flex', justifyContent: 'center', borderBottom: '1px solid #ccc', marginBottom: '15px' }}>
+              <span
+                onClick={() => setActiveTab('id')}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontWeight: activeTab === 'id' ? 'bold' : 'normal',
+                  borderBottom: activeTab === 'id' ? '3px solid #007bff' : 'none',
+                }}
+              >
+                Submitted ID
+              </span>
+              <span
+                onClick={() => setActiveTab('selfie')}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontWeight: activeTab === 'selfie' ? 'bold' : 'normal',
+                  borderBottom: activeTab === 'selfie' ? '3px solid #007bff' : 'none',
+                }}
+              >
+                Selfie Taken
+              </span>
+            </div>
 
-      {/* Controls */}
-      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-        <button onClick={() => setRotation((prev) => prev - 90)}>⟲ Rotate Left</button>
-        <button onClick={() => setRotation((prev) => prev + 90)}>⟳ Rotate Right</button>
-        <button onClick={() => setScale((prev) => prev + 0.2)}>＋ Zoom In</button>
-        <button onClick={() => setScale((prev) => Math.max(0.2, prev - 0.2))}>－ Zoom Out</button>
-        <button onClick={() => { setRotation(0); setScale(1); }}>Reset</button>
-      </div>
-
-      {/* Tab content */}
-      <div style={{ textAlign: 'center', marginTop: '10px' }}>
-        {activeTab === 'id' ? (
-          selectedDocumentUser.id_front_url || selectedDocumentUser.id_back_url ? (
-            <img
-              src={idSide === 'front' ? selectedDocumentUser.id_front_url : selectedDocumentUser.id_back_url}
-              alt={`ID ${idSide}`}
+            {/* Controls */}
+            <div
               style={{
-                width: '200px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                cursor: 'pointer',
-                transform: `rotate(${rotation}deg) scale(${scale})`,
-                transition: 'transform 0.3s ease',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                margin: '12px 0 16px',
+                textAlign: 'center',
               }}
-              onClick={() => setIdSide(idSide === 'front' ? 'back' : 'front')}
-            />
-          ) : (
-            <span style={{ color: '#ccc' }}>No ID uploaded</span>
-          )
-        ) : selectedDocumentUser.selfie_url ? (
-          <img
-            src={selectedDocumentUser.selfie_url}
-            alt="Selfie"
-            style={{
-              width: '200px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              transform: `rotate(${rotation}deg) scale(${scale})`,
-              transition: 'transform 0.3s ease',
-            }}
-          />
-        ) : (
-          <span style={{ color: '#ccc' }}>No selfie uploaded</span>
-        )}
-      </div>
+            >
+              <button
+                onClick={() => setRotation((prev) => prev - 90)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d0d7de',
+                  background: '#f6f8fa',
+                  color: '#374856',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                ⟲ Rotate Left
+              </button>
 
-      <div className="button-container" style={{ textAlign: 'right', marginTop: '20px' }}>
-        <button className="cancel-button" onClick={() => setShowDocumentsModal(false)}>
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              <button
+                onClick={() => setRotation((prev) => prev + 90)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d0d7de',
+                  background: '#f6f8fa',
+                  color: '#374856',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                ⟳ Rotate Right
+              </button>
 
+              <button
+                onClick={() => setScale((prev) => prev + 0.2)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d0d7de',
+                  background: '#f6f8fa',
+                  color: '#374856',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                ＋ Zoom In
+              </button>
+
+              <button
+                onClick={() => setScale((prev) => Math.max(0.2, prev - 0.2))}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d0d7de',
+                  background: '#f6f8fa',
+                  color: '#374856',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                － Zoom Out
+              </button>
+
+              <button
+                onClick={() => { setRotation(0); setScale(1); }}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d0d7de',
+                  background: '#f6f8fa',
+                  color: '#374856',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                Reset
+              </button>
+            </div>
+
+
+            {/* Tab content */}
+            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              {activeTab === 'id' ? (
+                selectedDocumentUser.id_front_url || selectedDocumentUser.id_back_url ? (
+                  <img
+                    src={idSide === 'front' ? selectedDocumentUser.id_front_url : selectedDocumentUser.id_back_url}
+                    alt={`ID ${idSide}`}
+                    style={{
+                      width: '200px',
+                      borderRadius: '8px',
+                      border: '1px solid #ccc',
+                      cursor: 'pointer',
+                      transform: `rotate(${rotation}deg) scale(${scale})`,
+                      transition: 'transform 0.3s ease',
+                    }}
+                    onClick={() => setIdSide(idSide === 'front' ? 'back' : 'front')}
+                  />
+                ) : (
+                  <span style={{ color: '#ccc' }}>No ID uploaded</span>
+                )
+              ) : selectedDocumentUser.selfie_url ? (
+                <img
+                  src={selectedDocumentUser.selfie_url}
+                  alt="Selfie"
+                  style={{
+                    width: '200px',
+                    borderRadius: '8px',
+                    border: '1px solid #ccc',
+                    transform: `rotate(${rotation}deg) scale(${scale})`,
+                    transition: 'transform 0.3s ease',
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#ccc' }}>No selfie uploaded</span>
+              )}
+            </div>
+
+            <div className="button-container" style={{ textAlign: 'right', marginTop: '20px' }}>
+              <button className="cancel-button" onClick={() => setShowDocumentsModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewInformationModal && selectedAccount && (
         <div className="overlay modal-fade" onClick={() => setViewInformationModal(false)}>
@@ -960,8 +912,8 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
             className="modal"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: '100%',        // scales with screen
-              maxWidth: '600px',   // fixed width for large screens
+              width: '100%',
+              maxWidth: '600px',
               backgroundColor: '#fff',
               borderRadius: '12px',
               padding: '30px',
@@ -1135,50 +1087,49 @@ const updateUserStatus = async (userId, newStatus, rejectionReason = null) => {
         </div>
       )}
 
-{showApproveConfirm && userToApprove && (
-  <div className="overlay modal-fade" onClick={() => setShowApproveConfirm(false)}>
-    <div className="modal" onClick={(e) => e.stopPropagation()}>
-      <button className="close-btn" onClick={() => setShowApproveConfirm(false)}>×</button>
+      {showApproveConfirm && userToApprove && (
+        <div className="overlay modal-fade" onClick={() => setShowApproveConfirm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowApproveConfirm(false)}>×</button>
 
-      <div className="icon-container">
-        <img
-          src="/icons/approve.png"
-          alt="Approve"
-          className="icon-approve"
-        />
-      </div>
+            <div className="icon-container">
+              <img
+                src="/icons/approve.png"
+                alt="Approve"
+                className="icon-approve"
+              />
+            </div>
 
-      <h3 className="modal-title">Approve Verification</h3>
-      <p className="sub-title">Are you sure you want to approve this account as verified?</p>
+            <h3 className="modal-title">Approve Verification</h3>
+            <p className="sub-title">Are you sure you want to approve this account as verified?</p>
 
-      <div style={{ display: 'flex', marginBottom: '20px', paddingLeft: '18px', paddingRight: '18px' }}>
-        <span className="location-text">
-          {userToApprove.first_name},&nbsp;
-          {userToApprove.last_name}
-        </span>
-      </div>
+            <div style={{ display: 'flex', marginBottom: '20px', paddingLeft: '18px', paddingRight: '18px' }}>
+              <span className="location-text">
+                {userToApprove.first_name},&nbsp;
+                {userToApprove.last_name}
+              </span>
+            </div>
 
-      <div className="button-container">
-        <button
-          className="cancel-button"
-          onClick={() => setShowApproveConfirm(false)}
-        >
-          Cancel
-        </button>
-        <button
-          className="confirm-button"
-          onClick={() => {
-            handleStatusChange(userToApprove.id, "verified");
-            setShowApproveConfirm(false);
-          }}
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+            <div className="button-container">
+              <button
+                className="cancel-button"
+                onClick={() => setShowApproveConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button"
+                onClick={() => {
+                  handleStatusChange(userToApprove.id, "verified");
+                  setShowApproveConfirm(false);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
@@ -1236,55 +1187,6 @@ const dropdownStyles = {
     fontSize: '12px',
   }),
 };
-
-const updateStatusStyles = (status) => {
-  const color = getStatusColor(status);
-  return {
-    control: (provided, state) => ({
-      ...provided,
-      minWidth: 40,
-      borderRadius: 7,          // more rounded for modern pill shape
-      borderColor: color,
-      boxShadow: state.isFocused ? `0 0 0 1.5px ${color}` : 'none',
-      cursor: 'pointer',
-      backgroundColor: state.isFocused
-        ? color + '40'             // slightly stronger background on focus (25% opacity)
-        : color + '20',            // subtle background (12% opacity)
-      transition: 'border-color 0.3s ease, background-color 0.3s ease',
-      fontSize: '12px',
-      textAlign: 'center',
-      minHeight: 25,
-      height: 24,
-      padding: '0 10px',
-      color: color,
-    }),
-    singleValue: (provided) => ({
-      ...provided,
-      color: color,
-      fontWeight: 600,
-      textTransform: 'capitalize',
-      fontSize: '12px',
-    }),
-    menu: (provided) => ({
-      ...provided,
-      borderRadius: 6,
-      fontSize: '12px',
-    }),
-    indicatorsContainer: () => ({
-      display: 'none',
-    }),
-    option: (provided, state) => ({
-      ...provided,
-      textTransform: 'capitalize',
-      backgroundColor: state.isFocused ? color + '30' : 'white',  // slightly lighter on hover
-      color: state.isFocused ? color : 'black',
-      cursor: 'pointer',
-      fontSize: '12px',
-      padding: '6px 10px',
-    }),
-  };
-};
-
 
 const reasondropdownStyles = {
   control: (base, state) => ({

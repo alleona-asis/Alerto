@@ -282,7 +282,7 @@
   flex-direction: column;
   gap: 12px;
   margin-bottom: 16px;
-  border-bottom: 1px solid #e0e0e0; /* light gray border */
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .notif-header {
@@ -504,7 +504,7 @@
 
 .sidebar.expanded {
     padding: 20px 30px;
-    width: 270px;
+    width: 300px;
     align-items: flex-start;
 }
 
@@ -557,12 +557,12 @@
   border: none;
   padding: 0.5rem;
   cursor: pointer;
-  color: #333; /* or use a theme variable */
+  color: #333;
   transition: color 0.2s ease;
 }
 
 .toggle-sidebar-btn:hover {
-  color: #007bff; /* Example hover color */
+  color: #007bff;
 }
 
 
