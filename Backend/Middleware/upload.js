@@ -179,7 +179,7 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
               relativePath = path.join(f.destination, f.filename);  // f.destination is 'uploads/subfolder', so this gives 'uploads/subfolder/filename'
             }
 
-                        // Upload to Supabase (returns signed URL if private)
+              // Upload to Supabase (returns signed URL if private)
             let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
             // Delete local file
             deleteLocalFile(localPath);
