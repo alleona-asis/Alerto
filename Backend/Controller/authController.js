@@ -800,45 +800,29 @@ const getMobileUserProfile = async (req, res) => {
 // =================================================
 // UPDATE MOBILE USER PROFILE PICTURE
 // =================================================
-const updateMobileUserProfilePicture = async (req, res) => {
-  const { id } = req.params;
-  console.log('Received request to update profile picture for user ID:', id);
-
-  const file = req.file;
-  if (!file) {
-    console.warn('No file uploaded in request.');
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  const filePath = `/uploads/profile/${file.filename}`;
-  console.log('File uploaded with filename:', file.filename);
-  console.log('File will be saved with path:', filePath);
+async function updateMobileUserProfilePicture(req, res, { profile_picture_url, profile_picture_path }) {
+  const userId = Number(req.params.id);
+  if (!userId) return res.status(400).json({ ok: false, message: 'Invalid user id' });
 
   try {
-    console.log('Executing DB update for user ID:', id);
-    const updateResult = await pool.query(
-      `UPDATE mobile_users SET profile_picture = $1 WHERE id = $2 RETURNING *`,
-      [filePath, id]
+    // Store the storage key/path in DB (so you can change URL strategy later)
+    await pool.query(
+      `UPDATE public.mobile_users
+       SET profile_picture = $1
+       WHERE id = $2`,
+      [profile_picture_path, userId]
     );
 
-    if (!updateResult.rows.length) {
-      console.warn(`No user found to update with ID: ${id}`);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.log('Profile picture updated successfully in DB for user:', updateResult.rows[0]);
-
-    res.json({
-      message: 'Profile picture updated successfully',
-      picture: filePath,
-      user: updateResult.rows[0],
+    return res.json({
+      ok: true,
+      profile_picture_path,  // e.g. "profile/4/uuid.jpg"
+      profile_picture_url    // public URL from Supabase
     });
-  } catch (err) {
-    console.error('Error updating profile picture:', err);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (e) {
+    console.error('[CTRL updateMobileUserProfilePicture] DB error:', e);
+    return res.status(500).json({ ok: false, message: 'Failed to update profile picture' });
   }
-};
-
+}
 
 // =================================================
 // REMOVE MOBILE USER PROFILE PICTURE

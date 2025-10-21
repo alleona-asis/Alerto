@@ -204,19 +204,20 @@ router.post(
   uploadWithSupabase([{ name: 'picture', maxCount: 1 }]),
   async (req, res) => {
     try {
-      // The uploaded file info
-      const profileFiles = req.supabaseFiles.picture || [];
-      const profileFile = profileFiles[0];
-
-      if (!profileFile) {
+      const file = req.supabaseFiles.picture?.[0];
+      if (!file?.relativePath || !file?.supabaseUrl) {
         return res.status(400).json({ message: 'No picture uploaded.' });
       }
 
-      const profileUrl = profileFile.supabaseUrl; // private signed URL
-      const localPath = profileFile.localPath;    // local storage path (optional)
+      // picture is in PUBLIC bucket per your middleware; supabaseUrl is a public URL
+      const profile_picture_url = file.supabaseUrl;
+      const profile_picture_path = file.relativePath; // stable key stored in DB
 
-      // Call your existing controller to update DB
-      await updateMobileUserProfilePicture(req, res, { profileUrl, localPath });
+      // Call the new controller (it will send the final JSON response)
+      await updateMobileUserProfilePicture(req, res, {
+        profile_picture_url,
+        profile_picture_path
+      });
 
     } catch (err) {
       console.error('[UPLOAD PROFILE] Failed:', err.message);
