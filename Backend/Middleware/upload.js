@@ -168,7 +168,9 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
         for (const field of fields) {
           
           const files = req.files[field.name];
+
           if (!files) continue;
+          
           for (const f of files) {
             const localPath = path.join(f.destination, f.filename);
                         
@@ -177,16 +179,14 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
               let relativePath;
               let isPublic = isAnnouncement;
 
-              // ✅ Force profile pictures to the PUBLIC bucket with a clean key
               if (f.fieldname === 'picture') {
                 const userId = (req.params && req.params.id) ? String(req.params.id) : 'unknown';
                 bucketName = PUBLIC_BUCKET;
                 isPublic = true;
-                relativePath = `profile/${userId}/${f.filename}`; // no "uploads/" prefix
+                relativePath = `profile/userID:${userId}/${f.filename}`; 
               } else if (isAnnouncement) {
                 relativePath = `announcements/${f.filename}`;
               } else {
-                // private uploads keep their existing layout
                 relativePath = path.join(f.destination, f.filename);
               }
 
