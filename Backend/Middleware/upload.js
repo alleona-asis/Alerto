@@ -70,17 +70,34 @@ const privateStorage = multer.diskStorage({
 
 // File filter to allow specific mimetypes per field (unchanged)
 const fileFilter = (req, file, cb) => {
-  const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+  const allowedImageTypes = [
+    'image/png', 
+    'image/jpeg', 
+    'image/jpg', 
+    'image/webp', 
+    'image/heic', 
+    'image/heif'
+  ];
   const allowedDocTypes = [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ];
-  const allowedVideoTypes = ['video/mp4', 'video/mpeg', 'video/quicktime'];
+  const allowedVideoTypes = [
+    'video/mp4', 
+    'video/mpeg', 
+    'video/quicktime',
+    'video/3gpp', 
+    'video/3gpp2', 
+    'video/webm', 
+    'video/x-matroska'
+  ];
 
   switch (file.fieldname) {
     case 'idFile':
+      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
     case 'selfieTaken':
+      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
     case 'idImage':
       if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
       break;
