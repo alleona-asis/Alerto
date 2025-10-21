@@ -10,150 +10,149 @@ const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET || 'Alerto-private';
 
 // const storage = multer.memoryStorage();
 
-  // Storage for announcements (public bucket)
-  const announcementStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      const folder = 'uploads/announcements';
-      fs.mkdirSync(folder, { recursive: true });
-      cb(null, folder);
-    },
-    filename: (req, file, cb) => {
-      const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-      cb(null, uniqueName);
+// Storage for announcements (public bucket)
+const announcementStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folder = 'uploads/announcements';
+    fs.mkdirSync(folder, { recursive: true });
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+// Storage for private files (private bucket)
+const privateStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let folder = 'uploads/other';  // Default folder
+
+    // Dynamic folder logic based on fieldname
+    switch (file.fieldname) {
+      case 'idFile':
+        folder = 'uploads/id';
+        break;
+      case 'intentFile':
+        folder = 'uploads/letter';
+        break;
+      case 'idImage':
+        folder = 'uploads/mobile';  // For mobile ID uploads
+        break;
+      case 'selfieTaken':
+        folder = 'uploads/selfie';  // For mobile user selfie pictures
+        break;
+      case 'image':
+        folder = 'uploads/ocr';  // OCR-specific images
+        break;
+      case 'picture':
+        folder = 'uploads/profile';  // For mobile user profile pictures
+        break;
+      case 'media':
+        folder = 'uploads/reports';  // For report submissions
+        break;
+      case 'proof':
+        folder = 'uploads/proof';
+        break;
+      // Add more cases as needed (e.g., 'proofFile': folder = 'uploads/proof';)
+      default:
+        folder = 'uploads/other';  // Fallback for unmatched fields
     }
-  });
 
-  // Storage for private files (private bucket)
-  const privateStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      let folder = 'uploads/other';  // Default folder
+    fs.mkdirSync(folder, { recursive: true });
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
 
-      // Dynamic folder logic based on fieldname
-      switch (file.fieldname) {
-        case 'idFile':
-          folder = 'uploads/id'; //for lgu account registration id files
-          break;
-        case 'intentFile':
-          folder = 'uploads/letter'; //for lgu account registration intent files
-          break;
-        case 'idImage':
-          folder = 'uploads/mobile';  // For mobile ID uploads
-          break;
-        case 'selfieTaken':
-          folder = 'uploads/selfie';  // For mobile user selfie pictures
-          break;
-        case 'image':
-          folder = 'uploads/ocr';  // OCR-specific images
-          break;
-        case 'picture':
-          folder = 'uploads/profile';  // For mobile user profile pictures
-          break;
-        case 'media':
-          folder = 'uploads/reports';  // For report submissions
-          break;
-        case 'proof':
-          folder = 'uploads/proof'; //for proof submissions
-          break;
-      
-        default:
-          folder = 'uploads/other';  // Fallback for unmatched fields
-      }
+// File filter to allow specific mimetypes per field (unchanged)
+const fileFilter = (req, file, cb) => {
+  const allowedImageTypes = [
+    'image/png', 
+    'image/jpeg', 
+    'image/jpg', 
+    'image/webp', 
+    'image/heic', 
+    'image/heif'
+  ];
+  const allowedDocTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  const allowedVideoTypes = [
+    'video/mp4', 
+    'video/mpeg', 
+    'video/quicktime',
+    'video/3gpp', 
+    'video/3gpp2', 
+    'video/webm', 
+    'video/x-matroska'
+  ];
 
-      fs.mkdirSync(folder, { recursive: true });
-      cb(null, folder);
-    },
-    filename: (req, file, cb) => {
-      const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-      cb(null, uniqueName);
-    }
-  });
-
-    // File filter to allow specific mimetypes per field 
-    const fileFilter = (req, file, cb) => {
-      const allowedImageTypes = [
-        'image/png', 
-        'image/jpeg', 
-        'image/jpg', 
-        'image/webp', 
-        'image/heic', 
-        'image/heif'
-      ];
-      const allowedDocTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ];
-      const allowedVideoTypes = [
-        'video/mp4', 
-        'video/mpeg', 
-        'video/quicktime',
-        'video/3gpp', 
-        'video/3gpp2', 
-        'video/webm', 
-        'video/x-matroska'
-      ];
-
-      switch (file.fieldname) {
-        case 'idFile':
-          if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
-        case 'selfieTaken':
-          if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
-        case 'idImage':
-          if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
-          break;
-        case 'intentFile':
-          if (allowedDocTypes.includes(file.mimetype)) return cb(null, true);
-          break;
-        case 'images':
-          if (
-            allowedImageTypes.includes(file.mimetype) ||
-            allowedDocTypes.includes(file.mimetype) ||
-            allowedVideoTypes.includes(file.mimetype)
-          ) return cb(null, true);
-          break;
-        case 'media':  
-          if (
-            allowedImageTypes.includes(file.mimetype) ||  
-            allowedVideoTypes.includes(file.mimetype)    
-          ) return cb(null, true);
-          break;
-        case 'picture':
-          if (allowedImageTypes.includes(file.mimetype)
-          ) return cb(null, true);
-          break;
-        case 'proof': 
-          if (allowedImageTypes.includes(file.mimetype) ||
-              allowedDocTypes.includes(file.mimetype) || 
-              allowedVideoTypes.includes(file.mimetype)
-          ) return cb(null, true);
-          break;
-        case 'files':
-          if (allowedImageTypes.includes(file.mimetype) ||
-              allowedDocTypes.includes(file.mimetype) ||
-              allowedVideoTypes.includes(file.mimetype)
-          ) return cb(null, true);
-          break;
-        default:
-          cb(new Error(`Unsupported field: ${file.fieldname}`));
-      }
-      cb(new Error(`Unsupported file type for field ${file.fieldname}: ${file.mimetype}`));
-    };
+  switch (file.fieldname) {
+    case 'idFile':
+      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
+    case 'selfieTaken':
+      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
+    case 'idImage':
+      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
+      break;
+    case 'intentFile':
+      if (allowedDocTypes.includes(file.mimetype)) return cb(null, true);
+      break;
+    case 'images':
+      // Allow images, videos, docs for announcements
+      if (
+        allowedImageTypes.includes(file.mimetype) ||
+        allowedDocTypes.includes(file.mimetype) ||
+        allowedVideoTypes.includes(file.mimetype)
+      ) return cb(null, true);
+      break;
+    case 'media':  // For report submissions
+      if (
+        allowedImageTypes.includes(file.mimetype) ||  // Allow images
+        allowedVideoTypes.includes(file.mimetype)    // Allow videos if needed
+      ) return cb(null, true);  // You can add docs if reports support them
+      break;
+    case 'picture':
+      if (allowedImageTypes.includes(file.mimetype)
+      ) return cb(null, true);
+      break;
+     case 'proof':  // <-- ADD THIS: Allow images/docs for proof uploads
+      if (allowedImageTypes.includes(file.mimetype) ||
+          allowedDocTypes.includes(file.mimetype) || 
+          allowedVideoTypes.includes(file.mimetype)
+      ) return cb(null, true);
+      break;
+    case 'files':
+      if (allowedImageTypes.includes(file.mimetype) ||
+          allowedDocTypes.includes(file.mimetype) ||
+          allowedVideoTypes.includes(file.mimetype)
+      ) return cb(null, true);
+      break;
+    default:
+      cb(new Error(`Unsupported field: ${file.fieldname}`));
+  }
+  cb(new Error(`Unsupported file type for field ${file.fieldname}: ${file.mimetype}`));
+};
 
 
-    // Multer upload instances (unchanged)
-    const uploadPrivate = multer({
-      storage: privateStorage,
-      fileFilter,
-      limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for private files
-    });
-    const uploadAnnouncements = multer({
-      storage: announcementStorage,
-      fileFilter,
-      limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for announcements
-    });
+// Multer upload instances (unchanged)
+const uploadPrivate = multer({
+  storage: privateStorage,
+  fileFilter,
+  limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for private files
+});
+const uploadAnnouncements = multer({
+  storage: announcementStorage,
+  fileFilter,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for announcements
+});
 
-
-    
 function uploadWithSupabase(fields, isAnnouncement = false) {
   const handler = isAnnouncement ? uploadAnnouncements.fields(fields) : uploadPrivate.fields(fields);
   return (req, res, next) => {
@@ -176,11 +175,11 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
             if (isAnnouncement) {
               relativePath = `announcements/${f.filename}`;  // Public bucket: announcements/
             } else {
-              // Private bucket: Dynamic path under uploads/ example is: uploads/reports/filename.jpg)
+              // Private bucket: Dynamic path under uploads/ (e.g., uploads/reports/filename.jpg)
               relativePath = path.join(f.destination, f.filename);  // f.destination is 'uploads/subfolder', so this gives 'uploads/subfolder/filename'
             }
 
-            // Upload to Supabase (returns signed URL if private)
+              // Upload to Supabase (returns signed URL if private)
             let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
             // Delete local file
             deleteLocalFile(localPath);
