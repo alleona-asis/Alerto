@@ -805,7 +805,6 @@ async function updateMobileUserProfilePicture(req, res, { profile_picture_url, p
   if (!userId) return res.status(400).json({ ok: false, message: 'Invalid user id' });
 
   try {
-    // Store the storage key/path in DB (so you can change URL strategy later)
     await pool.query(
       `UPDATE public.mobile_users
        SET profile_picture = $1
@@ -815,14 +814,15 @@ async function updateMobileUserProfilePicture(req, res, { profile_picture_url, p
 
     return res.json({
       ok: true,
-      profile_picture_path,  // e.g. "profile/4/uuid.jpg"
-      profile_picture_url    // public URL from Supabase
+      profile_picture_path,
+      profile_picture_url  
     });
   } catch (e) {
     console.error('[CTRL updateMobileUserProfilePicture] DB error:', e);
     return res.status(500).json({ ok: false, message: 'Failed to update profile picture' });
   }
 }
+
 
 // =================================================
 // REMOVE MOBILE USER PROFILE PICTURE

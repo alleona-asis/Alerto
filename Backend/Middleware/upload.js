@@ -172,16 +172,23 @@ function uploadWithSupabase(fields, isAnnouncement = false) {
           for (const f of files) {
             const localPath = path.join(f.destination, f.filename);
                         
-            // Determine bucket and relative path
-            let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
-            let relativePath;
-            let isPublic = isAnnouncement;
-            if (isAnnouncement) {
-              relativePath = `announcements/${f.filename}`;  // Public bucket: announcements/
-            } else {
-              // Private bucket: Dynamic path under uploads/ (e.g., uploads/reports/filename.jpg)
-              relativePath = path.join(f.destination, f.filename);  // f.destination is 'uploads/subfolder', so this gives 'uploads/subfolder/filename'
-            }
+              // Determine bucket and relative path
+              let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
+              let relativePath;
+              let isPublic = isAnnouncement;
+
+              // ✅ Force profile pictures to the PUBLIC bucket with a clean key
+              if (f.fieldname === 'picture') {
+                const userId = (req.params && req.params.id) ? String(req.params.id) : 'unknown';
+                bucketName = PUBLIC_BUCKET;
+                isPublic = true;
+                relativePath = `profile/${userId}/${f.filename}`; // no "uploads/" prefix
+              } else if (isAnnouncement) {
+                relativePath = `announcements/${f.filename}`;
+              } else {
+                // private uploads keep their existing layout
+                relativePath = path.join(f.destination, f.filename);
+              }
 
               // Upload to Supabase (returns signed URL if private)
             let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
