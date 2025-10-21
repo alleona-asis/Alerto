@@ -53,6 +53,8 @@ export default function Login() {
   const [phoneNumberError, setPhoneNumberError] = useState('');
   const [focusedInput, setFocusedInput] = useState(null);
 
+  const [showPassword, setShowPassword] = useState(false);
+
 
   // =================================================
   // ERROR HANDLING
@@ -374,25 +376,44 @@ export default function Login() {
             </div>
 
             {/* Password Field */}
-            <div className="input-wrapper">
-              <label className="input-label">Password</label>
-              <input
-                type="password"
-                className={`input-field ${focusedInput === 'password' ? 'input-focus' : ''} ${passwordError ? 'input-error-border' : ''}`}
-                onFocus={() => setFocusedInput('password')}
-                onBlur={() => setFocusedInput(null)}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val.includes(' ')) return;
-                  setPassword(val);
-                  setPasswordError(validateInput(val) ? '' : 'Password must be at least 8 characters long, and include at least one special character and one number');
-                }}
-                onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
-              />
-              {passwordError && <p className="input-error-message">{passwordError}</p>}
-            </div>
+              <div className="input-wrapper">
+                <label className="input-label">Password</label>
+
+                <div className="password-wrapper">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className={`input-field ${focusedInput === 'password' ? 'input-focus' : ''} ${passwordError ? 'input-error-border' : ''}`}
+                    onFocus={() => setFocusedInput('password')}
+                    onBlur={() => setFocusedInput(null)}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes(' ')) return;
+                      setPassword(val);
+                      setPasswordError(
+                        validateInput(val)
+                          ? ''
+                          : 'Password must be at least 8 characters long, and include at least one special character and one number'
+                      );
+                    }}
+                    onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
+                    autoComplete="current-password"
+                    name="password"
+                  />
+
+                  <button
+                    type="button"
+                    className="eye-btn"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword((p) => !p)}
+                  >
+                    {showPassword ? '🔓' : '🔒'}
+                  </button>
+                </div>
+
+                {passwordError && <p className="input-error-message">{passwordError}</p>}
+              </div>
 
 
             {/* LGU Registration Extra Fields */}
@@ -763,20 +784,36 @@ export default function Login() {
               {usernameError && <p className="input-error-message">{usernameError}</p>}
             </div>
 
-            <div className="input-wrapper">
-              <label className="input-label">Password</label>
-              <input
-                type="password"
-                className={`input-field ${focusedInput === 'password' ? 'input-focus' : ''} ${passwordError ? 'input-error-border' : ''}`}
-                value={password}
-                placeholder="Enter your password"
-                onFocus={() => setFocusedInput('password')}
-                onBlur={() => setFocusedInput(null)}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
-              />
-              {passwordError && <p className="input-error-message">{passwordError}</p>}
-            </div>
+          {/* Barangay Password Field */}
+              <div className="input-wrapper">
+                <label className="input-label">Password</label>
+
+                <div className="password-wrapper">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className={`input-field ${focusedInput === 'password' ? 'input-focus' : ''} ${passwordError ? 'input-error-border' : ''}`}
+                    value={password}
+                    placeholder="Enter your password"
+                    onFocus={() => setFocusedInput('password')}
+                    onBlur={() => setFocusedInput(null)}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
+                    autoComplete="current-password"
+                    name="password"
+                  />
+
+                  <button
+                    type="button"
+                    className="eye-btn"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword((p) => !p)}
+                  >
+                    {showPassword ? '🔓' : '🔒'}
+                  </button>
+                </div>
+
+                {passwordError && <p className="input-error-message">{passwordError}</p>}
+              </div>
             <button className="button" onClick={handleLogin}>Login</button>
           </>
         )}
