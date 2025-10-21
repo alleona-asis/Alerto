@@ -136,7 +136,7 @@ export default function BRGYDashboard() {
       case 'incident-type-asc':
         return sorted.sort((a, b) => (a.incident_type || '').localeCompare(b.incident_type || ''));
       case 'date-desc':
-        return sorted.sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
+        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       case 'status-asc':
         return sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
       case 'id-asc':
@@ -668,7 +668,9 @@ export default function BRGYDashboard() {
                 style={{ cursor: "pointer" }}
                 onClick={() => openReportModal(user)}
               >
-                <td className="table-cell">{`Report-${String(user.id).padStart(5, "0")}`}</td>
+                <td className="table-cell">
+                  {`Report-${String(user.id).padStart(5, "0")}`}
+                </td>
                 <td className="table-cell">{user.incident_type}</td>
 
                 <td className="table-cell">
@@ -989,7 +991,7 @@ export default function BRGYDashboard() {
                       {(() => {
                         const getFileExtension = (url) => {
                           try {
-                            const pathname = new URL(url).pathname; // Get the path part, ignoring query params
+                            const pathname = new URL(url).pathname;
                             const extension = pathname.split('.').pop().toLowerCase();
                             return extension;
                           } catch (error) {
@@ -1000,7 +1002,7 @@ export default function BRGYDashboard() {
 
                         const currentUrl = modalUser.media_urls[currentImageIndex];
                         const ext = getFileExtension(currentUrl);
-                        if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                        if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) {
                           return (
                             <img
                               src={currentUrl}
@@ -1016,7 +1018,10 @@ export default function BRGYDashboard() {
                               onClick={() => window.open(currentUrl, "_blank")}
                             />
                           );
-                        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                        } else if (['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(ext)) {
+                          const type = ext === "mov" ? "video/quicktime" :
+                                      ext === "m4v" ? "video/mp4" :
+                                      `video/${ext}`;
                           return (
                             <video
                               controls
@@ -1028,7 +1033,7 @@ export default function BRGYDashboard() {
                                 objectFit: "contain",
                               }}
                             >
-                              <source src={currentUrl} type={`video/${ext}`} />
+                              <source src={currentUrl} type={type} />
                               Your browser does not support the video tag.
                             </video>
                           );
@@ -1055,6 +1060,7 @@ export default function BRGYDashboard() {
                             color: "#fff",
                             borderRadius: "50%",
                             padding: "5px",
+                            userSelect: "none",
                           }}
                         >
                           &#8592;
@@ -1078,6 +1084,7 @@ export default function BRGYDashboard() {
                             color: "#fff",
                             borderRadius: "50%",
                             padding: "5px",
+                            userSelect: "none",
                           }}
                         >
                           &#8594;
@@ -1088,7 +1095,8 @@ export default function BRGYDashboard() {
                     <p style={{ color: "#999" }}>No media available.</p>
                   )}
                 </div>
-                )}
+              )}
+              
 
 
               {activeMiniTab === "map" && (
@@ -1732,6 +1740,7 @@ export default function BRGYDashboard() {
     </>
   );
 }
+
 
 const sortDropdownStyles = {
   control: (base) => ({

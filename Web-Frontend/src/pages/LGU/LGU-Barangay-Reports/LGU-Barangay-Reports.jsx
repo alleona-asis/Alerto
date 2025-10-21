@@ -121,7 +121,7 @@ export default function LGUBarangayReports() {
       case 'incident-type-asc':
         return sorted.sort((a, b) => (a.incident_type || '').localeCompare(b.incident_type || ''));
       case 'date-desc':
-        return sorted.sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
+        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       case 'status-asc':
         return sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
       case 'id-asc':
@@ -337,6 +337,7 @@ export default function LGUBarangayReports() {
       statusLogs: logs,
     });
 
+    setCurrentImageIndex(0);
     setShowBarangayReportDetailsModal(true);
   };
 
@@ -937,43 +938,62 @@ export default function LGUBarangayReports() {
                 >
                   {modalUser.media_urls && modalUser.media_urls.length > 0 ? (
                     <>
-                      {modalUser.media_urls[currentImageIndex].match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                        <img
-                          src={modalUser.media_urls[currentImageIndex]}
-                          alt={`Report-${modalUser.id}`}
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "100%",
-                            borderRadius: "12px",
-                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                            objectFit: "contain",
-                            cursor: "zoom-in",
-                          }}
-                          onClick={() =>
-                            window.open(modalUser.media_urls[currentImageIndex], "_blank")
+                      {/* Helper function to get file extension */}
+                      {(() => {
+                        const getFileExtension = (url) => {
+                          try {
+                            const pathname = new URL(url).pathname;
+                            const extension = pathname.split('.').pop().toLowerCase();
+                            return extension;
+                          } catch (error) {
+                            console.error('Invalid URL:', url, error);
+                            return '';
                           }
-                        />
-                      ) : modalUser.media_urls[currentImageIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                        <video
-                          controls
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "100%",
-                            borderRadius: "12px",
-                            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-                            objectFit: "contain",
-                          }}
-                        >
-                          <source
-                            src={modalUser.media_urls[currentImageIndex]}
-                            type="video/mp4"
-                          />
-                          Your browser does not support the video tag.
-                        </video>
-                      ) : (
-                        <p style={{ color: "#999" }}>Unsupported file type</p>
-                      )}
+                        };
 
+                        const currentUrl = modalUser.media_urls[currentImageIndex];
+                        const ext = getFileExtension(currentUrl);
+                        if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+                          return (
+                            <img
+                              src={currentUrl}
+                              alt={`Report-${modalUser.id}`}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                                cursor: "zoom-in",
+                              }}
+                              onClick={() => window.open(currentUrl, "_blank")}
+                            />
+                          );
+                        } else if (["mp4", "webm", "ogg", "mov", "m4v"].includes(ext)) {
+                          const type = ext === "mov" ? "video/quicktime" :
+                                      ext === "m4v" ? "video/mp4" :
+                                      `video/${ext}`;
+                          return (
+                            <video
+                              controls
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                borderRadius: "12px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+                                objectFit: "contain",
+                              }}
+                            >
+                              <source src={currentUrl} type={type} />
+                              Your browser does not support the video tag.
+                            </video>
+                          );
+                        } else {
+                          return <p style={{ color: "#999" }}>Unsupported file type</p>;
+                        }
+                      })()}
+
+                      {/* Navigation arrows */}
                       {currentImageIndex > 0 && (
                         <div
                           onClick={(e) => {
@@ -991,13 +1011,14 @@ export default function LGUBarangayReports() {
                             color: "#fff",
                             borderRadius: "50%",
                             padding: "5px",
+                            userSelect: "none",
                           }}
                         >
                           &#8592;
                         </div>
                       )}
 
-                      {currentImageIndex < modalUser.media_urls.length - 1 && (
+                        {currentImageIndex < modalUser.media_urls.length - 1 && (
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1014,6 +1035,7 @@ export default function LGUBarangayReports() {
                             color: "#fff",
                             borderRadius: "50%",
                             padding: "5px",
+                            userSelect: "none",
                           }}
                         >
                           &#8594;
