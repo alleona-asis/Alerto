@@ -65,8 +65,8 @@ router.post(
   '/mobile-users/verify',
   Authentication,
   uploadWithSupabase([
-    { name: 'idImage', maxCount: 2 },    // [0] front, [1] back
-    { name: 'selfieTaken', maxCount: 1 } // [0] selfie
+    { name: 'idImage', maxCount: 2 },    
+    { name: 'selfieTaken', maxCount: 1 } 
   ]),
   async (req, res) => {
     try {

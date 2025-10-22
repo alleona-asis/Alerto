@@ -150,26 +150,44 @@ const {
 router.use(authenticateToken);
 router.post(
   '/mobile-user-profile/:userId/upload-id',
-  // keep local files for OCR, delete after you’re done:
-  uploadWithSupabase([{ name: 'files', maxCount: 2 }], false, { skipDeleteFor: ['files'] }),
+  uploadWithSupabase(
+    [
+      { name: 'files', maxCount: 2 },
+      { name: 'selfieTaken', maxCount: 1}
+    ], 
+    false, 
+    { skipDeleteFor: ['files'] }),
   async (req, res) => {
     try {
       const uploadedFiles = (req.supabaseFiles?.files) || [];
-      if (!uploadedFiles.length) {
+      const selfie  = (req.supabaseFiles?.selfie || [])[0] || null;
+
+      if (idFiles.length === 0 && !selfie) {
         return res.status(400).json({ message: 'No ID files uploaded.' });
       }
 
-      // We prefer local paths for OCR so Tesseract can read quickly
       const localPaths = uploadedFiles.map(f => f.localPath);
 
-      // If your controller/BARANGAY/mobileUserRegistry.processOCR expects URLs,
-      // update it to accept localPaths instead (recommended), or download the URLs to buffers.
+      console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
+
       await processOCR(req, res, { localPaths });
 
-      // optional: cleanup after processing (upload middleware already skipped deletion)
+      console.log('[OCR] finished call to processOCR');
+      
       for (const f of uploadedFiles) {
         try { await fs.promises.unlink(f.localPath); } catch {}
       }
+
+      if (!res.headersSent) {
+        return res.json({
+          ok: true,
+          idCount: uploadedFiles.length,
+          selfieUploaded: !!selfie,
+          idPaths: uploadedFiles.map(f => f.relativePath),
+          selfiePath: selfie?.relativePath || null
+        });
+      }
+
     } catch (err) {
       console.error('[UPLOAD ID] Failed:', err.message);
       res.status(500).json({ message: 'ID upload failed' });
