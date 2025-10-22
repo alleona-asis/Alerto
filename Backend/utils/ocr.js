@@ -4,11 +4,45 @@ const sharp = require('sharp');
 const fuzzball = require('fuzzball');
 
 const ID_KEYWORDS = {
-  passport: ['passport', 'republic', 'travel document'],
-  driver_license: ['driver', 'license', 'dl no', 'lto'],
-  national_id: ['national id', 'psa', 'philsys', 'Pagkakakilanlan'],
-  philhealth: ['philhealth', 'pin'],
-  student_id: ['student', 'school', 'university', 'college'],
+  passport: [
+    'passport', 
+    'republic', 
+    'travel document'
+  ],
+  driver_license: [
+    'driver', 
+    'license',
+    'republic of the philippines', 
+    'dl no', 
+    'land transportation office',
+    'transportation'
+  ],
+  national_id: [
+    'national id', 
+    'psa', 'philsys', 
+    'Pagkakakilanlan', 
+    'republic of the philippines',
+    'republika ng pilipinas', 
+    'philippine identification card',
+    'sex', 
+    'date of birth', 
+    'id number',
+    'psa'
+  ],
+  philhealth: [
+    'philhealth',
+    'republic of the philippines', 
+    'pin',
+    'philippine health insurance corporation',
+    'insurance',
+    'certification'
+  ],
+  student_id: [
+    'student', 
+    'school', 
+    'university', 
+    'college'
+  ],
 };
 
 function cleanText(rawText) {
@@ -42,35 +76,77 @@ function fuzzyMatchKeywords(text, idType) {
     : { matched: false, keyword: null, score: bestScore };
 }
 
-async function processOCRLocalFile(localPath, idType) {
-  if (!idType || !ID_KEYWORDS[idType]) {
-    throw new Error('Invalid or missing ID type');
-  }
 
-  const processedBuffer = await sharp(localPath)
+async function preprocess(buf) {
+  return await sharp(buf)
+    .rotate()              // EXIF rotation
     .grayscale()
     .normalize()
-    .resize({ width: 1000 })
-    .png()
+    .threshold(180)        // binarize
+    .resize({ width: 1400, withoutEnlargement: false })
     .toBuffer();
+}
 
-  const { data: { text: rawText = '' } } = await Tesseract.recognize(processedBuffer, 'eng', {
-    logger: m => console.log('[OCR] progress:', m.status, m.progress)
-  });
+async function recognizeBestAngle(buf, lang = 'eng+fil') {
+  const angles = [0, 90, 180, 270];
+  let best = { text:'', score: -1 };
 
-  const cleanedText = cleanText(rawText);
-  const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
+  for (const a of angles) {
+    const pre = await sharp(buf).rotate(a).toBuffer().then(preprocess);
+    const { data: { text = '' } } = await Tesseract.recognize(pre, lang, {
+    });
+    const cleaned = text.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const score = cleaned.length; // simple heuristic: more text == better
+    if (score > best.score) best = { text: cleaned, score };
+  }
+  return best;
+}
 
-  console.log('[OCR] cleaned text length:', cleanedText.length);
-  console.log('[OCR] match:', { matched, keyword, score });
+async function processOCRLocalFile(localPath, idType) {
+  const buf = await fs.promises.readFile(localPath);
 
-  return {
-    ocrResult: cleanedText,
-    matched,
-    matchedKeyword: keyword,
-    matchScore: score
+  const { text, score } = await recognizeBestAngle(buf, 'eng+fil'); 
+
+  const { matched, keyword, matchScore } = fuzzyMatchKeywords(text, idType);
+
+  return { 
+    ocrResult: text, 
+    matched, 
+    matchedKeyword: keyword, 
+    matchScore: Math.max(matchScore, score) 
   };
 }
+
+
+// async function processOCRLocalFile(localPath, idType) {
+//   if (!idType || !ID_KEYWORDS[idType]) {
+//     throw new Error('Invalid or missing ID type');
+//   }
+
+//   const processedBuffer = await sharp(localPath)
+//     .grayscale()
+//     .normalize()
+//     .resize({ width: 1000 })
+//     .png()
+//     .toBuffer();
+
+//   const { data: { text: rawText = '' } } = await Tesseract.recognize(processedBuffer, 'eng', {
+//     logger: m => console.log('[OCR] progress:', m.status, m.progress)
+//   });
+
+//   const cleanedText = cleanText(rawText);
+//   const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
+
+//   console.log('[OCR] cleaned text length:', cleanedText.length);
+//   console.log('[OCR] match:', { matched, keyword, score });
+
+//   return {
+//     ocrResult: cleanedText,
+//     matched,
+//     matchedKeyword: keyword,
+//     matchScore: score
+//   };
+// }
 
 
 

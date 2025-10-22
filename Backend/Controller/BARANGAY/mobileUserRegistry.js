@@ -50,21 +50,93 @@ const fuzzyMatchKeywords = (text, idType) => {
 // =================================================
 
 async function processOCR(req, res, { localPaths = [] }) {
+  const userId = Number(req.params.userId);
   const idType = req.body.idType || req.body.id_type || 'national_id';
-  const results = [];
 
-  for (const p of localPaths) {
-    try {
-      const r = await processOCRLocalFile(p, idType);
-      results.push(r);
-    } catch (e) {
-      results.push({ ocrResult: '', matched: false, matchedKeyword: null, matchScore: 0, error: e.message });
-    }
+  try {
+    const filesMeta = (req.supabaseFiles?.files) || [];
+    const front = filesMeta[0] || null;
+    const back  = filesMeta[1] || null;
+
+    // 1) Persist paths/urls immediately (so dashboards can view right away)
+    const upd = await pool.query(
+      `UPDATE mobile_users
+         SET id_type       = COALESCE($1, id_type),
+             id_front_path = $2, id_front_url = $3,
+             id_back_path  = $4, id_back_url  = $5,
+             status        = CASE WHEN status = 'verified' THEN status ELSE 'pending' END,
+             ocr_status    = 'pending',             -- <- add this column (see note below)
+             ocr_error     = NULL
+       WHERE id = $6
+       RETURNING id, status, id_front_path, id_back_path`,
+      [idType, front?.relativePath || null, front?.supabaseUrl || null,
+              back?.relativePath  || null, back?.supabaseUrl  || null, userId]
+    );
+
+    // 2) Respond ASAP (mobile app won’t time out / dashboard can already view)
+    res.json({ ok: true, message: 'ID images uploaded', saved: upd.rows[0] });
+
+    // 3) Fire-and-forget OCR — do NOT block the response
+    setImmediate(async () => {
+      try {
+        const results = [];
+        for (const p of localPaths) {
+          results.push(await processOCRLocalFile(p, idType));
+        }
+
+        await pool.query(
+          `UPDATE mobile_users
+             SET ocr_status = 'ok',
+                 ocr_text_front = $1,           -- <- add these columns
+                 ocr_text_back  = $2,
+                 ocr_match_score= $3,
+                 ocr_updated_at = NOW()
+           WHERE id = $4`,
+          [
+            results[0]?.ocrResult || null,
+            results[1]?.ocrResult || null,
+            Math.max(results[0]?.matchScore || 0, results[1]?.matchScore || 0),
+            userId
+          ]
+        );
+      } catch (e) {
+        await pool.query(
+          `UPDATE mobile_users
+             SET ocr_status = 'failed',
+                 ocr_error  = $1,
+                 ocr_updated_at = NOW()
+           WHERE id = $2`,
+          [String(e?.message || e), userId]
+        );
+      } finally {
+        for (const lp of localPaths) { try { await fs.promises.unlink(lp); } catch {} }
+      }
+    });
+
+  } catch (err) {
+    console.error('[processOCR] fatal:', err);
+    // even on error, try to not lose files — tell client it failed but files might be saved already
+    return res.status(500).json({ ok: false, message: 'Upload saved, OCR failed', error: err.message });
   }
-
-  // …Update your DB as needed with IDs’ paths/URLs…
-  return res.json({ ok: true, results });
 }
+
+
+// async function processOCR(req, res, { localPaths = [] }) {
+//   const idType = req.body.idType || req.body.id_type || 'national_id';
+//   const results = [];
+
+//   for (const p of localPaths) {
+//     try {
+//       const r = await processOCRLocalFile(p, idType);
+//       results.push(r);
+//     } catch (e) {
+//       results.push({ ocrResult: '', matched: false, matchedKeyword: null, matchScore: 0, error: e.message });
+//     }
+//   }
+
+//   // …Update your DB as needed with IDs’ paths/URLs…
+//   return res.json({ ok: true, results });
+// }
 
 
 // const processOCR = async (req, res) => {
