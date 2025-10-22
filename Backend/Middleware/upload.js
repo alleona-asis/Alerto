@@ -33,10 +33,10 @@ const privateStorage = multer.diskStorage({
     // Dynamic folder logic based on fieldname
     switch (file.fieldname) {
       case 'idFile':
-        folder = 'uploads/id';
+        folder = 'uploads/id'; //lgu id uploads
         break;
       case 'intentFile':
-        folder = 'uploads/letter';
+        folder = 'uploads/letter'; //lgu letter uploads
         break;
       case 'idImage':
         folder = 'uploads/mobile';  // For mobile ID uploads

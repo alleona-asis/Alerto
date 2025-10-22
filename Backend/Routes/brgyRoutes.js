@@ -177,9 +177,9 @@ router.post(
 
       console.log('[OCR] finished call to processOCR');
 
-      for (const f of uploadedFiles) {
-        try { await fs.promises.unlink(f.localPath); } catch {}
-      }
+      // for (const f of uploadedFiles) {
+      //   try { await fs.promises.unlink(f.localPath); } catch {}
+      // }
       for (const p of localPaths) {
         try { if (p) await fs.promises.unlink(p); } catch {}
       }
