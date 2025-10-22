@@ -162,7 +162,7 @@ router.post(
       const uploadedFiles = (req.supabaseFiles?.files) || [];
       const selfie  = (req.supabaseFiles?.selfie || [])[0] || null;
 
-      if (idFiles.length === 0 && !selfie) {
+      if (uploadedFiles.length === 0 && !selfie) {
         return res.status(400).json({ message: 'No ID files uploaded.' });
       }
 
@@ -173,7 +173,7 @@ router.post(
       await processOCR(req, res, { localPaths });
 
       console.log('[OCR] finished call to processOCR');
-      
+
       for (const f of uploadedFiles) {
         try { await fs.promises.unlink(f.localPath); } catch {}
       }
