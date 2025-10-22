@@ -497,8 +497,7 @@ const rejectDocumentRequest = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    // Update request -> status: rejected
-    // NOTE: If you don't have a `rejection_reason` column, remove it from the update list and rely on status_history.
+    
     const updateSql = `
       UPDATE document_requests
       SET status = $1,
@@ -525,10 +524,10 @@ const rejectDocumentRequest = async (req, res) => {
     let notification = null;
     try {
       const notificationResult = await pool.query(
-        `INSERT INTO mobile_notifications (mobile_user_id, type, status)
-         VALUES ($1, $2, $3)
+        `INSERT INTO mobile_notifications (mobile_user_id, type, status, reason_for_rejection)
+         VALUES ($1, $2, $3, $4)
          RETURNING *`,
-        [updatedRequest.mobile_user_id, "document_request_status", "rejected"]
+        [updatedRequest.mobile_user_id, "document_request_status", "rejected", reason.trim()]
       );
       notification = notificationResult.rows[0];
       console.log(`${where} notification saved`, { notificationId: notification.id });
@@ -551,6 +550,7 @@ const rejectDocumentRequest = async (req, res) => {
         updated_at: updatedRequest.updated_at,
         new_date: updatedRequest.new_date,
         pickup_deadline: updatedRequest.pickup_deadline,
+         rejection_reason: updatedRequest.rejection_reason,
         // (optional) include full request if you like:
         // request: updatedRequest
       });

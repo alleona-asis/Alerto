@@ -102,5 +102,9 @@ async function generateSignedUrl(relativePath, expiresInSeconds = 3600 * 24 * 7)
   }
 }
 
+function getPublicUrl(relativePath) {
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(relativePath);
+  return data?.publicUrl || null;
+}
 
-module.exports = { uploadToSupabase, deleteLocalFile, generateSignedUrl };
+module.exports = { uploadToSupabase, deleteLocalFile, generateSignedUrl, getPublicUrl };

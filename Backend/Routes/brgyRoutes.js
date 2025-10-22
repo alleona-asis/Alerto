@@ -150,27 +150,56 @@ const {
 router.use(authenticateToken);
 router.post(
   '/mobile-user-profile/:userId/upload-id',
-  uploadWithSupabase([{ name: 'files', maxCount: 2 }]), // max 2 files (front/back)
+  // keep local files for OCR, delete after you’re done:
+  uploadWithSupabase([{ name: 'files', maxCount: 2 }], false, { skipDeleteFor: ['files'] }),
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
-
-      if (uploadedFiles.length === 0) {
+      const uploadedFiles = (req.supabaseFiles?.files) || [];
+      if (!uploadedFiles.length) {
         return res.status(400).json({ message: 'No ID files uploaded.' });
       }
 
-      // Get Supabase URLs for processing (OCR, DB, etc.)
-      const idUrls = uploadedFiles.map(f => f.supabaseUrl);
+      // We prefer local paths for OCR so Tesseract can read quickly
+      const localPaths = uploadedFiles.map(f => f.localPath);
 
-      // Call your existing OCR processor
-      await processOCR(req, res, { idUrls });
+      // If your controller/BARANGAY/mobileUserRegistry.processOCR expects URLs,
+      // update it to accept localPaths instead (recommended), or download the URLs to buffers.
+      await processOCR(req, res, { localPaths });
 
+      // optional: cleanup after processing (upload middleware already skipped deletion)
+      for (const f of uploadedFiles) {
+        try { await fs.promises.unlink(f.localPath); } catch {}
+      }
     } catch (err) {
       console.error('[UPLOAD ID] Failed:', err.message);
       res.status(500).json({ message: 'ID upload failed' });
     }
   }
 );
+
+// router.post(
+//   '/mobile-user-profile/:userId/upload-id',
+//   uploadWithSupabase([{ name: 'files', maxCount: 2 }]), // max 2 files (front/back)
+//   async (req, res) => {
+//     try {
+//       const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
+
+//       if (uploadedFiles.length === 0) {
+//         return res.status(400).json({ message: 'No ID files uploaded.' });
+//       }
+
+//       // Get Supabase URLs for processing (OCR, DB, etc.)
+//       const idUrls = uploadedFiles.map(f => f.supabaseUrl);
+
+//       // Call your existing OCR processor
+//       await processOCR(req, res, { idUrls });
+
+//     } catch (err) {
+//       console.error('[UPLOAD ID] Failed:', err.message);
+//       res.status(500).json({ message: 'ID upload failed' });
+//     }
+//   }
+// );
 
 router.get('/mobile-user-registry', getAllMobileUsers);
 

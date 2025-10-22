@@ -5,6 +5,7 @@ const path = require('path');
 const sharp = require('sharp');
 const { getIo } = require('../../socket'); 
 const {supabase} = require('../../PostgreSQL/supabaseClient');
+const { processOCRLocalFile } = require('../../utils/ocr');
 
 // Keywords for validation
 const ID_KEYWORDS = {
@@ -47,56 +48,75 @@ const fuzzyMatchKeywords = (text, idType) => {
 // =================================================
 //  OCR PROCESSING
 // =================================================
-const processOCR = async (req, res) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "No image files uploaded" });
+
+async function processOCR(req, res, { localPaths = [] }) {
+  const idType = req.body.idType || req.body.id_type || 'national_id';
+  const results = [];
+
+  for (const p of localPaths) {
+    try {
+      const r = await processOCRLocalFile(p, idType);
+      results.push(r);
+    } catch (e) {
+      results.push({ ocrResult: '', matched: false, matchedKeyword: null, matchScore: 0, error: e.message });
     }
-
-    const { idType } = req.body;
-    if (!idType || !ID_KEYWORDS[idType]) {
-      return res.status(400).json({ error: "Invalid or missing ID type" });
-    }
-
-    let combinedText = "";
-
-    for (const file of req.files) {
-      const processedBuffer = await sharp(file.path)
-        .grayscale()
-        .normalize()
-        .resize({ width: 1000 })
-        .png()
-        .toBuffer();
-
-      const {
-        data: { text: rawText = "" },
-      } = await Tesseract.recognize(processedBuffer, "eng", {
-        logger: (m) => console.log("OCR Progress:", m),
-      });
-
-      combinedText += rawText + "\n";
-
-      fs.promises.unlink(file.path).catch((err) =>
-        console.warn("Failed to delete original file:", err)
-      );
-    }
-
-    const cleanedText = cleanText(combinedText);
-    console.log("Cleaned OCR Text:", cleanedText);
-
-    const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
-
-    return res.status(200).json({
-      text: cleanedText,
-      matched,
-      matchedKeyword: keyword,
-      matchScore: score,
-    });
-  } catch (error) {
-    console.error("OCR processing failed:", error.message || error);
-    res.status(500).json({ error: "OCR processing failed" });
   }
-};
+
+  // …Update your DB as needed with IDs’ paths/URLs…
+  return res.json({ ok: true, results });
+}
+
+
+// const processOCR = async (req, res) => {
+//   try {
+//     if (!req.files || req.files.length === 0) {
+//       return res.status(400).json({ error: "No image files uploaded" });
+//     }
+
+//     const { idType } = req.body;
+//     if (!idType || !ID_KEYWORDS[idType]) {
+//       return res.status(400).json({ error: "Invalid or missing ID type" });
+//     }
+
+//     let combinedText = "";
+
+//     for (const file of req.files) {
+//       const processedBuffer = await sharp(file.path)
+//         .grayscale()
+//         .normalize()
+//         .resize({ width: 1000 })
+//         .png()
+//         .toBuffer();
+
+//       const {
+//         data: { text: rawText = "" },
+//       } = await Tesseract.recognize(processedBuffer, "eng", {
+//         logger: (m) => console.log("OCR Progress:", m),
+//       });
+
+//       combinedText += rawText + "\n";
+
+//       fs.promises.unlink(file.path).catch((err) =>
+//         console.warn("Failed to delete original file:", err)
+//       );
+//     }
+
+//     const cleanedText = cleanText(combinedText);
+//     console.log("Cleaned OCR Text:", cleanedText);
+
+//     const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
+
+//     return res.status(200).json({
+//       text: cleanedText,
+//       matched,
+//       matchedKeyword: keyword,
+//       matchScore: score,
+//     });
+//   } catch (error) {
+//     console.error("OCR processing failed:", error.message || error);
+//     res.status(500).json({ error: "OCR processing failed" });
+//   }
+// };
 
 
 // =================================================

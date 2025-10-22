@@ -128,7 +128,7 @@ const fileFilter = (req, file, cb) => {
       pass = ok(allowedImageTypes) || ok(allowedDocTypes) || ok(allowedVideoTypes);
       break;
     default:
-      cb(new Error(`Unsupported field: ${file.fieldname}`));
+       return cb(new Error(`Unsupported field: ${file.fieldname}`));
   }
     if (!pass) return cb(new Error(`Unsupported file type for field ${file.fieldname}: ${file.mimetype}`));
       return cb(null, true);

@@ -894,8 +894,8 @@ const getBarangayProfile = async (req, res) => {
 // =================================================
 const getMobileUserProfile = async (req, res) => {
   try {
-
-    const result = await pool.query("SELECT * FROM mobile_users WHERE id=$1", [req.params.id]);
+    const { id } = req.params;
+    const result = await pool.query("SELECT * FROM mobile_users WHERE id=$1", [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
@@ -903,50 +903,88 @@ const getMobileUserProfile = async (req, res) => {
 
     const user = result.rows[0];
 
-//     const baseUrl = `${req.protocol}://${req.get("host")}`;
-
-//     user.id_front_url  = user.id_front_path  ? `${baseUrl}/${user.id_front_path.replace(/\\/g, "/")}` : null;
-//     user.id_back_url   = user.id_back_path   ? `${baseUrl}/${user.id_back_path.replace(/\\/g, "/")}` : null;
-//     user.selfie_url    = user.selfie_path    ? `${baseUrl}/${user.selfie_path.replace(/\\/g, "/")}` : null;
-//     user.profile_picture = user.profile_picture ? `${baseUrl}${user.profile_picture.replace(/\\/g, "/")}` : null;
-
-//     res.json(user);
-//   } catch (err) {
-//     console.error("Error fetching profile:", err);
-//     res.status(500).json({ message: "Server error", error: err.message });
-//   }
-// };
-
-    // If URLs are already stored (preferred), keep them.
-    // For older rows that only have *path* (and no URL), generate best-effort URL.
-    // Private assets (IDs/selfie): sign if no URL
-    if (!user.id_front_url && user.id_front_path) {
-      try { user.id_front_url = await generateSignedUrl(user.id_front_path); } catch {}
-    }
-    if (!user.id_back_url && user.id_back_path) {
-      try { user.id_back_url = await generateSignedUrl(user.id_back_path); } catch {}
-    }
-    if (!user.selfie_url && user.selfie_path) {
-      try { user.selfie_url = await generateSignedUrl(user.selfie_path); } catch {}
+    // Always re-generate signed URLs for private assets
+    if (user.id_front_path) {
+      try { user.id_front_url = await generateSignedUrl(user.id_front_path); } catch { user.id_front_url = null; }
+    } else {
+      user.id_front_url = null;
     }
 
-    // Profile picture stored as path in PUBLIC bucket (your upload middleware puts it in PUBLIC)
-    // Return a computed public URL in an additional field for convenience.
+    if (user.id_back_path) {
+      try { user.id_back_url = await generateSignedUrl(user.id_back_path); } catch { user.id_back_url = null; }
+    } else {
+      user.id_back_url = null;
+    }
+
+    if (user.selfie_path) {
+      try { user.selfie_url = await generateSignedUrl(user.selfie_path); } catch { user.selfie_url = null; }
+    } else {
+      user.selfie_url = null;
+    }
+
+    // Public profile picture (stored in PUBLIC bucket): compute a public URL
     if (user.profile_picture) {
-      try {
-        user.profile_picture_url = getPublicUrl(user.profile_picture);
-      } catch { user.profile_picture_url = null; }
+      try { user.profile_picture_url = getPublicUrl(user.profile_picture); } catch { user.profile_picture_url = null; }
     } else {
       user.profile_picture_url = null;
     }
 
     return res.json(user);
   } catch (err) {
-    console.error("Error fetching profile:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error('Error fetching profile:', err);
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
+// const getMobileUserProfile = async (req, res) => {
+//   try {
+
+//     const result = await pool.query("SELECT * FROM mobile_users WHERE id=$1", [req.params.id]);
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     const user = result.rows[0];
+
+// //     const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+// //     user.id_front_url  = user.id_front_path  ? `${baseUrl}/${user.id_front_path.replace(/\\/g, "/")}` : null;
+// //     user.id_back_url   = user.id_back_path   ? `${baseUrl}/${user.id_back_path.replace(/\\/g, "/")}` : null;
+// //     user.selfie_url    = user.selfie_path    ? `${baseUrl}/${user.selfie_path.replace(/\\/g, "/")}` : null;
+// //     user.profile_picture = user.profile_picture ? `${baseUrl}${user.profile_picture.replace(/\\/g, "/")}` : null;
+
+// //     res.json(user);
+// //   } catch (err) {
+// //     console.error("Error fetching profile:", err);
+// //     res.status(500).json({ message: "Server error", error: err.message });
+// //   }
+// // };
+
+//     //  (private bucket)
+//     if (!user.id_front_url && user.id_front_path) {
+//       try { user.id_front_url = await generateSignedUrl(user.id_front_path); } catch {}
+//     }
+//     if (!user.id_back_url && user.id_back_path) {
+//       try { user.id_back_url = await generateSignedUrl(user.id_back_path); } catch {}
+//     }
+//     if (!user.selfie_url && user.selfie_path) {
+//       try { user.selfie_url = await generateSignedUrl(user.selfie_path); } catch {}
+//     }
+
+//     // profile_picture is stored in PUBLIC bucket
+//     if (user.profile_picture) {
+//       try { user.profile_picture_url = getPublicUrl(user.profile_picture); } catch { user.profile_picture_url = null; }
+//     } else {
+//       user.profile_picture_url = null;
+//     }
+
+//     return res.json(user);
+//   } catch (err) {
+//     console.error('Error fetching profile:', err);
+//     return res.status(500).json({ message: 'Server error', error: err.message });
+//   }
+// };
 
 // =================================================
 // UPDATE MOBILE USER PROFILE PICTURE
