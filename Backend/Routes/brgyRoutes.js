@@ -160,7 +160,7 @@ router.post(
   async (req, res) => {
     try {
       const uploadedFiles = (req.supabaseFiles?.files) || [];
-      const selfie  = (req.supabaseFiles?.selfie || [])[0] || null;
+      const selfie  = (req.supabaseFiles?.selfieTaken || [])[0] || null;
 
       if (uploadedFiles.length === 0 && !selfie) {
         return res.status(400).json({ message: 'No ID files uploaded.' });

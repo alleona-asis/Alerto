@@ -44,6 +44,9 @@ const privateStorage = multer.diskStorage({
       case 'selfieTaken':
         folder = 'uploads/selfie';  // For mobile user selfie pictures
         break;
+      case 'selfie':
+        folder = 'uploads/selfie';
+        break
       case 'image':
         folder = 'uploads/ocr';  // OCR-specific images
         break;
@@ -104,6 +107,9 @@ const fileFilter = (req, file, cb) => {
         pass = ok(allowedImageTypes);
       break;
     case 'selfieTaken':
+        pass = ok(allowedImageTypes);
+      break;
+    case 'selfie':
         pass = ok(allowedImageTypes);
       break;
     case 'idImage':

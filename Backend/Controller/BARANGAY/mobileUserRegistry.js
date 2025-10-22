@@ -73,11 +73,15 @@ async function processOCR(req, res, { localPaths = [] }) {
              id_front_path = $2, id_front_url = $3,
              id_back_path  = $4, id_back_url  = $5,
              status        = CASE WHEN status = 'verified' THEN status ELSE 'pending' END,
-             ocr_status    = 'pending',            
+             ocr_status    = 'pending',
+             ocr_error     = NULL            
        WHERE id = $6
        RETURNING id, status, id_front_path, id_back_path`,
-      [idType, front?.relativePath || null, front?.supabaseUrl || null,
-              back?.relativePath  || null, back?.supabaseUrl  || null, userId]
+      [
+        idType, 
+        front?.relativePath || null, front?.supabaseUrl || null,
+        back?.relativePath  || null, back?.supabaseUrl  || null, userId
+      ]
     );
 
     console.log('[OCR] upload metadata saved', { rowCount: upd.rowCount, saved: upd.rows?.[0] });
