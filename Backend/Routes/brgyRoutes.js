@@ -162,11 +162,9 @@ router.post(
       const uploadedFiles = (req.supabaseFiles?.files) || [];
       const selfie  = (req.supabaseFiles?.selfieTaken || [])[0] || null;
 
-      if (uploadedFiles.length === 0 && !selfie) {
+      if (!uploadedFiles.length) {
         return res.status(400).json({ message: 'No ID files uploaded.' });
       }
-
-      const localPaths = uploadedFiles.map(f => f.localPath);
 
       console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
 

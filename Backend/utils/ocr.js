@@ -2,6 +2,7 @@
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const fuzzball = require('fuzzball');
+const fs = require('fs');
 
 const ID_KEYWORDS = {
   passport: [
