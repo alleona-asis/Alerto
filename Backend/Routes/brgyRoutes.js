@@ -166,6 +166,11 @@ router.post(
         return res.status(400).json({ message: 'No ID files uploaded.' });
       }
 
+      const multerFiles = Array.isArray(req.files)
+        ? req.files
+        : (req.files?.files || []);
+      const localPaths = (multerFiles || []).map(f => f.path).filter(Boolean);
+
       console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
 
       await processOCR(req, res, { localPaths });
@@ -174,6 +179,9 @@ router.post(
 
       for (const f of uploadedFiles) {
         try { await fs.promises.unlink(f.localPath); } catch {}
+      }
+      for (const p of localPaths) {
+        try { if (p) await fs.promises.unlink(p); } catch {}
       }
 
       if (!res.headersSent) {
