@@ -3,11 +3,15 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
 
 const { initSocket, getIo } = require('./socket');
 const { checkExpiredPickups } = require('./utils/autoUnclaimed');
 
 const app = express();
+
+const TEMP_DIR = path.join(__dirname, 'uploads', 'temp');
+fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 // Allowed origins array
 const allowedOrigins = [
@@ -40,6 +44,7 @@ app.use(cors({
   exposedHeaders: ["Content-Length", "Content-Range"]
 }));
 
+// app.options('*', cors()); //optional
 
 app.use(express.json());
 
@@ -78,11 +83,14 @@ const lguRoutes = require('./Routes/lguRoutes');
 const brgyRoutes = require('./Routes/brgyRoutes');
 const fileRoutes = require('./Routes/fileRoutes')
 
+const ocrRoutes   = require('./Routes/ocrRoutes');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/lgu', lguRoutes);
 app.use('/api/brgy', brgyRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/ocr', ocrRoutes);
 
 // Static file serving
 app.use('/uploads/id', express.static(path.join(__dirname, 'uploads/id')));

@@ -1,3 +1,6 @@
+//utils/ocr.js
+const Tesseract = require('tesseract.js');
+const sharp = require('sharp');
 const fuzzball = require('fuzzball');
 
 const ID_KEYWORDS = {
@@ -39,8 +42,42 @@ function fuzzyMatchKeywords(text, idType) {
     : { matched: false, keyword: null, score: bestScore };
 }
 
+async function processOCRLocalFile(localPath, idType) {
+  if (!idType || !ID_KEYWORDS[idType]) {
+    throw new Error('Invalid or missing ID type');
+  }
+
+  const processedBuffer = await sharp(localPath)
+    .grayscale()
+    .normalize()
+    .resize({ width: 1000 })
+    .png()
+    .toBuffer();
+
+  const { data: { text: rawText = '' } } = await Tesseract.recognize(processedBuffer, 'eng', {
+    logger: m => console.log('[OCR] progress:', m.status, m.progress)
+  });
+
+  const cleanedText = cleanText(rawText);
+  const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
+
+  console.log('[OCR] cleaned text length:', cleanedText.length);
+  console.log('[OCR] match:', { matched, keyword, score });
+
+  return {
+    ocrResult: cleanedText,
+    matched,
+    matchedKeyword: keyword,
+    matchScore: score
+  };
+}
+
+
+
 module.exports = {
   cleanText,
   fuzzyMatchKeywords,
   ID_KEYWORDS,
+  processOCRLocalFile,
+  
 };
