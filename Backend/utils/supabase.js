@@ -4,7 +4,9 @@ const fs = require('fs');
 const mime = require('mime-types');
 require('dotenv').config();
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+  auth: { persistSession: false }
+});
 
 const PUBLIC_BUCKET = process.env.PUBLIC_BUCKET;   // 'Alerto-public'
 const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET; // 'Alerto-private'
@@ -21,7 +23,7 @@ const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET; // 'Alerto-private'
 
 async function uploadToSupabase(localPath, relativePath, bucketName, isPublic) {
 
-const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
+  const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
 
   // Read file buffer from localPath
   const fileBuffer = await fs.promises.readFile(localPath);
@@ -29,17 +31,31 @@ const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
   // Detect content type from file extension
   const contentType = mime.lookup(localPath) || undefined;
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(relativePath, fileBuffer, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType,
-    });
+  // const { data, error } = await supabase.storage
+  //   .from(bucket)
+  //   .upload(relativePath, fileBuffer, {
+  //     cacheControl: '3600',
+  //     upsert: false,
+  //     contentType,
+  //   });
 
-  if (error) {
-    throw new Error(`Supabase upload error: ${error.message}`);
-  }
+  // if (error) {
+  //   throw new Error(`Supabase upload error: ${error.message}`);
+  // }
+
+    // Upsert=true to avoid duplicate key failures on retries
+      const { error: upErr } = await supabase.storage
+        .from(bucket)
+        .upload(relativePath, fileBuffer, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType,
+        });
+
+      if (upErr) {
+        throw new Error(`Supabase upload error: ${upErr.message}`);
+      }
+
 
   // Return public URL if public bucket
     if (isPublic) {
@@ -67,6 +83,9 @@ function deleteLocalFile(localPath) {
   });
 }
 
+/**
+ * Re-generate a signed URL for a private object (reports media, id verification, and the like)
+ */
 async function generateSignedUrl(relativePath, expiresInSeconds = 3600 * 24 * 7) { //7 days validity
   try {
     const { data, error } = await supabase.storage
@@ -83,5 +102,9 @@ async function generateSignedUrl(relativePath, expiresInSeconds = 3600 * 24 * 7)
   }
 }
 
+function getPublicUrl(relativePath) {
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(relativePath);
+  return data?.publicUrl || null;
+}
 
-module.exports = { uploadToSupabase, deleteLocalFile, generateSignedUrl };
+module.exports = { uploadToSupabase, deleteLocalFile, generateSignedUrl, getPublicUrl };

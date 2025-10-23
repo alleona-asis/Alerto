@@ -10,6 +10,10 @@ const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET || 'Alerto-private';
 
 // const storage = multer.memoryStorage();
 
+// -------- helpers
+const ensureDir = dir => fs.mkdirSync(dir, { recursive: true });
+const posixJoin = (...p) => p.join('/').replace(/\\/g, '/');
+
 // Storage for announcements (public bucket)
 const announcementStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -31,10 +35,10 @@ const privateStorage = multer.diskStorage({
     // Dynamic folder logic based on fieldname
     switch (file.fieldname) {
       case 'idFile':
-        folder = 'uploads/id';
+        folder = 'uploads/id'; //lgu id uploads
         break;
       case 'intentFile':
-        folder = 'uploads/letter';
+        folder = 'uploads/letter'; //lgu letter uploads
         break;
       case 'idImage':
         folder = 'uploads/mobile';  // For mobile ID uploads
@@ -42,6 +46,9 @@ const privateStorage = multer.diskStorage({
       case 'selfieTaken':
         folder = 'uploads/selfie';  // For mobile user selfie pictures
         break;
+      case 'selfie':
+        folder = 'uploads/selfie';
+        break
       case 'image':
         folder = 'uploads/ocr';  // OCR-specific images
         break;
@@ -59,17 +66,15 @@ const privateStorage = multer.diskStorage({
         folder = 'uploads/other';  // Fallback for unmatched fields
     }
 
-    fs.mkdirSync(folder, { recursive: true });
+    ensureDir(folder);
     cb(null, folder);
   },
-  filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
+  filename: (req, file, cb) => 
+    cb(null, `${uuidv4()}${path.extname(file.originalname)}`
+  )
+
 });
 
-// File filter to allow specific mimetypes per field (unchanged)
-const fileFilter = (req, file, cb) => {
   const allowedImageTypes = [
     'image/png', 
     'image/jpeg', 
@@ -93,51 +98,48 @@ const fileFilter = (req, file, cb) => {
     'video/x-matroska'
   ];
 
+  // File filter to allow specific mimetypes per field
+const fileFilter = (req, file, cb) => {
+  const ok = (types) => types.includes(file.mimetype);
+
+  let pass = false;
+
   switch (file.fieldname) {
     case 'idFile':
-      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
+        pass = ok(allowedImageTypes);
+      break;
     case 'selfieTaken':
-      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
+        pass = ok(allowedImageTypes);
+      break;
+    case 'selfie':
+        pass = ok(allowedImageTypes);
+      break;
     case 'idImage':
-      if (allowedImageTypes.includes(file.mimetype)) return cb(null, true);
+        pass = ok(allowedImageTypes);
       break;
     case 'intentFile':
-      if (allowedDocTypes.includes(file.mimetype)) return cb(null, true);
+        pass = ok(allowedDocTypes);
       break;
-    case 'images':
-      // Allow images, videos, docs for announcements
-      if (
-        allowedImageTypes.includes(file.mimetype) ||
-        allowedDocTypes.includes(file.mimetype) ||
-        allowedVideoTypes.includes(file.mimetype)
-      ) return cb(null, true);
+    case 'images': //  for announcements
+      pass = ok(allowedImageTypes) || ok(allowedDocTypes) || ok(allowedVideoTypes);
       break;
-    case 'media':  // For report submissions
-      if (
-        allowedImageTypes.includes(file.mimetype) ||  // Allow images
-        allowedVideoTypes.includes(file.mimetype)    // Allow videos if needed
-      ) return cb(null, true);  // You can add docs if reports support them
+    case 'media':  // for report submissions
+      pass = ok(allowedImageTypes) || ok(allowedVideoTypes);
       break;
     case 'picture':
-      if (allowedImageTypes.includes(file.mimetype)
-      ) return cb(null, true);
+        pass = ok(allowedImageTypes);
       break;
-     case 'proof':  // <-- ADD THIS: Allow images/docs for proof uploads
-      if (allowedImageTypes.includes(file.mimetype) ||
-          allowedDocTypes.includes(file.mimetype) || 
-          allowedVideoTypes.includes(file.mimetype)
-      ) return cb(null, true);
+     case 'proof':  // for proof uploads
+       pass = ok(allowedImageTypes) || ok(allowedDocTypes) || ok(allowedVideoTypes);
       break;
     case 'files':
-      if (allowedImageTypes.includes(file.mimetype) ||
-          allowedDocTypes.includes(file.mimetype) ||
-          allowedVideoTypes.includes(file.mimetype)
-      ) return cb(null, true);
+      pass = ok(allowedImageTypes) || ok(allowedDocTypes) || ok(allowedVideoTypes);
       break;
     default:
-      cb(new Error(`Unsupported field: ${file.fieldname}`));
+       return cb(new Error(`Unsupported field: ${file.fieldname}`));
   }
-  cb(new Error(`Unsupported file type for field ${file.fieldname}: ${file.mimetype}`));
+    if (!pass) return cb(new Error(`Unsupported file type for field ${file.fieldname}: ${file.mimetype}`));
+      return cb(null, true);
 };
 
 
@@ -153,47 +155,192 @@ const uploadAnnouncements = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for announcements
 });
 
-function uploadWithSupabase(fields, isAnnouncement = false) {
+// function uploadWithSupabase(fields, isAnnouncement = false, options = {}) {
+//   const { skipDeleteFor = [] } = options;  
+//   const handler = isAnnouncement ? uploadAnnouncements.fields(fields) : uploadPrivate.fields(fields);
+
+//   return (req, res, next) => {
+//     handler(req, res, async (err) => {
+
+//         console.log('[MULTER] CT:', req.headers['content-type']);
+//         console.log('[MULTER] files keys:', Object.keys(req.files || {}));
+
+//       if (err) 
+//         return next(err);
+
+//       try {
+//         req.supabaseFiles = {};
+
+//         for (const field of fields) {
+//           const files = req.files[field.name];
+
+//           if (!files) continue;
+
+//           for (const f of files) {
+//             const localPath = path.join(f.destination, f.filename);
+                        
+//               // Determine bucket and relative path
+//               let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
+//               let relativePath;
+//               let isPublic = isAnnouncement;
+
+//               if (f.fieldname === 'picture') {
+//                 const userId = (req.params && req.params.id) ? String(req.params.id) : 'unknown';
+//                 bucketName = PUBLIC_BUCKET;
+//                 isPublic = true;
+//                 relativePath = `profile/userID:${userId}/${f.filename}`; 
+//               } else if (isAnnouncement) {
+//                 relativePath = `announcements/${f.filename}`;
+//               } else {
+//                 relativePath = path.join(f.destination, f.filename);
+//               }
+
+//               // Upload to Supabase (returns signed URL if private)
+//             let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
+
+//             // Delete local file
+//             // For OCR or special cases, optionally keep the local file until processed
+//             if (!skipDeleteFor.includes(f.fieldname)) {
+//               deleteLocalFile(localPath);
+//             }
+
+            
+//             if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
+//             req.supabaseFiles[field.name].push({
+//               field: field.name,
+//               supabaseUrl,    // This is the signed URL for private or public URL for announcements
+//               relativePath,
+//               filename: f.filename,
+//               isPublic,
+//               mimetype: f.mimetype,
+//               localPath
+//             });
+
+//             console.log('[UPLOAD] ✓ Stored', {
+//               field: field.name,
+//               isPublic,
+//               relativePath: objectPath,
+//               url: supabaseUrl
+//             });
+//           }
+//         }
+//         next();
+//       } catch (e) {
+//         console.error('[UPLOAD] Fatal Supabase sync error:', e.message);
+//         next(e);
+//       }
+//     });
+//   };
+// }
+
+function uploadWithSupabase(fields, isAnnouncement = false, options = {}) {
+  const { skipDeleteFor = [] } = options;  
   const handler = isAnnouncement ? uploadAnnouncements.fields(fields) : uploadPrivate.fields(fields);
+
   return (req, res, next) => {
     handler(req, res, async (err) => {
-      if (err) 
-        return next(err);
+      console.log('[MULTER] CT:', req.headers['content-type']);
+      console.log('[MULTER] files keys:', Object.keys(req.files || {}));
+
+      if (err) return next(err);
+
       try {
         req.supabaseFiles = {};
+
         for (const field of fields) {
-          
-          const files = req.files[field.name];
-          if (!files) continue;
+          const files = (req.files && req.files[field.name]) || [];
+          if (!files.length) continue;
+
           for (const f of files) {
             const localPath = path.join(f.destination, f.filename);
-                        
-            // Determine bucket and relative path
+
+            // -------- Determine bucket and POSIX object path
             let bucketName = isAnnouncement ? PUBLIC_BUCKET : PRIVATE_BUCKET;
+            let isPublic   = !!isAnnouncement;
             let relativePath;
-            let isPublic = isAnnouncement;
-            if (isAnnouncement) {
-              relativePath = `announcements/${f.filename}`;  // Public bucket: announcements/
+
+            if (f.fieldname === 'picture') {
+              const userId = (req.params && req.params.id) ? String(req.params.id) : 'unknown';
+              bucketName = PUBLIC_BUCKET;
+              isPublic = true;
+              relativePath = posixJoin('profile', `userID:${userId}`, f.filename);
+            } else if (isAnnouncement) {
+              relativePath = posixJoin('announcements', f.filename);
             } else {
-              // Private bucket: Dynamic path under uploads/ (e.g., uploads/reports/filename.jpg)
-              relativePath = path.join(f.destination, f.filename);  // f.destination is 'uploads/subfolder', so this gives 'uploads/subfolder/filename'
+              // IMPORTANT: use POSIX join (forward slashes) for object keys
+              relativePath = posixJoin(f.destination, f.filename);
             }
 
-              // Upload to Supabase (returns signed URL if private)
-            let supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
-            // Delete local file
-            deleteLocalFile(localPath);
-            if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
-            req.supabaseFiles[field.name].push({
-              field: field.name,
-              supabaseUrl,    // This is the signed URL for private or public URL for announcements
+            console.log('[UPLOAD] → Supabase', {
+              field: f.fieldname,
+              bucket: bucketName,
               relativePath,
-              filename: f.filename,
               isPublic,
               mimetype: f.mimetype
             });
+
+            // Upload to Supabase (returns public URL if public, signed URL if private)
+            const supabaseUrl = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
+
+            // Delete local file unless explicitly skipped (e.g., OCR pre-processing)
+            if (!skipDeleteFor.includes(f.fieldname)) {
+              deleteLocalFile(localPath);
+            }
+
+            if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
+            req.supabaseFiles[field.name].push({
+              field: field.name,
+              supabaseUrl,
+              relativePath,     // <- POSIX key stored for DB
+              filename: f.filename,
+              isPublic,
+              mimetype: f.mimetype,
+              localPath         // useful for debugging/edge-cases
+            });
+
+            // FIX: log `relativePath`, not undefined `objectPath`
+            console.log('[UPLOAD] ✓ Stored', {
+              field: field.name,
+              isPublic,
+              relativePath,
+              url: supabaseUrl
+            });
           }
         }
+        //   const files = req.files[field.name];
+        //   if (!files) continue;
+        //   for (const f of files) {
+
+        //     const localPath = path.join(f.destination, f.filename);
+        //     const relativePath = path.relative('uploads', localPath).replace(/\\/g, '/');
+            
+        //     // Determine bucket and public/private flag using env vars
+        //     let bucketName = PRIVATE_BUCKET;
+        //     let isPublic = false;
+
+        //    if (field.name === 'images' && isAnnouncement) {
+        //       bucketName = PUBLIC_BUCKET;
+        //       isPublic = true;
+        //     }
+        //     let url = null;
+        //     try {
+        //       url = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
+        //     } catch (uploadErr) {
+        //       console.error(`[UPLOAD] Supabase upload failed for ${relativePath}:`, uploadErr.message);
+        //       return next(uploadErr);
+        //     }
+        //     // Delete local file after successful upload
+        //     deleteLocalFile(localPath);
+
+        //     if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
+        //     req.supabaseFiles[field.name].push({
+        //       // localPath: `/uploads/${relativePath}`,
+        //       supabaseUrl: url,
+        //       isPublic,
+        //       relativePath
+        //     });
+        //   }
+        // }
         next();
       } catch (e) {
         console.error('[UPLOAD] Fatal Supabase sync error:', e.message);

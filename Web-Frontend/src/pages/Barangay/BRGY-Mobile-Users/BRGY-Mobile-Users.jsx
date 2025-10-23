@@ -20,6 +20,12 @@ const getStatusColor = (status) => {
   }
 };
 
+const fetchUserDetails = async (id) => {
+  const { data } = await axios.get(`/api/auth/mobile-user-profile/${id}`);
+  return data;
+};
+
+
 export default function BRGY_MobileUsers() {
   const token = localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
@@ -372,9 +378,14 @@ export default function BRGY_MobileUsers() {
               {mobileUsers.map((user) => (
                 <tr
                   key={user.id}
-                  onClick={() => {
-                    setSelectedAccount(user);
-                    setViewInformationModal(true);
+                  onClick={async () => {
+                    try {
+                      const full = await fetchUserDetails(user.id);
+                      setSelectedAccount(full);
+                      setViewInformationModal(true);
+                    } catch (e) {
+                      toast.error('Failed to load user details.');
+                    }
                   }}
                   style={{ cursor: 'pointer' }}
                   className="hoverable-row"
@@ -390,7 +401,7 @@ export default function BRGY_MobileUsers() {
                       alt="View Documents"
                       className="icon-button icon-hover-effect"
                       style={{ cursor: "pointer", marginLeft: 28 }}
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
 
                         if (user.status === "unverified") {
@@ -404,8 +415,16 @@ export default function BRGY_MobileUsers() {
                           });
                           return;
                         }
-                        setSelectedDocumentUser(user);
-                        setShowDocumentsModal(true);
+                        try {
+                          const full = await fetchUserDetails(user.id); // calls /api/auth/mobile-user-profile/:id
+                          setSelectedDocumentUser(full);   /// has id_front_url, id_back_url, selfie_url
+                          setRotation(0);
+                          setScale(1);
+                          setIdSide('front');
+                          setShowDocumentsModal(true);
+                        } catch (err) {
+                          toast.error('Failed to load documents.');
+                        }
                       }}
                     />
                   </td>

@@ -25,6 +25,10 @@ const getStatusColor = (status) => {
   }
 };
 
+const fetchUserDetails = async (id) => {
+  const { data } = await axios.get(`/api/auth/mobile-user-profile/${id}`);
+  return data;
+};
 
 export default function LGUMobileUsers() {
   const userId = localStorage.getItem("userId");
@@ -273,10 +277,16 @@ export default function LGUMobileUsers() {
               <tr
                 key={user.id}
                 style={{ cursor: 'pointer' }}
-                onClick={() => {
-                  setSelectedUser(user);
-                  setShowDetailsModal(true);
-                }}
+                onClick={async () => {
+                    try {
+                      const full = await fetchUserDetails(user.id);
+                      setSelectedUser(full);     // has id_front_url, id_back_url, selfie_url
+                      setActiveMiniTab('details');
+                      setShowDetailsModal(true);
+                    } catch {
+                      toast.error('Failed to load user details.');
+                    }
+                  }}
               >
                 <td className="table-cell">
                   {`USER-${String(user.id).padStart(5, '0')}`}
