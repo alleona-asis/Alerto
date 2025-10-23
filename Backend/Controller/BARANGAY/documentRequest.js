@@ -120,10 +120,17 @@ const updateDocumentRequestStatus = async (req, res) => {
       last_name,
       new_date,
       price_amount,   // <- from Amount Modal
-      price_note      // <- from Amount Modal
+      price_note,
+      reason        
     } = req.body;
 
     console.log("Incoming status update:", { id, status, first_name, last_name, new_date, price_amount, price_note });
+    const rejectionReason = (typeof reason === 'string' && reason.trim()) ? reason.trim() : null;
+
+    if (status.toLowerCase() === "rejected") {
+      sets.push(`rejection_reason = $${params.length + 1}`);
+      params.push(rejectionReason);
+    }
 
     const updatedBy =
       `${first_name || req.user?.first_name || ''} ${last_name || req.user?.last_name || ''}`.trim() || "Unknown";
@@ -245,16 +252,17 @@ const updateDocumentRequestStatus = async (req, res) => {
 
     // Create a mobile notification
     const notificationQuery = `
-      INSERT INTO mobile_notifications (mobile_user_id, type, status)
-      VALUES ($1, $2, $3)
+      INSERT INTO mobile_notifications
+      (mobile_user_id, type, status, reason_for_rejection)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
     const notificationValues = [
       updatedRequest.mobile_user_id,
       'document_request_status',
       status.toLowerCase(),
+      status.toLowerCase() === 'rejected' ? rejectionReason : null
     ];
-
     let notification = null;
     try {
       const notificationResult = await pool.query(notificationQuery, notificationValues);
@@ -285,6 +293,7 @@ const updateDocumentRequestStatus = async (req, res) => {
       pickup_deadline: updatedRequest.pickup_deadline,
       price_amount: updatedRequest.price_amount,
       price_note: updatedRequest.price_note,
+      rejection_reason: updatedRequest.rejection_reason,
     });
 
     // 2) Also broadcast to BRGY dashboards (your panel listens to global "documentRequestUpdate")
@@ -297,6 +306,7 @@ const updateDocumentRequestStatus = async (req, res) => {
       updated_at: updatedRequest.updated_at,
       price_amount: updatedRequest.price_amount,
       price_note: updatedRequest.price_note,
+      rejection_reason: updatedRequest.rejection_reason,
     });
 
     return res.status(200).json({
@@ -497,7 +507,8 @@ const rejectDocumentRequest = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    
+    // Update request -> status: rejected
+    // NOTE: If you don't have a `rejection_reason` column, remove it from the update list and rely on status_history.
     const updateSql = `
       UPDATE document_requests
       SET status = $1,
@@ -524,10 +535,16 @@ const rejectDocumentRequest = async (req, res) => {
     let notification = null;
     try {
       const notificationResult = await pool.query(
-        `INSERT INTO mobile_notifications (mobile_user_id, type, status, reason_for_rejection)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [updatedRequest.mobile_user_id, "document_request_status", "rejected", reason.trim()]
+        `INSERT INTO mobile_notifications
+        (mobile_user_id, type, status, reason_for_rejection, is_read, created_at)
+        VALUES ($1, $2, $3, $4, FALSE, NOW())
+        RETURNING *`,
+        [
+          updatedRequest.mobile_user_id,
+          "document_request_status",
+          "rejected",
+          reason.trim()
+        ]
       );
       notification = notificationResult.rows[0];
       console.log(`${where} notification saved`, { notificationId: notification.id });
@@ -536,24 +553,28 @@ const rejectDocumentRequest = async (req, res) => {
     }
 
     // Emit only to the mobile user's room
-    // after you get `updatedRequest`
     try {
       const io = getIo();
       io.to(`user_${updatedRequest.mobile_user_id}`).emit("documentRequestUpdate", {
-        // minimal notification
         type: "document_request_status",
-        status: updatedRequest.status,        // "rejected", "accepted", etc.
-        // identify which request and provide fresh state
-        requestId: updatedRequest.id,
+        status: updatedRequest.status,
+        // Send both id shapes for client-side normalization
+        id: updatedRequest.id,
+        request_id: updatedRequest.id,
+
         status_history: updatedRequest.status_history,
         updated_by: updatedRequest.updated_by,
         updated_at: updatedRequest.updated_at,
         new_date: updatedRequest.new_date,
         pickup_deadline: updatedRequest.pickup_deadline,
-         rejection_reason: updatedRequest.rejection_reason,
-        // (optional) include full request if you like:
-        // request: updatedRequest
+
+        // Use the actual column; also include both keys for compatibility
+        rejection_reason: updatedRequest.rejection_reason,
+        reason_for_rejection: updatedRequest.rejection_reason,
+
+        created_at: new Date().toISOString(),
       });
+
       console.log("[rejectDocumentRequest] socket emitted", {
         room: `user_${updatedRequest.mobile_user_id}`,
         requestId: updatedRequest.id,

@@ -776,9 +776,22 @@ const serviceSid = process.env.TWILIO_SERVICE_SID;
 
 const client = twilio(accountSid, authToken);
 
+
+// ---- PH mobile normalizer (PH-only) -------------------------------
+// Accepts "+639xxxxxxxxx", "09xxxxxxxxx", or "9xxxxxxxxx" -> "+639..."
+function normalizePHMobile(input) {
+  const s = String(input || '').trim().replace(/[^\d+]/g, '');
+  if (/^\+639\d{9}$/.test(s)) return s;              // already E.164 PH
+  if (/^09\d{9}$/.test(s)) return '+63' + s.slice(1); // 09 -> +639
+  if (/^9\d{9}$/.test(s))  return '+63' + s;          // 9xxxxxxxxx -> +639...
+  throw new Error('Use a PH mobile like +639xxxxxxxxx');
+}
+
+
 // =================================================
 //  SEND OTP
 // =================================================
+/*
 const sendOTP = async (req, res) => {
   const { phoneNumber } = req.body;
 
@@ -817,6 +830,65 @@ const verifyOTP = async (req, res) => {
     }
   } catch (err) {
     res.status(200).json({ success: false, message: err.message });
+  }
+};
+*/
+
+// =================================================
+//  SEND OTP (PH-only)
+// =================================================
+const sendOTP = async (req, res) => {
+  const { phoneNumber } = req.body;
+  console.log('[SEND OTP] Requested for:', phoneNumber);
+
+  try {
+    const to = normalizePHMobile(phoneNumber);
+
+    const verification = await client.verify.v2.services(serviceSid)
+      .verifications.create({ to, channel: 'sms' });
+
+    console.log('[SEND OTP] Twilio response status:', verification.status); // 'pending'
+    return res.status(200).json({ success: true, status: verification.status });
+  } catch (err) {
+    const code = err?.code || err?.status;
+    console.error('[SEND OTP] Error:', code, err.message);
+
+    // Common helpful mappings (keep it simple)
+    if (code === 60203) return res.status(429).json({ success: false, message: 'Too many attempts. Try later.' });
+    if (code === 21608) return res.status(403).json({ success: false, message: 'Trial restriction: unverified recipient.' });
+
+    // Bad input (e.g., not PH mobile format)
+    if (/PH mobile|Use a PH mobile/i.test(err.message)) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
+    return res.status(400).json({ success: false, message: 'Failed to send OTP' });
+  }
+};
+
+// =================================================
+//  VERIFY OTP (PH-only)
+// =================================================
+const verifyOTP = async (req, res) => {
+  const { phoneNumber, code } = req.body;
+
+  try {
+    const to = normalizePHMobile(phoneNumber);
+
+    const verificationCheck = await client.verify.v2.services(serviceSid)
+      .verificationChecks.create({ to, code });
+
+    const approved = verificationCheck.status === 'approved';
+    console.log('[VERIFY OTP] status:', verificationCheck.status);
+
+    if (approved) return res.status(200).json({ success: true });
+    return res.status(401).json({ success: false, message: 'Incorrect OTP' });
+  } catch (err) {
+    const code = err?.code || err?.status;
+    console.error('[VERIFY OTP] Error:', code, err.message);
+
+    if (code === 60203) return res.status(429).json({ success: false, message: 'Too many attempts. Try later.' });
+    return res.status(400).json({ success: false, message: err.message || 'Verification failed' });
   }
 };
 
