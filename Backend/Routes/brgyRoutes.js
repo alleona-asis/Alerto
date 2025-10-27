@@ -359,6 +359,7 @@ const {
   getComments,
   deleteComment,
   createOfficial,
+  updateOfficial,
   getOfficials,
   deleteOfficial,
   getBarangayOfficialsForMobile,
