@@ -609,14 +609,11 @@ const createOfficial = async (req, res) => {
     });
   }
 
-  let profilePicture = null;
-if (req.file) {
-  profilePicture = {
-    path: `uploads/officials/${req.file.filename}`,
-    url: `${BASE_URL}/uploads/officials/${req.file.filename}` // use LAN IP here
-  };
-}
-
+    const pic = req.supabaseFiles?.officialImage?.[0] || null;
+    if (!pic) {
+      return res.status(400).json({ message: "Official image is required." });
+    }
+    const profilePicture = { path: pic.relativePath, url: pic.supabaseUrl };
 
   try {
     const result = await pool.query(
@@ -628,7 +625,7 @@ if (req.file) {
         name, 
         position, 
         contact_number, 
-        profilePicture, // directly insert JSON (use json/jsonb column in DB)
+        profilePicture,
         region,
         province,
         city,

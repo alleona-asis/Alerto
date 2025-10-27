@@ -169,6 +169,7 @@ export default function BRGYProfile() {
   const [officialContact, setOfficialContact] = useState("");
   const [officialImage, setOfficialImage] = useState(null);
   const [selectedOfficial, setSelectedOfficial] = useState(null);
+  const [isEditOfficialModalOpen, setEditOfficialModalOpen] = useState(false);
 
   const handleAddOfficial = async (e) => {
     e.preventDefault();
@@ -185,7 +186,7 @@ export default function BRGYProfile() {
       formData.append("contact_number", officialContact);
 
       if (officialImage) {
-        formData.append("image", officialImage);
+        formData.append("officialImage", officialImage);
       }
 
       formData.append("region", BRGYProfile?.region || "");
@@ -210,11 +211,13 @@ export default function BRGYProfile() {
 
       const officialData = response.data.official;
 
-      const imageUrl = officialImage
-        ? URL.createObjectURL(officialImage)
-        : officialData.image
-        ? `/uploads/officials/${officialData.image}`
-        : "/icons/default.png";
+      const imageUrl =
+        officialData?.profile_picture?.url ||
+        (
+          officialImage 
+          ? URL.createObjectURL(officialImage) 
+          : "/icons/default.png"
+        );
 
       const newOfficial = {
         id: officialData.id,
@@ -804,8 +807,8 @@ export default function BRGYProfile() {
                           {/* Profile Picture */}
                           <img
                             src={
-                              official.profile_picture?.url ||
-                              "/uploads/officials/default.png"
+                              official.profile_picture?.url || 
+                              defaultProfile
                             }
                             alt={official.name}
                             style={{

@@ -59,7 +59,9 @@ const privateStorage = multer.diskStorage({
       case 'proof':
         folder = 'uploads/proof';
         break;
-      // Add more cases as needed (e.g., 'proofFile': folder = 'uploads/proof';)
+      case 'officialImage':
+        folder = 'uploads/officials';
+        break;
       default:
         folder = 'uploads/other';  // Fallback for unmatched fields
     }
@@ -132,6 +134,9 @@ const fileFilter = (req, file, cb) => {
       break;
     case 'files':
       pass = ok(allowedImageTypes) || ok(allowedDocTypes) || ok(allowedVideoTypes);
+      break;
+    case 'officialImage':
+      pass = ok(allowedImageTypes);
       break;
     default:
        return cb(new Error(`Unsupported field: ${file.fieldname}`));
@@ -262,7 +267,12 @@ function uploadWithSupabase(fields, isAnnouncement = false, options = {}) {
               bucketName = PUBLIC_BUCKET;
               isPublic = true;
               relativePath = posixJoin('profile', `userID:${userId}`, f.filename);
-            } else if (isAnnouncement) {
+            } else if (f.fieldname === 'officialImage') {
+              bucketName = PUBLIC_BUCKET;         
+              isPublic   = true;
+              relativePath = posixJoin('officials', f.filename);
+            } 
+            else if (isAnnouncement) {
               relativePath = posixJoin('announcements', f.filename);
             } else {
               // IMPORTANT: use POSIX join (forward slashes) for object keys
