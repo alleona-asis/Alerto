@@ -421,6 +421,12 @@ router.delete("/delete-official/:id", deleteOfficial);
 router.get('/officials/mobile', getBarangayOfficialsForMobile);
 router.post('/unfollow-barangay', unfollowBarangay);
 
+router.put(
+  "/update-official/:id",
+  uploadWithSupabase([{ name: "officialImage", maxCount: 1 }]),
+  updateOfficial
+);
+
 // Send Alert
 router.post('/send-alert', authenticateToken, sendAlert);
 router.get('/alert-notifications/:userId', getMobileNotifications);

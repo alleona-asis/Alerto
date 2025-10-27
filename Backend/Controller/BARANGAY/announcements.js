@@ -644,6 +644,71 @@ const createOfficial = async (req, res) => {
   }
 };
 
+// =========================
+// EDIT OFFICIAL
+// =========================
+const updateOfficial = async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    position,
+    contact_number,
+    region,
+    province,
+    city,
+    barangay,
+  } = req.body;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM barangay_officials WHERE id = $1`,
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ message: "Official not found" });
+    }
+    const current = rows[0];
+
+    const pic = req.supabaseFiles?.officialImage?.[0] || null;
+    const profilePicture = pic
+      ? { path: pic.relativePath, url: pic.supabaseUrl }
+      : current.profile_picture || null;
+
+    const result = await pool.query(
+      `UPDATE barangay_officials
+         SET name            = COALESCE($1, name),
+             position        = COALESCE($2, position),
+             contact_number  = COALESCE($3, contact_number),
+             profile_picture = $4,
+             region          = COALESCE($5, region),
+             province        = COALESCE($6, province),
+             city            = COALESCE($7, city),
+             barangay        = COALESCE($8, barangay),
+             updated_at      = NOW()
+       WHERE id = $9
+       RETURNING *`,
+      [
+        name || null,
+        position || null,
+        contact_number || null,
+        profilePicture,
+        region || null,
+        province || null,
+        city || null,
+        barangay || null,
+        id,
+      ]
+    );
+
+    res.json({
+      message: "✅ Official updated successfully!",
+      official: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Update official error:", error);
+    res.status(500).json({ message: "Failed to update official", error: error.message });
+  }
+};
 
 
 // =========================
@@ -988,6 +1053,7 @@ module.exports = {
     getComments,
     deleteComment,
     createOfficial,
+    updateOfficial,
     getOfficials,
     deleteOfficial,
     getBarangayOfficialsForMobile,
