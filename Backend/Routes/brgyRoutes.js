@@ -359,6 +359,7 @@ const {
   getComments,
   deleteComment,
   createOfficial,
+  updateOfficial,
   getOfficials,
   deleteOfficial,
   getBarangayOfficialsForMobile,
@@ -405,23 +406,13 @@ router.delete('/delete-comment', deleteComment);
 // Barangay Officials
 router.post(
   "/create-official",
-  uploadWithSupabase([{ name: "image", maxCount: 1 }]), // private by default
+  uploadWithSupabase([{ name: "officialImage", maxCount: 1 }]), 
   async (req, res) => {
     try {
-      const uploadedFiles = req.supabaseFiles.filter(f => f.field === "image");
-
-      if (uploadedFiles.length === 0) {
-        return res.status(400).json({ message: "No official image uploaded." });
-      }
-
-      // Get the signed URL from Supabase
-      const imageUrl = uploadedFiles[0].supabaseUrl;
-
-      // Pass imageUrl into your controller
-      await createOfficial(req, res, { imageUrl });
+      await createOfficial(req, res);
     } catch (err) {
-      console.error("[OFFICIAL UPLOAD] Failed:", err.message);
-      res.status(500).json({ message: "Official upload failed" });
+      console.error("[OFFICIAL UPLOAD] Failed:", err);
+      if (!res.headersSent) res.status(500).json({ message: "Official upload failed" });
     }
   }
 );
@@ -430,6 +421,12 @@ router.get("/get-officials", getOfficials);
 router.delete("/delete-official/:id", deleteOfficial);
 router.get('/officials/mobile', getBarangayOfficialsForMobile);
 router.post('/unfollow-barangay', unfollowBarangay);
+
+router.put(
+  "/update-official/:id",
+  uploadWithSupabase([{ name: "officialImage", maxCount: 1 }]),
+  updateOfficial
+);
 
 // Send Alert
 router.post('/send-alert', authenticateToken, sendAlert);

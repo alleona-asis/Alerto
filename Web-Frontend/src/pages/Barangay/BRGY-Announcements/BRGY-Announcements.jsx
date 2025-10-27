@@ -169,6 +169,12 @@ export default function BRGYProfile() {
   const [officialContact, setOfficialContact] = useState("");
   const [officialImage, setOfficialImage] = useState(null);
   const [selectedOfficial, setSelectedOfficial] = useState(null);
+  const [isEditOfficialModalOpen, setEditOfficialModalOpen] = useState(false);
+
+  const [editOfficialName, setEditOfficialName] = useState("");
+  const [editOfficialPosition, setEditOfficialPosition] = useState("");
+  const [editOfficialContact, setEditOfficialContact] = useState("");
+  const [editOfficialImage, setEditOfficialImage] = useState(null);
 
   const handleAddOfficial = async (e) => {
     e.preventDefault();
@@ -185,7 +191,7 @@ export default function BRGYProfile() {
       formData.append("contact_number", officialContact);
 
       if (officialImage) {
-        formData.append("image", officialImage);
+        formData.append("officialImage", officialImage);
       }
 
       formData.append("region", BRGYProfile?.region || "");
@@ -210,11 +216,13 @@ export default function BRGYProfile() {
 
       const officialData = response.data.official;
 
-      const imageUrl = officialImage
-        ? URL.createObjectURL(officialImage)
-        : officialData.image
-        ? `/uploads/officials/${officialData.image}`
-        : "/icons/default.png";
+      const imageUrl =
+        officialData?.profile_picture?.url ||
+        (
+          officialImage 
+          ? URL.createObjectURL(officialImage) 
+          : "/icons/default.png"
+        );
 
       const newOfficial = {
         id: officialData.id,
@@ -277,6 +285,61 @@ export default function BRGYProfile() {
 
     fetchOfficials();
   }, [BRGYProfile, token]);
+
+  const handleUpdateOfficial = async (e) => {
+  e.preventDefault();
+  if (!selectedOfficial) return;
+
+  try {
+    const formData = new FormData();
+    // Only append fields you want to update; backend keeps old values when null
+    formData.append("name", editOfficialName);
+    formData.append("position", editOfficialPosition);
+    formData.append("contact_number", editOfficialContact);
+
+    // Region filters (keep them in case you want to move official across locales)
+    formData.append("region", BRGYProfile?.region || "");
+    formData.append("province", BRGYProfile?.province || "");
+    formData.append("city", BRGYProfile?.city || "");
+    formData.append("barangay", BRGYProfile?.barangay || "");
+
+    if (editOfficialImage) {
+      formData.append("officialImage", editOfficialImage); // IMPORTANT
+    }
+
+    const token = localStorage.getItem("token");
+    const { data } = await axios.put(
+      `/api/brgy/update-official/${selectedOfficial.id}`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const updated = data.official;
+
+    // Update list in-place
+    setOfficials(prev =>
+      prev.map(o => (o.id === updated.id ? updated : o))
+    );
+
+    toast.success("Official updated successfully!");
+
+    // close & reset
+    setEditOfficialModalOpen(false);
+    setSelectedOfficial(null);
+    setEditOfficialName("");
+    setEditOfficialPosition("");
+    setEditOfficialContact("");
+    setEditOfficialImage(null);
+  } catch (err) {
+    console.error("Error updating official:", err);
+    alert(err.response?.data?.message || err.message);
+  }
+};
 
 
   // =================================================
@@ -764,8 +827,12 @@ export default function BRGYProfile() {
                               >
                                 <button
                                   onClick={() => {
+                                    setSelectedOfficial(official);
+                                    setEditOfficialName(official.name || "");
+                                    setEditOfficialPosition(official.position || "");
+                                    setEditOfficialContact(official.contact_number || "");
+                                    setEditOfficialImage(null);
                                     setEditOfficialModalOpen(true);
-                                    // setSelectedOfficial(official); // if needed for edit
                                   }}
                                   style={{
                                     display: "block",
@@ -804,8 +871,8 @@ export default function BRGYProfile() {
                           {/* Profile Picture */}
                           <img
                             src={
-                              official.profile_picture?.url ||
-                              "/uploads/officials/default.png"
+                              official.profile_picture?.url || 
+                              defaultProfile
                             }
                             alt={official.name}
                             style={{
@@ -1166,6 +1233,134 @@ export default function BRGYProfile() {
                       onClick={() => {
                         setAddOfficialsModalOpen(false);
                         setOfficialImage(null);
+                      }}
+                      className="modal-cancel-button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* EDIT BARANGAY OFFICIALS MODAL */}
+          {isEditOfficialModalOpen && selectedOfficial && (
+            <div className={`modal-overlay ${isClosing ? '' : ''}`}>
+              <div className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}>
+                <img
+                  src="/icons/close.png"
+                  alt="Close"
+                  className="modal-close-btn"
+                  onClick={() => setEditOfficialModalOpen(false)}
+                />
+                <h3 className="modal-title">Edit Barangay Official</h3>
+                <p className="modal-subtitle">Update the official’s details.</p>
+
+                <form onSubmit={handleUpdateOfficial}>
+                  {/* Name */}
+                  <div className="input-group">
+                    <label className="input-label">Full Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter name"
+                      className="modal-input"
+                      value={editOfficialName}
+                      onChange={(e) => setEditOfficialName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Position */}
+                  <div className="input-group">
+                    <label className="input-label">Position</label>
+                    <input
+                      type="text"
+                      placeholder="Enter position"
+                      className="modal-input"
+                      value={editOfficialPosition}
+                      onChange={(e) => setEditOfficialPosition(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Contact Number */}
+                  <div className="input-group">
+                    <label className="input-label">Contact Number</label>
+                    <input
+                      type="text"
+                      placeholder="Enter contact number"
+                      className="modal-input"
+                      value={editOfficialContact}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        if (value.includes(' ')) return;
+                        if (!value.startsWith('+639')) {
+                          value = '+639' + value.replace(/\D/g, '').slice(0, 9);
+                        } else {
+                          value = '+639' + value.slice(4).replace(/\D/g, '').slice(0, 9);
+                        }
+                        setEditOfficialContact(value);
+                      }}
+                      required
+                    />
+                  </div>
+
+                  {/* New Profile Picture (optional) */}
+                  <div className="input-group">
+                    <label className="input-label">Replace Photo (optional)</label>
+                    <div
+                      onClick={() => document.getElementById('editOfficialImageInput').click()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '30%',
+                        height: '100px',
+                        border: '2px dashed #4894FE',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        color: '#4894FE',
+                        fontWeight: 'bold',
+                        backgroundColor: '#f5f7ff',
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {editOfficialImage ? (
+                        <img
+                          src={URL.createObjectURL(editOfficialImage)}
+                          alt="Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }}
+                        />
+                      ) : (
+                        ''
+                      )}
+                    </div>
+
+                    <input
+                      id="editOfficialImageInput"
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditOfficialImage(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="modal-button-row">
+                    <button type="submit" className="modal-add-button">
+                      Save changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditOfficialModalOpen(false);
+                        setEditOfficialImage(null);
                       }}
                       className="modal-cancel-button"
                     >
