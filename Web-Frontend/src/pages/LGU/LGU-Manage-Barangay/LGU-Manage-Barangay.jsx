@@ -51,6 +51,7 @@ export default function LGUManageBarangay() {
   const [isViewAccountModalOpen, setIsViewAccountModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Edit
   const [isEditMode, setIsEditMode] = useState(false);
@@ -1221,17 +1222,42 @@ export default function LGUManageBarangay() {
                   {/* Password */}
                   <div className="input-group">
                     <label htmlFor="password" className="input-label">Password</label>
-                    <input
-                      id="password"
-                      type="password"
-                      placeholder="Enter Password"
-                      value={userForm.password}
-                      onChange={(e) =>
-                        setUserForm({ ...userForm, password: e.target.value })
-                      }
-                      className="modal-input"
-                    />
+
+                    <div className="password-wrapper" style={{ position: 'relative' }}>
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter Password"
+                        value={userForm.password}
+                        onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                        onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
+                        autoComplete="current-password"
+                        className="modal-input"
+                        style={{ paddingRight: 36 }} 
+                      />
+
+                      <button
+                        type="button"
+                        className="eye-btn"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowPassword(p => !p)}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '45%',
+                          transform: 'translateY(-50%)',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          lineHeight: 1,
+                          fontSize: 16
+                        }}
+                      >
+                        {showPassword ? '🔓' : '🔒'}
+                      </button>
+                    </div>
                   </div>
+
 
                   {/* Buttons */}
                   <div className="modal-button-row">
