@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
+const { generateSignedUrl } = require('../../utils/supabase');
 
 
 // =================================================
@@ -272,7 +273,27 @@ const userBlocking = async (user, id, io) => {
 const getAllPins = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM incident_reports');
-    res.status(200).json(result.rows);
+    const reports = result.rows;
+    // Generate fresh signed URLs for media (similar to getMobileUserProfile)
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getAllPins] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getAllPins] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null; // Set to null if file not found
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
+    res.status(200).json(reports);
   } catch (error) {
     console.error('Error fetching pins:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -288,10 +309,29 @@ const getBarangayReportsForMobile = async (req, res) => {
     const { rows: reports } = await pool.query(
       `SELECT id, latitude, longitude, incident_type, status,
               incident_date, incident_time, barangay, city, province,
-              updated_by, updated_at, status_history
+              updated_by, updated_at, status_history, media_filenames, proof_files
        FROM incident_reports
        ORDER BY incident_date DESC`
     );
+
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReportsForMobile] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReportsForMobile] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
 
     res.status(200).json(reports);
   } catch (error) {
@@ -323,6 +363,25 @@ const getBarangayReports = async (req, res) => {
       [province, region, city, barangay]
     );
 
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReports] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReports] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
+
     res.status(200).json(reports);
   } catch (error) {
     console.error("Error fetching incident reports:", error);
@@ -343,7 +402,28 @@ const getReportsByLocation = async (req, res) => {
       [city, province, barangay]
     );
 
-    res.status(200).json(result.rows);
+    const reports = result.rows;
+
+    // Generate fresh signed URLs for media
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getReportsByLocation] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getReportsByLocation] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
+    res.status(200).json(reports);
   } catch (error) {
     console.error('Error fetching pins:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -714,6 +794,27 @@ const getBarangayReportById = async (req, res) => {
       ORDER BY incident_date DESC
     `;
     const result = await pool.query(query, [userId]);
+
+    const reports = result.rows;
+
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReportById] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReportById] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
 
     res.json(result.rows);
   } catch (err) {
