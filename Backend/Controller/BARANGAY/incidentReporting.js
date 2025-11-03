@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { getIo } = require('../../socket');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
+const { generateSignedUrl } = require('../../utils/supabase');
 
 
 // =================================================
@@ -288,10 +289,28 @@ const getBarangayReportsForMobile = async (req, res) => {
     const { rows: reports } = await pool.query(
       `SELECT id, latitude, longitude, incident_type, status,
               incident_date, incident_time, barangay, city, province,
-              updated_by, updated_at, status_history
+              updated_by, updated_at, status_history, media_filenames, proof_files
        FROM incident_reports
        ORDER BY incident_date DESC`
     );
+
+        for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+        );
+      } else {
+        report.media_urls = null;
+      }
+      // Handle proof_files
+      if (report.proof_files && Array.isArray(report.proof_files)) {
+        for (const proof of report.proof_files) {
+          if (proof.path) {
+            proof.url = await generateSignedUrl(proof.path);
+          }
+        }
+      }
+    }
 
     res.status(200).json(reports);
   } catch (error) {
@@ -323,6 +342,24 @@ const getBarangayReports = async (req, res) => {
       [province, region, city, barangay]
     );
 
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+        );
+      } else {
+        report.media_urls = null;
+      }
+      // Handle proof_files
+      if (report.proof_files && Array.isArray(report.proof_files)) {
+        for (const proof of report.proof_files) {
+          if (proof.path) {
+            proof.url = await generateSignedUrl(proof.path);
+          }
+        }
+      }
+    }
+
     res.status(200).json(reports);
   } catch (error) {
     console.error("Error fetching incident reports:", error);
@@ -342,6 +379,25 @@ const getReportsByLocation = async (req, res) => {
       'SELECT * FROM incident_reports WHERE city = $1 AND province = $2 AND barangay = $3',
       [city, province, barangay]
     );
+
+    // Generate fresh signed URLs for media
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+        );
+      } else {
+        report.media_urls = null;
+      }
+      // Handle proof_files
+      if (report.proof_files && Array.isArray(report.proof_files)) {
+        for (const proof of report.proof_files) {
+          if (proof.path) {
+            proof.url = await generateSignedUrl(proof.path);
+          }
+        }
+      }
+    }
 
     res.status(200).json(result.rows);
   } catch (error) {
@@ -714,6 +770,24 @@ const getBarangayReportById = async (req, res) => {
       ORDER BY incident_date DESC
     `;
     const result = await pool.query(query, [userId]);
+
+        for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+        );
+      } else {
+        report.media_urls = null;
+      }
+      // Handle proof_files
+      if (report.proof_files && Array.isArray(report.proof_files)) {
+        for (const proof of report.proof_files) {
+          if (proof.path) {
+            proof.url = await generateSignedUrl(proof.path);
+          }
+        }
+      }
+    }
 
     res.json(result.rows);
   } catch (err) {
