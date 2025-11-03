@@ -2,6 +2,7 @@ const pool = require('../../PostgreSQL/database');
 const fs = require('fs');
 const path = require('path');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
+const { generateSignedUrl } = require('../../utils/supabase'); 
 
 // =================================================
 //  GET ALL BARANGAY REPORT
@@ -16,8 +17,8 @@ const getAllPins = async (req, res) => {
       return res.status(400).json({ message: "User location not found" });
     }
 
-    const { rows } = await pool.query(
-      `SELECT *
+    const { rows: reports } = await pool.query(
+      `SELECT *, media_filenames  -- Only media_filenames (proof_files removed)
        FROM incident_reports
        WHERE LOWER(TRIM(city)) = LOWER(TRIM($1))
          AND LOWER(TRIM(province)) = LOWER(TRIM($2))
@@ -26,7 +27,26 @@ const getAllPins = async (req, res) => {
       [city, province, region]
     );
 
-    res.status(200).json(rows);
+        for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getAllPins] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getAllPins] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null; // Set to null if file not found
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
+
+    res.status(200).json(reports);
   } catch (error) {
     console.error("Error fetching pins:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -52,6 +72,24 @@ const getBarangayReports = async (req, res) => {
       [province, region, city]
     );
 
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReports] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReports] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
+        );
+      } else {
+        report.media_urls = null;
+      }
+    }
     res.status(200).json(reports);
   } catch (error) {
     console.error("Error fetching incident reports:", error);
