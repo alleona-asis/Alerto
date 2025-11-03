@@ -273,7 +273,26 @@ const userBlocking = async (user, id, io) => {
 const getAllPins = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM incident_reports');
-    res.status(200).json(result.rows);
+    const reports = result.rows;
+    // Generate fresh signed URLs for media (similar to getMobileUserProfile)
+    for (const report of reports) {
+      if (report.media_filenames && Array.isArray(report.media_filenames)) {
+        report.media_urls = await Promise.all(
+          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+        );
+      } else {
+        report.media_urls = null;
+      }
+      // Handle proof_files
+      if (report.proof_files && Array.isArray(report.proof_files)) {
+        for (const proof of report.proof_files) {
+          if (proof.path) {
+            proof.url = await generateSignedUrl(proof.path);
+          }
+        }
+      }
+    }
+    res.status(200).json(reports);
   } catch (error) {
     console.error('Error fetching pins:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -294,7 +313,7 @@ const getBarangayReportsForMobile = async (req, res) => {
        ORDER BY incident_date DESC`
     );
 
-        for (const report of reports) {
+    for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
           report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
@@ -380,6 +399,8 @@ const getReportsByLocation = async (req, res) => {
       [city, province, barangay]
     );
 
+    const reports = result.rows;
+
     // Generate fresh signed URLs for media
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
@@ -399,7 +420,7 @@ const getReportsByLocation = async (req, res) => {
       }
     }
 
-    res.status(200).json(result.rows);
+    res.status(200).json(reports);
   } catch (error) {
     console.error('Error fetching pins:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -771,7 +792,9 @@ const getBarangayReportById = async (req, res) => {
     `;
     const result = await pool.query(query, [userId]);
 
-        for (const report of reports) {
+    const reports = result.rows;
+
+    for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
           report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
