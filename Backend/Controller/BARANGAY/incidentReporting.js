@@ -278,16 +278,32 @@ const getAllPins = async (req, res) => {
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
-          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getAllPins] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getAllPins] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null; // Set to null if file not found
+            }
+          })
         );
       } else {
         report.media_urls = null;
       }
+
       // Handle proof_files
       if (report.proof_files && Array.isArray(report.proof_files)) {
         for (const proof of report.proof_files) {
           if (proof.path) {
-            proof.url = await generateSignedUrl(proof.path);
+            console.log(`[getAllPins] Generating URL for proof: ${proof.path}`);
+            try {
+              proof.url = await generateSignedUrl(proof.path);
+            } catch (err) {
+              console.warn(`[getAllPins] Failed to generate URL for proof ${proof.path}: ${err.message}`);
+              proof.url = null;
+            }
           }
         }
       }
@@ -316,16 +332,30 @@ const getBarangayReportsForMobile = async (req, res) => {
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
-          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReportsForMobile] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReportsForMobile] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
         );
       } else {
         report.media_urls = null;
       }
-      // Handle proof_files
       if (report.proof_files && Array.isArray(report.proof_files)) {
         for (const proof of report.proof_files) {
           if (proof.path) {
-            proof.url = await generateSignedUrl(proof.path);
+            console.log(`[getBarangayReportsForMobile] Generating URL for proof: ${proof.path}`);
+            try {
+              proof.url = await generateSignedUrl(proof.path);
+            } catch (err) {
+              console.warn(`[getBarangayReportsForMobile] Failed to generate URL for proof ${proof.path}: ${err.message}`);
+              proof.url = null;
+            }
           }
         }
       }
@@ -364,16 +394,30 @@ const getBarangayReports = async (req, res) => {
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
-          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReports] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReports] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
         );
       } else {
         report.media_urls = null;
       }
-      // Handle proof_files
-      if (report.proof_files && Array.isArray(report.proof_files)) {
+            if (report.proof_files && Array.isArray(report.proof_files)) {
         for (const proof of report.proof_files) {
           if (proof.path) {
-            proof.url = await generateSignedUrl(proof.path);
+            console.log(`[getBarangayReports] Generating URL for proof: ${proof.path}`);
+            try {
+              proof.url = await generateSignedUrl(proof.path);
+            } catch (err) {
+              console.warn(`[getBarangayReports] Failed to generate URL for proof ${proof.path}: ${err.message}`);
+              proof.url = null;
+            }
           }
         }
       }
@@ -405,21 +449,34 @@ const getReportsByLocation = async (req, res) => {
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
-          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getReportsByLocation] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getReportsByLocation] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
         );
       } else {
         report.media_urls = null;
       }
-      // Handle proof_files
-      if (report.proof_files && Array.isArray(report.proof_files)) {
+            if (report.proof_files && Array.isArray(report.proof_files)) {
         for (const proof of report.proof_files) {
           if (proof.path) {
-            proof.url = await generateSignedUrl(proof.path);
+            console.log(`[getReportsByLocation] Generating URL for proof: ${proof.path}`);
+            try {
+              proof.url = await generateSignedUrl(proof.path);
+            } catch (err) {
+              console.warn(`[getReportsByLocation] Failed to generate URL for proof ${proof.path}: ${err.message}`);
+              proof.url = null;
+            }
           }
         }
       }
     }
-
     res.status(200).json(reports);
   } catch (error) {
     console.error('Error fetching pins:', error);
@@ -797,16 +854,30 @@ const getBarangayReportById = async (req, res) => {
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
-          report.media_filenames.map(filename => generateSignedUrl(`uploads/reports/${filename}`))
+          report.media_filenames.map(async (filename) => {
+            const relativePath = `uploads/reports/${filename}`;
+            console.log(`[getBarangayReportById] Generating URL for: ${relativePath}`);
+            try {
+              return await generateSignedUrl(relativePath);
+            } catch (err) {
+              console.warn(`[getBarangayReportById] Failed to generate URL for ${relativePath}: ${err.message}`);
+              return null;
+            }
+          })
         );
       } else {
         report.media_urls = null;
       }
-      // Handle proof_files
-      if (report.proof_files && Array.isArray(report.proof_files)) {
+            if (report.proof_files && Array.isArray(report.proof_files)) {
         for (const proof of report.proof_files) {
           if (proof.path) {
-            proof.url = await generateSignedUrl(proof.path);
+            console.log(`[getBarangayReportById] Generating URL for proof: ${proof.path}`);
+            try {
+              proof.url = await generateSignedUrl(proof.path);
+            } catch (err) {
+              console.warn(`[getBarangayReportById] Failed to generate URL for proof ${proof.path}: ${err.message}`);
+              proof.url = null;
+            }
           }
         }
       }
