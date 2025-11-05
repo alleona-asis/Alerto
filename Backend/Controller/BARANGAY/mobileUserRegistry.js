@@ -516,7 +516,7 @@ const markMobileNotificationAsRead = async (req, res) => {
 
 
 module.exports = { 
-  processOCR,
+  // processOCR,
   getAllMobileUsers,
   deleteMobileUser,
   updateMobileUserStatus,
