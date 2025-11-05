@@ -136,7 +136,7 @@ const officialUpload = multer({
 //  MOBILE USER REGISTRY
 // =================================================
 const {
-    processOCR,
+    // processOCR,
     getAllMobileUsers,
     deleteMobileUser,
     updateMobileUserStatus,
@@ -171,18 +171,15 @@ router.post(
         : (req.files?.files || []);
       const localPaths = (multerFiles || []).map(f => f.path).filter(Boolean);
 
-      console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
+      // console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
 
-      await processOCR(req, res, { localPaths });
+      // await processOCR(req, res, { localPaths });
 
-      console.log('[OCR] finished call to processOCR');
+      // console.log('[OCR] finished call to processOCR');
 
-      // for (const f of uploadedFiles) {
-      //   try { await fs.promises.unlink(f.localPath); } catch {}
+      // for (const p of localPaths) {
+      //   try { if (p) await fs.promises.unlink(p); } catch {}
       // }
-      for (const p of localPaths) {
-        try { if (p) await fs.promises.unlink(p); } catch {}
-      }
 
       if (!res.headersSent) {
         return res.json({
@@ -200,30 +197,6 @@ router.post(
     }
   }
 );
-
-// router.post(
-//   '/mobile-user-profile/:userId/upload-id',
-//   uploadWithSupabase([{ name: 'files', maxCount: 2 }]), // max 2 files (front/back)
-//   async (req, res) => {
-//     try {
-//       const uploadedFiles = req.supabaseFiles.filter(f => f.field === 'files');
-
-//       if (uploadedFiles.length === 0) {
-//         return res.status(400).json({ message: 'No ID files uploaded.' });
-//       }
-
-//       // Get Supabase URLs for processing (OCR, DB, etc.)
-//       const idUrls = uploadedFiles.map(f => f.supabaseUrl);
-
-//       // Call your existing OCR processor
-//       await processOCR(req, res, { idUrls });
-
-//     } catch (err) {
-//       console.error('[UPLOAD ID] Failed:', err.message);
-//       res.status(500).json({ message: 'ID upload failed' });
-//     }
-//   }
-// );
 
 router.get('/mobile-user-registry', getAllMobileUsers);
 

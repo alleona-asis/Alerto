@@ -83,14 +83,14 @@ const lguRoutes = require('./Routes/lguRoutes');
 const brgyRoutes = require('./Routes/brgyRoutes');
 const fileRoutes = require('./Routes/fileRoutes')
 
-const ocrRoutes   = require('./Routes/ocrRoutes');
+// const ocrRoutes   = require('./Routes/ocrRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/lgu', lguRoutes);
 app.use('/api/brgy', brgyRoutes);
 app.use('/api/files', fileRoutes);
-app.use('/api/ocr', ocrRoutes);
+// app.use('/api/ocr', ocrRoutes);
 
 // Static file serving
 app.use('/uploads/id', express.static(path.join(__dirname, 'uploads/id')));
