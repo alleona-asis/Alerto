@@ -148,7 +148,6 @@ router.post(
         const mime = String(f.mimetype || '').toLowerCase();
         const entry = {
           path: f.relativePath || '',
-          url:  f.supabaseUrl || '',
           type: mime,
           name: f.filename || undefined,
         };
@@ -160,7 +159,7 @@ router.post(
       req.lguFiles = { images, video };
 
       // Also provide simple URL list as a fallback path
-      const fileUrls = list.map(f => f.supabaseUrl);
+      const fileUrls = list.map(f => f.relativePath || '');
       console.log('[UPLOAD FEEDBACK] Files:', { count: list.length });
       if (fileUrls.length) console.log('[UPLOAD FEEDBACK] File URLs:', fileUrls);
 

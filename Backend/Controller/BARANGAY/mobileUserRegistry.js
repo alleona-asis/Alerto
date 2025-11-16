@@ -49,134 +49,87 @@ const fuzzyMatchKeywords = (text, idType) => {
 //  OCR PROCESSING
 // =================================================
 
-async function processOCR(req, res, { localPaths = [] }) {
-  const userId = Number(req.params.userId);
-  const idType = req.body.idType || req.body.id_type;
+// async function processOCR(req, res, { localPaths = [] }) {
+//   const userId = Number(req.params.userId);
+//   const idType = req.body.idType || req.body.id_type;
 
-  console.log('[OCR] enter processOCR', { userId, idType, localCount: localPaths.length });
+//   console.log('[OCR] enter processOCR', { userId, idType, localCount: localPaths.length });
 
-  try {
-    const filesMeta = (req.supabaseFiles?.files) || [];
-    const front = filesMeta[0] || null;
-    const back  = filesMeta[1] || null;
+//   try {
+//     const filesMeta = (req.supabaseFiles?.files) || [];
+//     const front = filesMeta[0] || null;
+//     const back  = filesMeta[1] || null;
 
-    console.log('[OCR] filesMeta', {
-      count: filesMeta.length,
-      frontKey: front?.relativePath,
-      backKey: back?.relativePath
-    });
+//     console.log('[OCR] filesMeta', {
+//       count: filesMeta.length,
+//       frontKey: front?.relativePath,
+//       backKey: back?.relativePath
+//     });
 
-    console.log('[OCR] saving upload metadata to DB…');
-    const upd = await pool.query(
-      `UPDATE mobile_users
-         SET id_type       = COALESCE($1, id_type),
-             id_front_path = $2, id_front_url = $3,
-             id_back_path  = $4, id_back_url  = $5,
-             status        = CASE WHEN status = 'verified' THEN status ELSE 'pending' END,
-             ocr_status    = 'pending',
-             ocr_error     = NULL            
-       WHERE id = $6
-       RETURNING id, status, id_front_path, id_back_path`,
-      [
-        idType, 
-        front?.relativePath || null, front?.supabaseUrl || null,
-        back?.relativePath  || null, back?.supabaseUrl  || null, userId
-      ]
-    );
+//     console.log('[OCR] saving upload metadata to DB…');
+//     const upd = await pool.query(
+//       `UPDATE mobile_users
+//          SET id_type       = COALESCE($1, id_type),
+//              id_front_path = $2, id_front_url = $3,
+//              id_back_path  = $4, id_back_url  = $5,
+//              status        = CASE WHEN status = 'verified' THEN status ELSE 'pending' END,
+//              ocr_status    = 'pending',
+//              ocr_error     = NULL            
+//        WHERE id = $6
+//        RETURNING id, status, id_front_path, id_back_path`,
+//       [
+//         idType, 
+//         front?.relativePath || null, front?.supabaseUrl || null,
+//         back?.relativePath  || null, back?.supabaseUrl  || null, userId
+//       ]
+//     );
 
-    console.log('[OCR] upload metadata saved', { rowCount: upd.rowCount, saved: upd.rows?.[0] });
+//     console.log('[OCR] upload metadata saved', { rowCount: upd.rowCount, saved: upd.rows?.[0] });
     
-    console.log('[OCR] responding to client (upload accepted, OCR will continue async)…');
-    res.json({ ok: true, message: 'ID images uploaded', saved: upd.rows[0] });
+//     console.log('[OCR] responding to client (upload accepted, OCR will continue async)…');
+//     res.json({ ok: true, message: 'ID images uploaded', saved: upd.rows[0] });
 
-
-    setImmediate(async () => {
-      const t0 = Date.now();
-      console.log('[OCR] async worker start', { localCount: localPaths.length, idType });
-
-      try {
-        const results = [];
-        for (const p of localPaths) {
-           console.log('[OCR] start file', p);
-          const r = await processOCRLocalFile(p, idType);
-           console.log('[OCR] done file', { file: p, matched: r?.matched, score: r?.matchScore, textLen: r?.ocrResult?.length || 0 });
-          results.push(r);
-        }
-
-        const frontRes = results[0] || {};
-        const backRes  = results[1] || {};
-
-        console.log('[OCR] all files done, writing OCR results to DB…', {
-          frontScore: frontRes?.matchScore || 0,
-          backScore: backRes?.matchScore || 0
-        });
-
-        await pool.query(
-          `UPDATE mobile_users
-             SET ocr_status = 'ok',
-                 ocr_text_front = $1,
-                 ocr_text_back  = $2,
-                 ocr_match_score= $3,
-                 ocr_updated_at = NOW()
-           WHERE id = $4`,
-          [
-            frontRes?.ocrResult || null,
-            backRes?.ocrResult  || null,
-            Math.max(frontRes?.matchScore || 0, backRes?.matchScore || 0),
-            userId
-          ]
-        );
-
-         console.log('[OCR] DB updated with OCR results', { userId, ms: Date.now() - t0 });
-      } catch (e) {
-        console.error('[OCR] async worker failed', { userId, error: e?.message });
-        await pool.query(
-          `UPDATE mobile_users
-             SET ocr_status = 'failed',
-                 ocr_error  = $1,
-                 ocr_updated_at = NOW()
-           WHERE id = $2`,
-          [String(e?.message || e), userId]
-        );
-      } finally {
-        console.log('[OCR] cleanup: deleting local temp files…');
-        for (const lp of localPaths) {
-          try { await fs.promises.unlink(lp); }
-          catch (e) { console.warn('[OCR] cleanup unlink failed', lp, e?.message); }
-        }
-        console.log('[OCR] async worker done');
-      }
-    });
-
-  } catch (err) {
-    console.error('[OCR] fatal in processOCR()', { userId, error: err?.message });
-    return res.status(500).json({ ok: false, message: 'Upload saved, OCR failed', error: err.message });
-  }
-}
 
 //     setImmediate(async () => {
+//       const t0 = Date.now();
+//       console.log('[OCR] async worker start', { localCount: localPaths.length, idType });
+
 //       try {
 //         const results = [];
 //         for (const p of localPaths) {
-//           results.push(await processOCRLocalFile(p, idType));
+//            console.log('[OCR] start file', p);
+//           const r = await processOCRLocalFile(p, idType);
+//            console.log('[OCR] done file', { file: p, matched: r?.matched, score: r?.matchScore, textLen: r?.ocrResult?.length || 0 });
+//           results.push(r);
 //         }
+
+//         const frontRes = results[0] || {};
+//         const backRes  = results[1] || {};
+
+//         console.log('[OCR] all files done, writing OCR results to DB…', {
+//           frontScore: frontRes?.matchScore || 0,
+//           backScore: backRes?.matchScore || 0
+//         });
 
 //         await pool.query(
 //           `UPDATE mobile_users
 //              SET ocr_status = 'ok',
-//                  ocr_text_front = $1,          
+//                  ocr_text_front = $1,
 //                  ocr_text_back  = $2,
 //                  ocr_match_score= $3,
 //                  ocr_updated_at = NOW()
 //            WHERE id = $4`,
 //           [
-//             results[0]?.ocrResult || null,
-//             results[1]?.ocrResult || null,
-//             Math.max(results[0]?.matchScore || 0, results[1]?.matchScore || 0),
+//             frontRes?.ocrResult || null,
+//             backRes?.ocrResult  || null,
+//             Math.max(frontRes?.matchScore || 0, backRes?.matchScore || 0),
 //             userId
 //           ]
 //         );
+
+//          console.log('[OCR] DB updated with OCR results', { userId, ms: Date.now() - t0 });
 //       } catch (e) {
+//         console.error('[OCR] async worker failed', { userId, error: e?.message });
 //         await pool.query(
 //           `UPDATE mobile_users
 //              SET ocr_status = 'failed',
@@ -186,87 +139,20 @@ async function processOCR(req, res, { localPaths = [] }) {
 //           [String(e?.message || e), userId]
 //         );
 //       } finally {
-//         for (const lp of localPaths) { try { await fs.promises.unlink(lp); } catch {} }
+//         console.log('[OCR] cleanup: deleting local temp files…');
+//         for (const lp of localPaths) {
+//           try { await fs.promises.unlink(lp); }
+//           catch (e) { console.warn('[OCR] cleanup unlink failed', lp, e?.message); }
+//         }
+//         console.log('[OCR] async worker done');
 //       }
 //     });
 
 //   } catch (err) {
-//     console.error('[processOCR] fatal:', err);
-    
+//     console.error('[OCR] fatal in processOCR()', { userId, error: err?.message });
 //     return res.status(500).json({ ok: false, message: 'Upload saved, OCR failed', error: err.message });
 //   }
 // }
-
-
-// async function processOCR(req, res, { localPaths = [] }) {
-//   const idType = req.body.idType || req.body.id_type || 'national_id';
-//   const results = [];
-
-//   for (const p of localPaths) {
-//     try {
-//       const r = await processOCRLocalFile(p, idType);
-//       results.push(r);
-//     } catch (e) {
-//       results.push({ ocrResult: '', matched: false, matchedKeyword: null, matchScore: 0, error: e.message });
-//     }
-//   }
-
-//   // …Update your DB as needed with IDs’ paths/URLs…
-//   return res.json({ ok: true, results });
-// }
-
-
-// const processOCR = async (req, res) => {
-//   try {
-//     if (!req.files || req.files.length === 0) {
-//       return res.status(400).json({ error: "No image files uploaded" });
-//     }
-
-//     const { idType } = req.body;
-//     if (!idType || !ID_KEYWORDS[idType]) {
-//       return res.status(400).json({ error: "Invalid or missing ID type" });
-//     }
-
-//     let combinedText = "";
-
-//     for (const file of req.files) {
-//       const processedBuffer = await sharp(file.path)
-//         .grayscale()
-//         .normalize()
-//         .resize({ width: 1000 })
-//         .png()
-//         .toBuffer();
-
-//       const {
-//         data: { text: rawText = "" },
-//       } = await Tesseract.recognize(processedBuffer, "eng", {
-//         logger: (m) => console.log("OCR Progress:", m),
-//       });
-
-//       combinedText += rawText + "\n";
-
-//       fs.promises.unlink(file.path).catch((err) =>
-//         console.warn("Failed to delete original file:", err)
-//       );
-//     }
-
-//     const cleanedText = cleanText(combinedText);
-//     console.log("Cleaned OCR Text:", cleanedText);
-
-//     const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
-
-//     return res.status(200).json({
-//       text: cleanedText,
-//       matched,
-//       matchedKeyword: keyword,
-//       matchScore: score,
-//     });
-//   } catch (error) {
-//     console.error("OCR processing failed:", error.message || error);
-//     res.status(500).json({ error: "OCR processing failed" });
-//   }
-// };
-
 
 
 
@@ -630,7 +516,7 @@ const markMobileNotificationAsRead = async (req, res) => {
 
 
 module.exports = { 
-  processOCR,
+  // processOCR,
   getAllMobileUsers,
   deleteMobileUser,
   updateMobileUserStatus,
