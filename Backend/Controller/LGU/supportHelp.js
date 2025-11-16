@@ -2,6 +2,7 @@
 const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
+const { generateSignedUrl } = require('../../utils/supabase');
 // ==============================
 //  SUBMIT LGU FEEDBACK
 // ==============================
@@ -144,18 +145,38 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
     const images = Array.isArray(req.lguFiles?.images) ? req.lguFiles.images : [];
     const video  = req.lguFiles?.video ?? null;
 
+    // Ensure only path/type/name are stored (no signed URLs)
+    images = (images || []).map(i => ({
+      path: i.path || '',
+      type: i.type || '',
+      name: i.name || undefined,
+    }));
+    if (video && video.path) {
+      video = {
+        path: video.path,
+        type: video.type || '',
+        name: video.name || undefined,
+      };
+    } else {
+      video = null;
+    }
+
+    
     // Option B: if route passed simple URLs via { fileUrls }, fall back to that:
     if ((!images || images.length === 0) && !video && Array.isArray(fileUrls)) {
+      const tmpImages = [];
+      let tmpVideo = null;
       for (const url of fileUrls) {
         const lower = String(url).toLowerCase();
-        const entry = { url };
+        const entry = { path: url }; // store as path-like string
         if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi')) {
-          // first video wins
-          if (!video) video = entry;
+          if (!tmpVideo) tmpVideo = entry;
         } else {
-          images.push(entry);
+          tmpImages.push(entry);
         }
       }
+      images = tmpImages;
+      video = tmpVideo;
     }
 
     // Insert
@@ -202,6 +223,48 @@ const getAllLGUFeedback = async (req, res) => {
     `;
 
     const result = await pool.query(query);
+    const rows = result.rows || [];
+
+        // Generate fresh signed URLs for images & video each time
+    for (const row of rows) {
+      // images
+      if (Array.isArray(row.images)) {
+        row.images = await Promise.all(
+          row.images.map(async (img) => {
+            const objectKey = img.path || img.url || null;
+            let signedUrl = null;
+            if (objectKey) {
+              try {
+                signedUrl = await generateSignedUrl(objectKey);
+              } catch (e) {
+                console.warn('[LGU FEEDBACK] image sign fail:', objectKey, e?.message || e);
+              }
+            }
+            return {
+              ...img,
+              url: signedUrl || img.url || null,
+            };
+          })
+        );
+      }
+
+      // video
+      if (row.video && (row.video.path || row.video.url)) {
+        const objectKey = row.video.path || row.video.url;
+        let signedUrl = null;
+        if (objectKey) {
+          try {
+            signedUrl = await generateSignedUrl(objectKey);
+          } catch (e) {
+            console.warn('[LGU FEEDBACK] video sign fail:', objectKey, e?.message || e);
+          }
+        }
+        row.video = {
+          ...row.video,
+          url: signedUrl || row.video.url || null,
+        };
+      }
+    }
 
     res.status(200).json({
       message: 'Feedback fetched successfully',

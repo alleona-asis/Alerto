@@ -274,7 +274,7 @@ const getAllPins = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM incident_reports');
     const reports = result.rows;
-    // Generate fresh signed URLs for media (similar to getMobileUserProfile)
+    // Generate fresh signed URLs for media
     for (const report of reports) {
       if (report.media_filenames && Array.isArray(report.media_filenames)) {
         report.media_urls = await Promise.all(
