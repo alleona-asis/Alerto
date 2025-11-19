@@ -26,6 +26,7 @@ export default function LGUManageBarangay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  
   // ADD BARANGAY
   const [barangayDirectory, setBarangayDirectory] = useState([]);
   const [isAddBarangayModalOpen, setIsAddBarangayModalOpen] = useState(false);
@@ -52,6 +53,12 @@ export default function LGUManageBarangay() {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
   const [showPassword, setShowPassword] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  // DELETE BARANGAY ACCOUNT
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [barangayAccountToDelete, setBarangayAccountToDelete] = useState(null);
+
 
   // Edit
   const [isEditMode, setIsEditMode] = useState(false);
@@ -63,6 +70,10 @@ export default function LGUManageBarangay() {
 
   const [requestSummary, setRequestSummary] = useState([]);
   const [docRequests, setDocRequests] = useState([]);
+  // Error Handling
+  const [usernameError, setUsernameError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // =================================================
   //  HELPERS
@@ -86,6 +97,24 @@ export default function LGUManageBarangay() {
     r?.nature ??
     "Unspecified") + "";
 
+
+  // =================================================
+  // INPUT HANDLING
+  // =================================================
+  const validateInput = (text) => {
+    const specialChars = "!@#$%^&*_-.'";
+    if (text.length < 8 || text.includes(' ')) return false;
+
+    let hasSpecial = false;
+    let hasNumber = false;
+
+    for (let char of text) {
+      if (specialChars.includes(char)) hasSpecial = true;
+      if (!isNaN(char)) hasNumber = true;
+    }
+
+    return hasSpecial && hasNumber;
+  };
 
   // =================================================
   //  SORT FUNCTION (define first)
@@ -591,12 +620,34 @@ export default function LGUManageBarangay() {
   };
 
   const fetchBarangayAccounts = async (lguId, barangay) => {
+    const brgy = String(barangay || '').trim();
+    if (!brgy) return setBarangayAccounts([]);
+
+    const candidates = [...new Set([lguId, userId, localStorage.getItem('userId'), selectedAccount?.lgu_id].filter(Boolean))];
+    const core = brgy.replace(/^(brgy\.?\s+|barangay\s+)/i, '').trim();
+    const variants = [...new Set([brgy, core, `Brgy ${core}`, `Brgy. ${core}`, `Barangay ${core}`, core.toLowerCase(), core.toUpperCase()])];
+
+    const all = [];
+    const seen = new Set();
+
     try {
-      const response = await axios.get(`/api/lgu/view-created-account/${lguId}/${barangay}`);
-      console.log('[DEBUG] Accounts fetched:', response.data);
-      setBarangayAccounts(response.data);
-    } catch (err) {
-      console.error('[ERROR] Fetch failed:', err);
+      for (const lgu of candidates) {
+        for (const name of variants) {
+          const url = `/api/lgu/view-created-account/${encodeURIComponent(lgu)}/${encodeURIComponent(name)}?limit=1000`;
+          const res = await axios.get(url);
+          const raw = res?.data;
+          const list = Array.isArray(raw) ? raw : (raw?.accounts || raw?.rows || raw?.data || []);
+          for (const u of list) {
+            const k = u.id ?? u.user_id ?? u.uid ?? u.username;
+            if (!seen.has(k)) { seen.add(k); all.push(u); }
+          }
+        }
+      }
+      setBarangayAccounts(all);
+    } catch (e) {
+      console.error('Failed to load accounts:', e?.response?.data || e.message);
+      setBarangayAccounts([]);
+      toast.error('Failed to load staff accounts for this barangay.');
     }
   };
 
@@ -610,6 +661,44 @@ export default function LGUManageBarangay() {
     await fetchBarangayAccounts(acc.lgu_id, acc.barangay_name);
     setIsViewAccountModalOpen(true);
   };
+
+  // =================================================
+  //  DELETE BARANGAY USER ACCOUNT
+  // =================================================
+  const openDeleteAccountModal = (account) => {
+    setBarangayAccountToDelete(account);
+    setShowDeleteAccountConfirm(true);
+  };
+
+  const closeDeleteAccountModal = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setShowDeleteAccountConfirm(false);
+      setBarangayAccountToDelete(null);
+      setIsClosing(false);
+    }, 200);
+  };
+
+  const confirmDeleteBarangayAccount = async () => {
+    const id =
+      barangayAccountToDelete?.id ??
+      barangayAccountToDelete?.user_id ??
+      barangayAccountToDelete?.uid;
+
+    if (!id) return;
+
+    try {
+      await axios.delete(`/api/lgu/delete-barangay-account/${encodeURIComponent(id)}`);
+      setBarangayAccounts(prev => prev.filter(u => (u.id ?? u.user_id ?? u.uid) !== id));
+      toast.success('Barangay account deleted.');
+    } catch (e) {
+      console.error('Delete failed:', e?.response?.data || e.message);
+      toast.error(e?.response?.data?.message || 'Failed to delete account.');
+    } finally {
+      closeDeleteAccountModal();
+    }
+  };
+
 
 
   // =================================================
@@ -1067,7 +1156,7 @@ export default function LGUManageBarangay() {
               </div>
 
               <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
-              <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this account?</p>
+              <p className="sub-title" style={{ textAlign: 'center' }}>Are you sure you want to delete this barangay?</p>
 
               <div
                 style={{
@@ -1109,6 +1198,72 @@ export default function LGUManageBarangay() {
           </div>
         )}
 
+        {/* DELETE BARANGAY ACCOUNT MODAL */}
+        {showDeleteAccountConfirm && barangayAccountToDelete && (
+          <div
+            className="modal-overlay"
+            onClick={closeDeleteAccountModal}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100000,
+              pointerEvents: 'auto'
+            }}
+          >
+            <div
+              className={`modal-content ${isClosing ? 'pop-out' : 'pop-in'}`}
+              style={{ maxWidth: '350px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src="/icons/close.png"
+                alt="Close"
+                className="modal-close-btn"
+                onClick={() => {
+                  setIsClosing(true);
+                  setTimeout(() => {
+                    setShowDeleteAccountConfirm(false);
+                    setBarangayAccountToDelete(null);
+                    setIsClosing(false);
+                  }, 200);
+                }}
+              />
+
+              <div className="icon-container">
+                <img src="/icons/delete.png" alt="Delete" className="icon-delete" />
+              </div>
+
+              <h3 className="modal-title" style={{ textAlign: 'center' }}>Delete</h3>
+              <p className="sub-title" style={{ textAlign: 'center' }}>
+                Are you sure you want to delete this uer account?
+              </p>
+
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 20, paddingLeft: 18, paddingRight: 18, textAlign: 'center' }}>
+                <span className="location-text">
+                  {(() => {
+                    const u = barangayAccountToDelete;
+                    const name = `${u?.first_name ?? u?.firstName ?? ''} ${u?.last_name ?? u?.lastName ?? ''}`.trim() || (u?.username ?? 'User');
+                    return `${name}`;
+                  })()}
+                </span>
+              </div>
+
+              <div className="button-container">
+                <button className="cancel-button" onClick={closeDeleteAccountModal}>
+                  Cancel
+                </button>
+                <button className="confirm-button" onClick={confirmDeleteBarangayAccount}>
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ADD BARANGAY USER MODAL */}
         {isAddUserModalOpen && (
           <div className="modal-overlay">
@@ -1128,15 +1283,35 @@ export default function LGUManageBarangay() {
                   <div className="input-group">
                     <label htmlFor="username" className="input-label">Username</label>
                     <input
-                      id="username"
-                      type="text"
-                      placeholder="Enter the Username"
+                      className={`input-field ${focusedInput === 'username' ? 'input-focus' : ''} ${usernameError ? 'input-error-border' : ''}`}
+                      onFocus={() => setFocusedInput('username')}
+                      onBlur={() => setFocusedInput(null)}
+                      placeholder="Enter your username"
                       value={userForm.username}
-                      onChange={(e) =>
-                        setUserForm({ ...userForm, username: e.target.value })
-                      }
-                      className="modal-input"
+                      onChange={async (e) => {
+                        const raw = e.target.value;
+                        // keep only allowed chars; no spaces
+                        const cleaned = raw.replace(/[^A-Za-z0-9!@#$%^&*_.-]/g, '');
+                        setUserForm(prev => ({ ...prev, username: cleaned }));
+
+                        if (!validateInput(cleaned)) {
+                          setUsernameError('Username must be at least 8 characters long, and include at least one special character and one number.');
+                          return;
+                        }
+                        if (isRegistering) {
+                          try {
+                            const res = await axios.post('/api/auth/check-username', { username: cleaned });
+                            setUsernameError(res.data.available ? '' : 'Username already exists.');
+                          } catch {
+                            setUsernameError('Error checking username.');
+                          }
+                        } else {
+                          setUsernameError('');
+                        }
+                      }}
+                      onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
                     />
+                    {usernameError && <p className="input-error-message">{usernameError}</p>}
                   </div>
 
                   {/* First Name */}
@@ -1150,7 +1325,7 @@ export default function LGUManageBarangay() {
                       onChange={(e) =>
                         setUserForm({ ...userForm, firstName: e.target.value })
                       }
-                      className="modal-input"
+                      className="input-field"
                     />
                   </div>
 
@@ -1165,7 +1340,7 @@ export default function LGUManageBarangay() {
                       onChange={(e) =>
                         setUserForm({ ...userForm, lastName: e.target.value })
                       }
-                      className="modal-input"
+                      className="input-field"
                     />
                   </div>
 
@@ -1173,7 +1348,7 @@ export default function LGUManageBarangay() {
                   <div className="input-group">
                     <label className="input-label">Phone Number</label>
                     <input
-                      className={`modal-input ${focusedInput === 'phoneNumber' ? 'input-focus' : ''} ${phoneNumberError ? 'input-error' : ''}`}
+                      className={`input-field ${focusedInput === 'phoneNumber' ? 'input-focus' : ''} ${phoneNumberError ? 'input-error' : ''}`}
                       onFocus={() => setFocusedInput('phoneNumber')}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="+639XXXXXXXXX"
@@ -1215,49 +1390,67 @@ export default function LGUManageBarangay() {
                       onChange={(e) =>
                         setUserForm({ ...userForm, position: e.target.value })
                       }
-                      className="modal-input"
+                      className="input-field"
                     />
                   </div>
 
                   {/* Password */}
                   <div className="input-group">
-                    <label htmlFor="password" className="input-label">Password</label>
+                    <label htmlFor="password" className="input-label">
+                      Password
+                    </label>
 
-                    <div className="password-wrapper" style={{ position: 'relative' }}>
+                    <div className="password-wrapper" style={{ position: "relative" }}>
                       <input
                         id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Enter Password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
                         value={userForm.password}
-                        onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                        onKeyDown={(e) => e.key === ' ' && e.preventDefault()}
+                        onFocus={() => setFocusedInput("password")}
+                        onBlur={() => setFocusedInput(null)}
+                        className={`modal-input ${
+                          focusedInput === "password" ? "input-focus" : ""
+                        } ${passwordError ? "input-error-border" : ""}`}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val.includes(" ")) return;
+                          setUserForm((prev) => ({ ...prev, password: val }));
+                          setPasswordError(
+                            validateInput(val)
+                              ? ""
+                              : "Password must be at least 8 characters long, and include at least one special character and one number"
+                          );
+                        }}
+                        onKeyDown={(e) => e.key === " " && e.preventDefault()}
                         autoComplete="current-password"
-                        className="modal-input"
-                        style={{ paddingRight: 36 }} 
+                        style={{ paddingRight: 36 }}
                       />
 
                       <button
                         type="button"
                         className="eye-btn"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        onClick={() => setShowPassword(p => !p)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword((p) => !p)}
                         style={{
-                          position: 'absolute',
+                          position: "absolute",
                           right: 10,
-                          top: '45%',
-                          transform: 'translateY(-50%)',
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
+                          top: "45%",
+                          transform: "translateY(-50%)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
                           lineHeight: 1,
-                          fontSize: 16
+                          fontSize: 16,
                         }}
                       >
-                        {showPassword ? '🔓' : '🔒'}
+                        {showPassword ? "🔓" : "🔒"}
                       </button>
                     </div>
-                  </div>
 
+                    {passwordError && (
+                      <p className="input-error-message">{passwordError}</p>
+                    )}
+                  </div>
 
                   {/* Buttons */}
                   <div className="modal-button-row">
@@ -1355,14 +1548,43 @@ export default function LGUManageBarangay() {
                   <div className="barangay-staff">
                     <div className="staff-card-grid">
                       {barangayAccounts.length > 0 ? (
-                        barangayAccounts.map((user, index) => (
-                          <div className="staff-card" key={index}>
-                            <p><strong>Username:</strong> {user.username}</p>
-                            <p><strong>Full Name:</strong> {user.first_name} {user.last_name}</p>
-                            <p><strong>Position:</strong> {user.position}</p>
-                            <p><strong>Phone:</strong> {user.phone_number}</p>
-                          </div>
-                        ))
+                       barangayAccounts.map((user, index) => {
+                          const first = user.first_name ?? user.firstName ?? '';
+                          const last  = user.last_name  ?? user.lastName  ?? '';
+                          const pos   = user.position   ?? user.role      ?? '';
+                          const phone = user.phone_number ?? user.phoneNumber ?? user.contact ?? '';
+                          const id    = user.id ?? user.user_id ?? user.uid ?? `${user.username || ''}-${index}`;
+
+                          return (
+                            <div className="staff-card" key={id} style={{ position: 'relative' }}>
+                              {/* DELETE ICON */}
+                              <img
+                                src="/icons/delete-row.png"
+                                alt="Delete"
+                                title="Delete account"
+                                style={{
+                                  position: 'absolute',
+                                  top: 15,
+                                  right: 15,
+                                  width: 18,
+                                  height: 18,
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => bounceEffect(e.currentTarget)} 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDeleteAccountModal(user);
+                                }}
+                              />
+
+                              <p><strong>Username:</strong> {user.username ?? user.user_name ?? '—'}</p>
+                              <p><strong>Full Name:</strong> {first} {last}</p>
+                              <p><strong>Position:</strong> {pos}</p>
+                              <p><strong>Phone:</strong> {phone}</p>
+                            </div>
+                          );
+                        })
                       ) : (
                         <p style={{ textAlign: 'center', marginTop: '20px' }}>No accounts found.</p>
                       )}

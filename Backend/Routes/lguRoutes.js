@@ -7,7 +7,6 @@ const multer = require('multer');
 const { uploadWithSupabase } = require('../Middleware/upload');
 
 
-
 // =================================================
 // MULTER SETUP FOR LGU FEEDBACK
 // =================================================
@@ -37,7 +36,7 @@ const feedbackFileFilter = (req, file, cb) => {
 
 const feedbackUpload = multer({
   storage: feedbackStorage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB max
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: feedbackFileFilter
 });
 
@@ -52,7 +51,8 @@ const {
   addBarangayUserAccount,
   viewCreatedBarangayAccounts,
   editBarangayDetails,
-  callBarangayAssistance
+  callBarangayAssistance,
+  deleteBarangayAccount
 } = require('../Controller/LGU/manageBarangayController')
 
 // =============== PROTECTED ROUTES ================
@@ -69,6 +69,9 @@ router.delete('/delete-barangay/:id', deleteBarangay);
 
 // ========== ADD BARANGAY USER ACCOUNT ============
 router.post('/add-barangay-account', addBarangayUserAccount);
+
+// ========== DELETE BARANGAY USER ACCOUNT ============
+router.delete('/delete-barangay-account/:id', deleteBarangayAccount);
 
 // ============= VIEW CREATED ACCOUNT ==============
 router.get('/view-created-account/:lguId/:barangay', viewCreatedBarangayAccounts);

@@ -57,7 +57,7 @@ export default function Login() {
 
 
   // =================================================
-  // ERROR HANDLING
+  // INPUT HANDLING
   // =================================================
   const validateInput = (text) => {
     const specialChars = "!@#$%^&*_-.'";
