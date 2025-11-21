@@ -28,7 +28,17 @@ const createDocumentRequest = async (req, res) => {
       civil_status
     } = req.body;
 
-    if (!documentType || !purpose || !date || !time || !mobile_user_id || !region || !province || !city || !barangay || !date_of_birth || !sex || !home_address || !civil_status) {
+    if (
+      !documentType ||
+      !purpose ||
+      !date ||
+      !time ||
+      !mobile_user_id ||
+      !region ||
+      !province ||
+      !city ||
+      !barangay
+    ) {      
       return res.status(400).json({ message: 'Missing required fields.' });
     }
 
@@ -46,17 +56,18 @@ const createDocumentRequest = async (req, res) => {
       time,
       additionalNotes || null,
       mobile_user_id,
-      requested_by,
+      requested_by || null,
       region,
       province,
       city,
       barangay,
-      date_of_birth,
-      sex,
-      home_address,
-      civil_status
+      date_of_birth || null,
+      sex || null,
+      home_address || null,
+      civil_status || null,
     ];
 
+    
     const { rows } = await pool.query(query, values);
     const savedReport = rows[0];
 
@@ -253,16 +264,19 @@ const updateDocumentRequestStatus = async (req, res) => {
     // Create a mobile notification
     const notificationQuery = `
       INSERT INTO mobile_notifications
-      (mobile_user_id, type, status, reason_for_rejection)
-      VALUES ($1, $2, $3, $4)
+      (mobile_user_id, type, status, reason_for_rejection, document_type, request_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
     const notificationValues = [
       updatedRequest.mobile_user_id,
       'document_request_status',
       status.toLowerCase(),
-      status.toLowerCase() === 'rejected' ? rejectionReason : null
+      status.toLowerCase() === 'rejected' ? rejectionReason : null,
+      updatedRequest.document_type,
+      updatedRequest.id,
     ];
+
     let notification = null;
     try {
       const notificationResult = await pool.query(notificationQuery, notificationValues);
@@ -272,7 +286,6 @@ const updateDocumentRequestStatus = async (req, res) => {
       console.error("Failed to save notification:", err);
     }
 
-    // ===== Socket emissions
     const io = getIo();
 
     // 1) Emit to the specific mobile user room
@@ -294,6 +307,7 @@ const updateDocumentRequestStatus = async (req, res) => {
       price_amount: updatedRequest.price_amount,
       price_note: updatedRequest.price_note,
       rejection_reason: updatedRequest.rejection_reason,
+      requestId: updatedRequest.id,
     });
 
     // 2) Also broadcast to BRGY dashboards (your panel listens to global "documentRequestUpdate")
@@ -536,8 +550,8 @@ const rejectDocumentRequest = async (req, res) => {
     try {
       const notificationResult = await pool.query(
         `INSERT INTO mobile_notifications
-        (mobile_user_id, type, status, reason_for_rejection, is_read, created_at)
-        VALUES ($1, $2, $3, $4, FALSE, NOW())
+        (mobile_user_id, type, status, reason_for_rejection, request_id, is_read, created_at)
+        VALUES ($1, $2, $3, $4, $5 FALSE, NOW())
         RETURNING *`,
         [
           updatedRequest.mobile_user_id,
