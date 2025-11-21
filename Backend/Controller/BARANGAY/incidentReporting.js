@@ -507,8 +507,8 @@ const updateReportStatus = async (req, res) => {
 
     const notificationQuery = `
       INSERT INTO mobile_notifications
-        (mobile_user_id, type, status)
-      VALUES ($1, $2, $3)
+        (mobile_user_id, type, status, incident_type, report_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
@@ -516,6 +516,8 @@ const updateReportStatus = async (req, res) => {
       updatedReport.mobile_user_id,
       'barangay_report_status',
       status.toLowerCase(),
+      updatedReport.incident_type,  
+      updatedReport.id,             
     ];
 
     let notification = null;
@@ -531,22 +533,25 @@ const updateReportStatus = async (req, res) => {
     }
 
 
-// after you compute updatedReport and (optionally) save notification
+
 const io = getIo();
 
-// optional: keep a dedicated channel for the inbox feed
-if (notification) {
-  io.to(`user_${updatedReport.mobile_user_id}`).emit('notification', {
-    ...notification,
-    type: 'barangay_report_status',
-  });
-}
 
-// ✅ send the actual report update for the UI list/modal
+    if (notification) {
+      io.to(`user_${updatedReport.mobile_user_id}`).emit('notification', {
+        ...notification,
+        type: 'barangay_report_status',
+        incident_type: updatedReport.incident_type, 
+      });
+    }
+
+
+// send the actual report update 
 io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
-  id: updatedReport.id,                 // the client accepts id OR reportId
+  id: updatedReport.id,                 
   reportId: updatedReport.id,
   status: updatedReport.status,
+  incident_type: updatedReport.incident_type,
   status_history: updatedReport.status_history,
   updated_by: updatedReport.updated_by,
   updated_at: updatedReport.updated_at,
@@ -701,8 +706,8 @@ const transferReport = async (req, res) => {
 
     const notificationQuery = `
       INSERT INTO mobile_notifications
-        (mobile_user_id, type, status)
-      VALUES ($1, $2, $3)
+        (mobile_user_id, type, status, incident_type, report_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
@@ -710,6 +715,8 @@ const transferReport = async (req, res) => {
       updatedReport.mobile_user_id,
       'barangay_report_status',
       'transferred',
+      updatedReport.incident_type,
+      updatedReport.id,
     ];
 
     let notification = null;
@@ -725,20 +732,26 @@ const transferReport = async (req, res) => {
     }
 
     // --- Emit notification ONLY to the mobile user ---
+    const io = getIo();
+
+    // inbox notification
     if (notification) {
-      const io = getIo();
-      io.to(`user_${updatedReport.mobile_user_id}`).emit(
-        "reportStatusUpdate",
-        {
-          ...notification,
-          type: "barangay_report_status",
-        }
-      );
+      io.to(`user_${updatedReport.mobile_user_id}`).emit("notification", {
+        ...notification,
+        type: "barangay_report_status",
+        incident_type: updatedReport.incident_type,
+      });
     }
 
-    res.status(200).json({
-      message: `Report successfully transferred to ${newBarangay}`,
-      report: updatedReport
+    // live status update
+    io.to(`user_${updatedReport.mobile_user_id}`).emit("reportStatusUpdate", {
+      id: updatedReport.id,
+      reportId: updatedReport.id,
+      status: updatedReport.status,
+      incident_type: updatedReport.incident_type,
+      status_history: updatedReport.status_history,
+      updated_by: updatedReport.updated_by,
+      updated_at: updatedReport.updated_at,
     });
 
   } catch (error) {
