@@ -71,7 +71,6 @@ const announcementUpload = multer({
 // =================================================
 // MULTER SETUP FOR PROOF UPLOAD
 // =================================================
-// Multer setup for proof uploads
 const proofStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const folder = 'uploads/proof';
@@ -148,6 +147,7 @@ const {
 } = require('../Controller/BARANGAY/mobileUserRegistry');
 
 router.use(authenticateToken);
+
 router.post(
   '/mobile-user-profile/:userId/upload-id',
   uploadWithSupabase(
@@ -342,7 +342,7 @@ const {
   getMobileNotifications
 } = require('../Controller/BARANGAY/announcements');
 
-// Announcements (always public bucket)
+
 router.post(
   '/create-announcements',
   uploadWithSupabase([{ name: 'images', maxCount: 5 }], true),
@@ -436,7 +436,7 @@ router.get('/user-blocking/:userId', async (req, res) => {
   try {
     const blockData = await getUserBlockingStatus(userId);
     if (blockData) {
-      res.status(200).json(blockData);  // e.g., { invalid_count: 0, blocked_until: null, permanently_blocked: false }
+      res.status(200).json(blockData);
     } else {
       res.status(404).json({ message: 'No blocking status found for this user.' });
     }
@@ -446,7 +446,9 @@ router.get('/user-blocking/:userId', async (req, res) => {
   }
 });
 
-//Mark Notifications as Read
+// =================================================
+// MARK NOTIFICATIONS AS READ
+// =================================================
 router.patch('/notifications/:notificationId/read', async (req, res) => {
   const notificationId = req.params.notificationId;
   try {

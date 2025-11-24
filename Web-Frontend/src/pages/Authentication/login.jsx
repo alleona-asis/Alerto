@@ -632,7 +632,7 @@ export default function Login() {
                 onChange={(e) =>
                   handleAutoUpload(e, setIdFile, setIdStatus, setIdFileName)
                 }
-                style={{ display: "none" }} // hide default input
+                style={{ display: "none" }} 
               />
               <div className="upload-content">
                 <p className="upload-size">
@@ -650,7 +650,7 @@ export default function Login() {
                     <button
                       className="delete-btn"
                       onClick={(e) => {
-                        e.stopPropagation(); // block from bubbling
+                        e.stopPropagation(); 
                         handleRemoveFile(setIdFile, setIdStatus, setIdFileName);
                       }}
                     >

@@ -13,15 +13,12 @@ const app = express();
 const TEMP_DIR = path.join(__dirname, 'uploads', 'temp');
 fs.mkdirSync(TEMP_DIR, { recursive: true });
 
-// Allowed origins array
 const allowedOrigins = [
-  "http://localhost:5173",              // Vite dev
-  "http://localhost:3000",              // React dev
+  "http://localhost:5173",            
+  "http://localhost:3000",              
   "https://alerto-t3cj.onrender.com",    // deployed frontend
-  // "https://alertoplus.app",
-  // "https://www.alertoplus.app",               //custom domain(name.com)
   "https://alertoplus.com",
-  "https://www.alertoplus.com"                //custom domain(hostinger)
+  "https://www.alertoplus.com"           //custom domain(hostinger)
 ];
 
 app.use(cors({
@@ -44,14 +41,14 @@ app.use(cors({
   exposedHeaders: ["Content-Length", "Content-Range"]
 }));
 
-// app.options('*', cors()); //optional
+// app.options('*', cors()); 
 
 app.use(express.json());
 
 // Create HTTP server using Express app
 const server = http.createServer(app);
 
-// Initialize Socket.IO using your socket.js module
+// Initialize Socket.IO using socket.js 
 const io = initSocket(server);
 
 // -----------------------------

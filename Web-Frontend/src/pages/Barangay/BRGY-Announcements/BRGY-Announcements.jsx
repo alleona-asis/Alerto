@@ -292,19 +292,19 @@ export default function BRGYProfile() {
 
   try {
     const formData = new FormData();
-    // Only append fields you want to update; backend keeps old values when null
+
     formData.append("name", editOfficialName);
     formData.append("position", editOfficialPosition);
     formData.append("contact_number", editOfficialContact);
 
-    // Region filters (keep them in case you want to move official across locales)
+    // Region filters
     formData.append("region", BRGYProfile?.region || "");
     formData.append("province", BRGYProfile?.province || "");
     formData.append("city", BRGYProfile?.city || "");
     formData.append("barangay", BRGYProfile?.barangay || "");
 
     if (editOfficialImage) {
-      formData.append("officialImage", editOfficialImage); // IMPORTANT
+      formData.append("officialImage", editOfficialImage); 
     }
 
     const token = localStorage.getItem("token");
@@ -652,7 +652,7 @@ export default function BRGYProfile() {
                     >
                     {announcements.map((ann, index) => {
                       const images = ann.image_urls || [];
-                      const imageUrl = images.length > 0 ? images[0] : '/icons/announcement.png'; // Correct path
+                      const imageUrl = images.length > 0 ? images[0] : '/icons/announcement.png'; 
 
                       return (
                         <div
@@ -1040,7 +1040,7 @@ export default function BRGYProfile() {
                       style={{ display: 'none' }}
                       onChange={(e) => {
                         if (e.target.files) {
-                          const filesArray = Array.from(e.target.files).slice(0, 5); // limit to 5
+                          const filesArray = Array.from(e.target.files).slice(0, 5);
                           setAnnouncementImage(filesArray);
                         }
                       }}
@@ -1160,7 +1160,7 @@ export default function BRGYProfile() {
                         let value = e.target.value;
                         if (value.includes(' ')) return;
 
-                        // Format and sanitize input
+                        // Format and clean input
                         if (!value.startsWith('+639')) {
                           value = '+639' + value.replace(/\D/g, '').slice(0, 9);
                         } else {

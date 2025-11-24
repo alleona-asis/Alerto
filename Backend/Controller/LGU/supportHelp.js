@@ -6,84 +6,6 @@ const { generateSignedUrl } = require('../../utils/supabase');
 // ==============================
 //  SUBMIT LGU FEEDBACK
 // ==============================
-// const submitLGUFeedback = async (req, res) => {
-//   try {
-//     console.log('Received LGU feedback submission:', req.body);
-//     console.log('Uploaded files:', req.files);
-
-//     const {
-//       feedbackType,
-//       messages,
-//       region,
-//       province,
-//       city,
-//       concernedBarangay,
-//       firstName,
-//       middleName,
-//       lastName
-//     } = req.body;
-
-//     if (!feedbackType || !messages || !region || !province || !city || !concernedBarangay || !firstName || !middleName || !lastName) {
-//       console.log('Validation failed: Missing required fields');
-//       return res.status(400).json({ error: 'Please fill in all required fields.' });
-//     }
-
-//     let images = [];
-//     let video = null;
-
-//     if (req.files && Array.isArray(req.files)) {
-//       req.files.forEach(file => {
-//         const fileData = {
-//           path: file.path,
-//           url: `${req.protocol}://${req.get('host')}/uploads/feedback/${file.filename}`
-//         };
-
-//         if (file.mimetype.startsWith('image/')) {
-//           images.push(fileData);
-//         } else if (file.mimetype.startsWith('video/')) {
-//           video = fileData;
-//         }
-//       });
-//     }
-
-//     console.log('Processed images:', images);
-//     console.log('Processed video:', video);
-
-//     const query = `
-//       INSERT INTO lgu_feedbacks
-//         (feedback_type, messages, region, province, city, concerned_barangay, images, video,
-//          first_name, middle_name, last_name)
-//       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11)
-//       RETURNING *;
-//     `;
-
-//     const values = [
-//       feedbackType,
-//       messages,
-//       region,
-//       province,
-//       city,
-//       concernedBarangay,
-//       JSON.stringify(images),
-//       JSON.stringify(video),
-//       firstName,
-//       middleName,
-//       lastName
-//     ];
-
-//     const result = await pool.query(query, values);
-//     console.log('Feedback inserted successfully:', result.rows[0]);
-
-//     res.status(201).json({
-//       message: 'Feedback submitted successfully',
-//       feedback: result.rows[0]
-//     });
-
-//   } catch (error) {
-//     console.error('Error submitting LGU feedback:', error);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// };
 
 // Helper: extract a single string from req.body (handles arrays/undefined)
 function pick(req, key) {
@@ -99,7 +21,7 @@ function need(v) {
   return s.length > 0;
 }
 
-// Optional: normalize feedbackType to a canonical set
+// normalize feedbackType to a set
 function normalizeFeedbackType(ft) {
   if (!ft) return '';
   const s = String(ft).trim().toLowerCase();
@@ -114,7 +36,7 @@ function normalizeFeedbackType(ft) {
 
 const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
   try {
-    // Extract & normalize text fields robustly
+
     const feedbackTypeRaw   = pick(req, 'feedbackType');
     const messages          = pick(req, 'messages');
     const region            = pick(req, 'region');
@@ -124,7 +46,7 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
 
     const feedbackType = normalizeFeedbackType(feedbackTypeRaw);
 
-    // Validate presence
+    // Validate presence of all fields
     const missing = [];
     if (!need(feedbackType))       missing.push('feedbackType');
     if (!need(messages))           missing.push('messages');
@@ -185,7 +107,6 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
       video = tmpVideo;
     }
 
-    // Insert
     const query = `
       INSERT INTO lgu_feedbacks
         (feedback_type, messages, region, province, city, concerned_barangay, images, video)

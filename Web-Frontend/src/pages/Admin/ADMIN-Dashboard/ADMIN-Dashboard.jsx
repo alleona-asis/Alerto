@@ -130,7 +130,7 @@ export default function ADMINDashboard() {
         setTotalLGUAccounts(lguAccountsRes.data.total);
         setPins(pinsRes.data);
 
-        // Graphs (assuming your controller also returns chart data or breakdown)
+        // Graphs
         setBarangayReportsGraph(reportsRes.data.graphData || []);
         setMobileUsersGraph(mobileUsersRes.data.graphData || []);
       // Convert string values to numbers
@@ -393,7 +393,7 @@ export default function ADMINDashboard() {
                       align="right"
                       wrapperStyle={{ 
                         top: '50%',
-                        transform: 'translateY(-50%)', // this centers vertically
+                        transform: 'translateY(-50%)', // center vertically
                         fontSize: '15px',
                         fontWeight: 500,
                         color: '#374856',
@@ -425,7 +425,7 @@ export default function ADMINDashboard() {
 
                 <div 
                   style={{ width: '100%', height: '250px', cursor: 'pointer' }}
-                  onClick={() => setMapModalVisible(true)} // opens the modal
+                  onClick={() => setMapModalVisible(true)} // open modal
                 >
                   <MapContainer 
                     center={[13.6215, 123.1811]} // fallback center

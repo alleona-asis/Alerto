@@ -70,7 +70,7 @@ export default function LGUManageBarangay() {
 
   const [requestSummary, setRequestSummary] = useState([]);
   const [docRequests, setDocRequests] = useState([]);
-  // Error Handling
+  
   const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [emailError, setEmailError] = useState('');

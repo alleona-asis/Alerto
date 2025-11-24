@@ -55,7 +55,7 @@ export default function LGUMobileUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper
+  // Helpers
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
@@ -197,7 +197,7 @@ export default function LGUMobileUsers() {
 
 
   // =================================================
-  //  SOCKET LISTENER (WRONG)
+  //  SOCKET LISTENER
   // =================================================
   useEffect(() => {
     const handleNewReport = (newReport) => {
@@ -280,7 +280,7 @@ export default function LGUMobileUsers() {
                 onClick={async () => {
                     try {
                       const full = await fetchUserDetails(user.id);
-                      setSelectedUser(full);     // has id_front_url, id_back_url, selfie_url
+                      setSelectedUser(full);    
                       setActiveMiniTab('details');
                       setShowDetailsModal(true);
                     } catch {

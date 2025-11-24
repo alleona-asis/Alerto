@@ -16,7 +16,7 @@ export default function ADMINBarangayReports() {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const response = await axios.get('/api/admin/get-all-announcements'); // adjust path if needed
+        const response = await axios.get('/api/admin/get-all-announcements');
         setAnnouncements(response.data);
       } catch (error) {
         console.error('Error fetching announcements:', error);
@@ -28,18 +28,18 @@ export default function ADMINBarangayReports() {
     fetchAnnouncements();
   }, []);
 
-  // Helper to safely get image URLs
+  // Helper
   const getImages = (announcement) => {
     let images = [];
     if (announcement.image_urls) {
       if (typeof announcement.image_urls === 'string') {
         try {
-          images = JSON.parse(announcement.image_urls); // JSON string
+          images = JSON.parse(announcement.image_urls); 
         } catch {
-          images = [announcement.image_urls]; // fallback single URL
+          images = [announcement.image_urls]; 
         }
       } else if (Array.isArray(announcement.image_urls)) {
-        images = announcement.image_urls; // already an array
+        images = announcement.image_urls; 
       }
     }
     return images;
@@ -82,7 +82,7 @@ export default function ADMINBarangayReports() {
             >
 {announcements.map((announcement) => {
   const images = getImages(announcement);
-  const firstImage = images.length > 0 ? images[0] : '/icons/announcement.png'; // fallback
+  const firstImage = images.length > 0 ? images[0] : '/icons/announcement.png';
 
   return (
     <div
@@ -116,11 +116,11 @@ export default function ADMINBarangayReports() {
         style={{
           fontSize: '14px',
           color: '#555',
-          maxHeight: '60px', // adjust as needed
+          maxHeight: '60px',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           display: '-webkit-box',
-          WebkitLineClamp: 3, // limits to 3 lines
+          WebkitLineClamp: 3,
           WebkitBoxOrient: 'vertical',
           marginBottom: '10px',
         }}

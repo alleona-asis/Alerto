@@ -534,7 +534,7 @@ const updateReportStatus = async (req, res) => {
 
 
 
-const io = getIo();
+  const io = getIo();
 
 
     if (notification) {
@@ -546,16 +546,16 @@ const io = getIo();
     }
 
 
-// send the actual report update 
-io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
-  id: updatedReport.id,                 
-  reportId: updatedReport.id,
-  status: updatedReport.status,
-  incident_type: updatedReport.incident_type,
-  status_history: updatedReport.status_history,
-  updated_by: updatedReport.updated_by,
-  updated_at: updatedReport.updated_at,
-});
+    // send the actual report update 
+    io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
+      id: updatedReport.id,                 
+      reportId: updatedReport.id,
+      status: updatedReport.status,
+      incident_type: updatedReport.incident_type,
+      status_history: updatedReport.status_history,
+      updated_by: updatedReport.updated_by,
+      updated_at: updatedReport.updated_at,
+    });
 
 
     res.status(200).json({
@@ -573,17 +573,8 @@ io.to(`user_${updatedReport.mobile_user_id}`).emit('reportStatusUpdate', {
 // ==========================
 // PROOF UPLOAD BASE URL
 // ==========================
-// const LAN_IP = process.env.LAN_IP || "192.168.1.2"; 
  const PORT = process.env.PORT || 5000;
-// const BASE_URL = `http://${LAN_IP}:${PORT}/uploads/proof`;
 
-/* 
-// In production, we should use the server's domain or public IP instead of LAN IP
-// const HOST = process.env.HOST || 'yourdomain.com';
-// const BASE_URL = process.env.NODE_ENV === 'production'
-//   ? `https://${HOST}/uploads/proof`
-//   : `http://${LAN_IP}:${PORT}/uploads/proof`;
-*/
 
 const uploadProof = async (req, res) => {
   try {
@@ -620,6 +611,7 @@ const uploadProof = async (req, res) => {
 
     // Append new proofs
     const updatedProofs = [...currentProofs, ...proofFiles];
+
     // Update DB
         const updateResult = await pool.query(
       `UPDATE incident_reports
@@ -629,20 +621,22 @@ const uploadProof = async (req, res) => {
        RETURNING *`,
       [JSON.stringify(updatedProofs), id]
     );
+
     const updatedReport = updateResult.rows[0];
+
     // Emit via Socket.io
     const io = getIo();
-    io.emit("proofUploaded", {
-      reportId: updatedReport.id,
-      proof_files: updatedReport.proof_files,
-    });
-    console.log('[UPLOAD PROOF] Success');
-    res.status(200).json({
-      message: "Proof uploaded successfully",
-      report: updatedReport,
-    });
-      } catch (error) {
-    console.error("[UPLOAD PROOF] Error:", error.message, error.stack);
+      io.emit("proofUploaded", {
+        reportId: updatedReport.id,
+        proof_files: updatedReport.proof_files,
+      });
+      console.log('[UPLOAD PROOF] Success');
+      res.status(200).json({
+        message: "Proof uploaded successfully",
+        report: updatedReport,
+      });
+    } catch (error) {
+      console.error("[UPLOAD PROOF] Error:", error.message, error.stack);
     if (!res.headersSent) {
       res.status(500).json({ message: "Server error", error: error.message });
     }
@@ -849,7 +843,7 @@ const getUserBlockingStatus = async (userId) => {
       [userId]
     );
     if (result.rows.length > 0) {
-      return result.rows[0];  // Return { invalid_count, blocked_until, permanently_blocked }
+      return result.rows[0];
     } else {
       return null; 
     }

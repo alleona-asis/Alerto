@@ -483,7 +483,7 @@ export default function LGUDashboard() {
     return years.map(yy => ({ value: String(yy), label: String(yy) }));
   }, [barangayReportsGraph, mobileUsersGraph, pins, barangayGraphYear]);
 
-  // Build incidents per month
+  // incidents per month graph
   const incidentsByMonthGraph = useMemo(() => {
     const buckets = [0,0,0,0,0,0,0,0,0,0,0,0];
     const list = Array.isArray(filteredPins) ? filteredPins : [];

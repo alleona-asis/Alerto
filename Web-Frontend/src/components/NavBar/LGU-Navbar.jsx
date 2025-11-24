@@ -31,7 +31,9 @@ export default function LGUNavbar() {
     setShowSidebar(prev => !prev);
   };
 
-  // ================== Fetch Profile ================== //
+  // ================== 
+  // Fetch Profile 
+  // ================== 
   useEffect(() => {
     if (!userId || !token) {
       setError('User not logged in.');

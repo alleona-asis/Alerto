@@ -1,4 +1,4 @@
-//utils/ocr.js
+//ocr.js
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const fuzzball = require('fuzzball');
@@ -97,7 +97,7 @@ async function recognizeBestAngle(buf, lang = 'eng+fil') {
     const { data: { text = '' } } = await Tesseract.recognize(pre, lang, {
     });
     const cleaned = text.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-    const score = cleaned.length; // simple heuristic: more text == better
+    const score = cleaned.length; // more text == better
     if (score > best.score) best = { text: cleaned, score };
   }
   return best;
@@ -117,38 +117,6 @@ async function processOCRLocalFile(localPath, idType) {
     matchScore: Math.max(matchScore, score) 
   };
 }
-
-
-// async function processOCRLocalFile(localPath, idType) {
-//   if (!idType || !ID_KEYWORDS[idType]) {
-//     throw new Error('Invalid or missing ID type');
-//   }
-
-//   const processedBuffer = await sharp(localPath)
-//     .grayscale()
-//     .normalize()
-//     .resize({ width: 1000 })
-//     .png()
-//     .toBuffer();
-
-//   const { data: { text: rawText = '' } } = await Tesseract.recognize(processedBuffer, 'eng', {
-//     logger: m => console.log('[OCR] progress:', m.status, m.progress)
-//   });
-
-//   const cleanedText = cleanText(rawText);
-//   const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
-
-//   console.log('[OCR] cleaned text length:', cleanedText.length);
-//   console.log('[OCR] match:', { matched, keyword, score });
-
-//   return {
-//     ocrResult: cleanedText,
-//     matched,
-//     matchedKeyword: keyword,
-//     matchScore: score
-//   };
-// }
-
 
 
 module.exports = {

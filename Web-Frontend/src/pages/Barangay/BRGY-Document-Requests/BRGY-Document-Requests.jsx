@@ -164,56 +164,6 @@ export default function BRGYDocumentRequest() {
   // =================================================
   //  SOCKET LISTENER
   // =================================================
-  /*
-useEffect(() => {
-  const handleNewRequest = (newRequest) => {
-    if (
-      newRequest.region === BRGYProfile?.region &&
-      newRequest.province === BRGYProfile?.province &&
-      newRequest.city === BRGYProfile?.city &&
-      newRequest.barangay === BRGYProfile?.barangay
-    ) {
-      setDocumentRequest(prev => {
-        if (prev.some(r => r.id === newRequest.id)) return prev;
-        return [newRequest, ...prev];
-      });
-    }
-  };
-
-  socket.on("newDocumentRequest", handleNewRequest);
-  return () => socket.off("newDocumentRequest", handleNewRequest);
-}, [socket, BRGYProfile]);
-
-
-useEffect(() => {
-  socket.on("documentRequestUpdate", (update) => {
-    setDocumentRequest(prev =>
-      prev.map(r =>
-        r.id === update.requestId
-          ? { ...r, status: update.status, status_history: update.status_history }
-          : r
-      )
-    );
-  });
-
-  return () => socket.off("documentRequestUpdate");
-}, [socket]);
-
-
-useEffect(() => {
-  const socket = io();
-
-  socket.on("documentRequestUpdate", (update) => {
-    setRequests(prev =>
-      prev.map(req =>
-        req.id === update.requestId ? { ...req, ...update } : req
-      )
-    );
-  });
-
-  return () => socket.disconnect();
-}, []);
-*/
   useEffect(() => {
     if (!BRGYProfile) return;
 
@@ -325,7 +275,7 @@ const handleStatusChange = async (requestOrId, newStatus) => {
       reqObj = documentRequest.find(r => String(r.id) === String(requestOrId)) || null;
     }
 
-    // Guard: if still not found, we can’t show modals that need details
+    // if still not found, no details modal
     if (!reqObj) {
       toast.error("Request not found");
       return;
@@ -341,14 +291,12 @@ const handleStatusChange = async (requestOrId, newStatus) => {
       return;
     }
 
-    // 1) Rejected → open rejection modal first (no PATCH yet)
     if (next === "rejected") {
       setReportToReject({ ...reqObj, nextStatus: newStatus });
       setShowRejectionModal(true);
       return;
     }
 
-    // 2) Ready for Pick-up → open amount modal first (no PATCH yet)
     if (next === "ready for pick-up") {
       setAmountRequest(reqObj);
       setPriceAmount("");
@@ -357,7 +305,6 @@ const handleStatusChange = async (requestOrId, newStatus) => {
       return;
     }
 
-    // 3) Others → PATCH immediately
     const payload = { status: next, first_name, last_name };
     const { data } = await axios.patch(
       `/api/brgy/update-document-request-status/${reqObj.id}`,
@@ -389,7 +336,7 @@ const handleStatusChange = async (requestOrId, newStatus) => {
         payload
       );
 
-      // ⬇️ use data.request
+      // use data.request
       setDocumentRequest(prev =>
         prev.map(r => (String(r.id) === String(requestId) ? data.request : r))
       );
@@ -488,8 +435,7 @@ const handleStatusChange = async (requestOrId, newStatus) => {
   // =================================================
   //  HANDLE AMOUNT
   // =================================================
-// --- Amount modal state ---
-// --- Amount modal state (JS, no TS types) ---
+
 const [showAmountModal, setShowAmountModal] = useState(false);
 const [amountRequest, setAmountRequest] = useState(null);
 const [priceAmount, setPriceAmount] = useState('');

@@ -5,7 +5,7 @@ let ioInstance = null;
 function initSocket(server) {
   ioInstance = new Server(server, {
     cors: {
-      origin: '*', // Change to your frontend origin in production
+      origin: '*',
       methods: ['GET', 'POST'],
     },
   });

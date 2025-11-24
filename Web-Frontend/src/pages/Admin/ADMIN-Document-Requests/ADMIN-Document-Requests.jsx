@@ -147,10 +147,10 @@ const getNextStatusOptions = (currentStatus) => {
   };
 
   // Memoized filtered and sorted users
-// Display all requests, sorted only
-const displayDocumentRequests = useMemo(() => {
-  return sortDocumentRequests(documentRequest, sortOption);
-}, [documentRequest, sortOption]);
+  // Display all requests, sorted only
+  const displayDocumentRequests = useMemo(() => {
+    return sortDocumentRequests(documentRequest, sortOption);
+  }, [documentRequest, sortOption]);
 
 
 
@@ -158,12 +158,12 @@ const displayDocumentRequests = useMemo(() => {
   // =================================================
   //  FETCH ALL REPORTS
   // =================================================
-useEffect(() => {
-  if (!token) {
-    setError("User not logged in.");
-    setLoading(false);
-    return;
-  }
+  useEffect(() => {
+    if (!token) {
+      setError("User not logged in.");
+      setLoading(false);
+      return;
+    }
 
   const fetchReports = async () => {
     try {
@@ -346,7 +346,7 @@ useEffect(() => {
           setRequestToDelete(user);
           console.log("Archive clicked:", user.id);
         },
-        customStyle: { width: "16px", height: "16px", marginTop: "1px" }, // archive only
+        customStyle: { width: "16px", height: "16px", marginTop: "1px" }, 
       },
     ].map((icon, idx) => (
       <img
@@ -355,7 +355,7 @@ useEffect(() => {
         alt={icon.alt}
         style={{
           ...styles.icon,
-          ...(icon.customStyle || {}), // apply custom size only if defined
+          ...(icon.customStyle || {}),
         }}
         onClick={(e) => {
           e.stopPropagation();

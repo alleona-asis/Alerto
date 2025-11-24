@@ -15,7 +15,7 @@ const getTotalAnnouncements = async (req, res) => {
 // Get all announcements
 const getAllAnnouncements = async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC'); // assuming you have a created_at column
+    const { rows } = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
     res.status(200).json(rows);
   } catch (error) {
     console.error("Error fetching announcements:", error);
