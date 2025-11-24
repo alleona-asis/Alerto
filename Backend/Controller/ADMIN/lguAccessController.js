@@ -123,7 +123,7 @@ const getLGUAccounts = async (req, res) => {
        AND LOWER(role) = $3`,
       ['approved', 'rejected', 'local government unit']
     );
-    //console.log('🔎 Found LGU accounts (approved + rejected):', result.rows);
+    //console.log('Found LGU accounts (approved + rejected):', result.rows);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching LGU accounts:', err.message);

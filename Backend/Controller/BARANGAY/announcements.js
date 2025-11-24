@@ -5,7 +5,6 @@ const { getIo } = require('../../socket');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
 
 
-// Replace with your computer's LAN IP so mobile devices can access it
 const LAN_IP = process.env.LAN_IP; 
 const PORT = process.env.PORT || 5000;
 
@@ -39,10 +38,6 @@ const createAnnouncement = async (req, res) => {
         barangay 
     } = req.body;
 
-    // console.log("📥 Incoming Request Body:", req.body);
-    // // console.log("📎 Local Files:", req.files);
-    // console.log("🌐 Supabase Files:", req.supabaseFiles);
-
     if (!title || !text) {
         return res.status(400).json({ message: 'Title and text are required' });
     }
@@ -58,16 +53,14 @@ const createAnnouncement = async (req, res) => {
     const localFiles = req.files?.images || []; // from multer
 
     // Safely handle files
-      const filenames = localFiles.map(f => f.filename).filter(Boolean); //local file names of images
+    const filenames = localFiles.map(f => f.filename).filter(Boolean); //local file names of images
 
-      const urls = supabaseFiles.map(f => f.supabaseUrl).filter(Boolean); //urls of supabase files
+    const urls = supabaseFiles.map(f => f.supabaseUrl).filter(Boolean); //urls of supabase files
     // -----------------------------
     // Insert into DB
     // -----------------------------
-      // console.log("Local files:", localFiles);
       console.log("Supabase files:", supabaseFiles);
 
-      // console.log("Filenames array:", filenames);
       console.log("URLs array:", urls);
 
         const result = await pool.query(
@@ -95,7 +88,7 @@ const createAnnouncement = async (req, res) => {
       // Send notifications to ALL users in the same location
       // -----------------------------
       try {
-        // 1. Find users in the same location
+        //find  users in the same location
         const usersQuery = `
           SELECT id 
           FROM mobile_users
@@ -156,8 +149,8 @@ const createAnnouncement = async (req, res) => {
         province: createdAnnouncement.province,
         city: createdAnnouncement.city,
         barangay: createdAnnouncement.barangay,
-        image_filenames: createdAnnouncement.image_filenames, // keep as stored (JSON/array)
-        image_urls: createdAnnouncement.image_urls,           // keep as stored (JSON/array)
+        image_filenames: createdAnnouncement.image_filenames, 
+        image_urls: createdAnnouncement.image_urls,          
         created_at: createdAnnouncement.created_at,
       };
 
@@ -188,7 +181,7 @@ const deleteAnnouncement = async (req, res) => {
   }
 
   try {
-    // 1. Get announcement (to know images before deleting)
+    // Get announcement (to know images before deleting)
     const findResult = await pool.query(
       `SELECT * FROM announcements WHERE id = $1`,
       [id]
@@ -200,10 +193,10 @@ const deleteAnnouncement = async (req, res) => {
 
     const announcement = findResult.rows[0];
 
-    // 2. Delete announcement
+    // Delete announcement
     await pool.query(`DELETE FROM announcements WHERE id = $1`, [id]);
 
-    // 3. Delete related notifications
+    // Delete related notifications
     await pool.query(
       `DELETE FROM mobile_notifications 
        WHERE type = 'broadcast_announcements' 
@@ -219,7 +212,7 @@ const deleteAnnouncement = async (req, res) => {
       ]
     );
 
-    // 4. Delete image files from server
+    // Delete image files from server
     try {
       let filenames = [];
 
@@ -250,13 +243,13 @@ const deleteAnnouncement = async (req, res) => {
       console.warn("⚠️ Failed to delete some image files:", err.message);
     }
 
-    // 5. Emit socket event for real-time UI update
+    //Emit socket event for real-time UI update
     const io = getIo();
     console.log("Emitting announcementDeleted:", id);
 
     io.emit("announcementDeleted", { id });
 
-    // 6. Final response
+    // Final response
     return res
       .status(200)
       .json({ message: "Announcement deleted successfully" });
@@ -278,7 +271,7 @@ const deleteAnnouncement = async (req, res) => {
 // =========================
 const getAnnouncements = async (req, res) => {
     try {
-        const { barangay } = req.query; // optional filter by barangay
+        const { barangay } = req.query; 
 
         let query = 'SELECT * FROM announcements';
         const params = [];
@@ -288,7 +281,7 @@ const getAnnouncements = async (req, res) => {
             params.push(barangay);
         }
 
-        query += ' ORDER BY created_at DESC'; // latest first
+        query += ' ORDER BY created_at DESC';
 
         const result = await pool.query(query, params);
 
@@ -304,7 +297,6 @@ const getAnnouncementByUserLocation = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // Get user profile including followed barangays
     const userResult = await pool.query(
       `SELECT region, province, city, barangay, followed_barangays
        FROM mobile_users WHERE id = $1`,
@@ -427,13 +419,13 @@ const toggleLikeAnnouncement = async (req, res) => {
     );
 
     if (check.rows.length > 0) {
-      // Already liked → remove like
+      // if already liked, then remove like
       await pool.query(
         "DELETE FROM announcement_likes WHERE user_id = $1 AND announcement_id = $2",
         [userId, announcementId]
       );
     } else {
-      // Not liked → insert like
+      // if not liked, then insert like
       await pool.query(
         "INSERT INTO announcement_likes (announcement_id, user_id) VALUES ($1, $2)",
         [announcementId, userId]
@@ -446,7 +438,7 @@ const toggleLikeAnnouncement = async (req, res) => {
       [announcementId]
     );
 
-    // Optional: get all users who liked this announcement
+    // get all users who liked this announcement
     const usersResult = await pool.query(
       `SELECT u.id, u.first_name, u.last_name
        FROM mobile_users u
@@ -562,7 +554,7 @@ const deleteComment = async (req, res) => {
     const { commentId, userId } = req.body;
 
     try {
-        // Optional: Only allow the comment owner to delete
+        // Only allow the comment owner to delete
         const check = await pool.query(
             `SELECT * FROM announcement_comments WHERE id = $1 AND user_id = $2`,
             [commentId, userId]
@@ -635,7 +627,7 @@ const createOfficial = async (req, res) => {
     );
 
     res.status(201).json({
-      message: "✅ Official added successfully!",
+      message: "Official added successfully!",
       official: result.rows[0]
     });
   } catch (error) {
@@ -701,7 +693,7 @@ const updateOfficial = async (req, res) => {
     );
 
     res.json({
-      message: "✅ Official updated successfully!",
+      message: "Official updated successfully!",
       official: result.rows[0],
     });
   } catch (error) {
@@ -746,7 +738,7 @@ const deleteOfficial = async (req, res) => {
 
   try {
     await pool.query(`DELETE FROM barangay_officials WHERE id = $1`, [officialId]);
-    res.json({ message: "✅ Official deleted successfully!" });
+    res.json({ message: "Official deleted successfully!" });
   } catch (error) {
     console.error("Delete official error:", error);
     res.status(500).json({ message: "Failed to delete official", error: error.message });
@@ -876,15 +868,15 @@ const sendAlert = async (req, res) => {
     barangay
   } = req.body;
 
-  // Debug: log incoming request body
-  console.log("📥 Incoming sendAlert request:", { title, text, sent_by_id, sent_by_name, region, province, city, barangay });
+  // log incoming request body
+  console.log("Incoming sendAlert request:", { title, text, sent_by_id, sent_by_name, region, province, city, barangay });
 
   if (!title && !text) {
     return res.status(400).json({ text: 'Title or message is required' });
   }
 
   try {
-    // 1️⃣ Save alert in web table
+    // Save alert in web table
     const result = await pool.query(
       `INSERT INTO alerts
         (title, text, sent_by_id, sent_by_name, region, province, city, barangay)
@@ -896,9 +888,9 @@ const sendAlert = async (req, res) => {
     const createdAlert = result.rows[0];
 
     // Debug: log what was saved in DB
-    console.log("✅ Alert saved in DB:", { id: createdAlert.id, title: createdAlert.title, text: createdAlert.text });
+    console.log("Alert saved in DB:", { id: createdAlert.id, title: createdAlert.title, text: createdAlert.text });
 
-    // 2️⃣ Send mobile notifications
+    // Send mobile notifications
     try {
       const usersResult = await pool.query(
         `SELECT id FROM mobile_users
@@ -917,8 +909,8 @@ const sendAlert = async (req, res) => {
             [userId, 'send_alert_updates', 'created', title, text]
           );
 
-          // Debug: log each notification inserted
-          console.log("📲 Notification saved:", { userId, title: notifResult.rows[0].title, text: notifResult.rows[0].text });
+          //log each notification inserted
+          console.log("Notification saved:", { userId, title: notifResult.rows[0].title, text: notifResult.rows[0].text });
         }
 
         console.log(`Notifications sent to ${userIds.length} users in ${barangay}, ${city}`);
@@ -930,9 +922,9 @@ const sendAlert = async (req, res) => {
       console.error("Full error:", notifErr);
     }
 
-    // 3️⃣ Emit to all clients (web/mobile)
+    // Emit to all clients (web/mobile)
     const io = getIo();
-    console.log("📡 Emitting alertUpdate with title/text:", { title: createdAlert.title, text: createdAlert.text });
+    console.log("Emitting alertUpdate with title/text:", { title: createdAlert.title, text: createdAlert.text });
     io.emit("alertUpdate", {
         type: "send_alert_updates",
       id: createdAlert.id,
@@ -947,7 +939,7 @@ const sendAlert = async (req, res) => {
       created_at: createdAlert.created_at,
     });
 
-    // 4️⃣ Final response
+    // Final response
     res.status(201).json({ message: 'Alert sent successfully!', alert: createdAlert });
   } catch (error) {
     console.error('Send alert error:', error);
@@ -962,10 +954,10 @@ const sendAlert = async (req, res) => {
 const getMobileNotifications = async (req, res) => {
   const userId = req.params.userId;
 
-  console.log("🚀 getMobileNotifications called with userId:", userId);
+  console.log("getMobileNotifications called with userId:", userId);
 
   if (!userId) {
-    console.warn("⚠️ No userId provided in request!");
+    console.warn("No userId provided in request!");
     return res.status(400).json({ message: "Missing userId" });
   }
 
@@ -978,9 +970,9 @@ const getMobileNotifications = async (req, res) => {
       [userId]
     );
 
-    console.log(`📲 Fetched ${result.rows.length} notifications for userId ${userId}`);
+    console.log(`Fetched ${result.rows.length} notifications for userId ${userId}`);
 
-    // 👉 Emit newest notification via socket in the same format
+    // Emit newest notification via socket 
     if (result.rows.length > 0) {
       const latest = result.rows[0];
 
@@ -996,7 +988,7 @@ const getMobileNotifications = async (req, res) => {
         is_read: latest.is_read,
       });
 
-      console.log("📡 Emitted alertUpdate to user:", userId, latest);
+      console.log("Emitted alertUpdate to user:", userId, latest);
     }
 
     res.status(200).json({
@@ -1004,7 +996,7 @@ const getMobileNotifications = async (req, res) => {
       notifications: result.rows,
     });
   } catch (error) {
-    console.error("❌ Error fetching mobile notifications:", error);
+    console.error("Error fetching mobile notifications:", error);
     res.status(500).json({
       message: "Failed to fetch notifications",
       error: error.message,
@@ -1026,16 +1018,6 @@ const markMobileNotificationAsRead = async (notificationId) => {
     throw error;
   }
 };
-
-
-
-
-
-
-
-
-
-
 
 
 

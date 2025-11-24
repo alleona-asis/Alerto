@@ -694,7 +694,6 @@ export default function ADMINBarangayReports() {
                             />
                           );
                         } else if (["mp4", "webm", "ogg", "mov", "m4v"].includes(ext)) {
-                          // try to set the correct mimetype
                           const type = ext === "mov" ? "video/quicktime" :
                                       ext === "m4v" ? "video/mp4" :
                                       `video/${ext}`;

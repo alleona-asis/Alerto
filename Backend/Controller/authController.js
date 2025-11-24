@@ -185,8 +185,8 @@ const registerLguAdmin = async (req, res) => {
         city,
         idFileName,
         intentFileName,
-        idFilePath,       // relative path in bucket
-        intentFilePath,   // relative path in bucket
+        idFilePath,      
+        intentFilePath,  
         idFileUrl,
         intentFileUrl,
       ]
@@ -465,132 +465,6 @@ const mobileUserSignUp = async (req, res) => {
 // =================================================================================
 //  VERIFICATION REQUEST (MOBILE USER ACCOUNT)
 // =================================================================================
-// const requestMobileUserVerification = async (req, res) => {
-//   try {
-//     console.log('Received mobile user verification request');
-
-//     const userId = req.user?.id;
-//     console.log("User ID from token:", userId);
-
-//     if (!userId) {
-//       return res.status(401).json({ message: "Unauthorized: No user ID in token" });
-//     }
-
-//     // Check verification attempts & cooldown
-//     const userQuery = await pool.query(
-//       `SELECT id, region, province, city, barangay, 
-//               verification_attempts, last_verification_request, status 
-//       FROM mobile_users 
-//       WHERE id=$1`,
-//       [userId]
-//     );
-//     if (!userQuery.rows.length) return res.status(404).json({ message: "User not found" });
-
-//     const user = userQuery.rows[0];
-
-// const MAX_ATTEMPTS = 2;
-// const COOLDOWN_MINUTES = 1;
-// const attempts = user.verification_attempts || 0;
-// const lastRequest = user.last_verification_request ? new Date(user.last_verification_request) : null;
-// const now = new Date();
-
-//     if (user.status === 'unverified' && attempts >= MAX_ATTEMPTS && lastRequest) {
-//       const diffMinutes = (now.getTime() - lastRequest.getTime()) / (1000 * 60);
-//       if (diffMinutes < COOLDOWN_MINUTES) {
-//         return res.status(400).json({
-//           message: `Cooldown active. Please wait ${Math.ceil(COOLDOWN_MINUTES - diffMinutes)} minute(s).`
-//         });
-//       }
-//     }
-
-//     // Handle form fields & files
-//     const { civil_status, sex, home_address, id_type } = req.body;
-
-//     const idImages = req.files?.idImage || [];
-//     const idFrontFile = idImages[0];
-//     const idBackFile  = idImages[1];
-//     const selfieFile = req.files?.selfieTaken?.[0];
-
-//     if (!civil_status || !sex || !home_address || !idFrontFile || !idBackFile || !selfieFile) {
-//       return res.status(400).json({ message: 'Missing required fields or files.' });
-//     }
-
-//     const baseUrl = `${req.protocol}://${req.get('host')}`;
-//     const idFrontUrl = `${baseUrl}/${idFrontFile.path.replace(/\\/g, '/')}`;
-//     const idBackUrl  = `${baseUrl}/${idBackFile.path.replace(/\\/g, '/')}`;
-//     const selfieUrl  = `${baseUrl}/${selfieFile.path.replace(/\\/g, '/')}`;
-
-//     const result = await pool.query(
-//       `UPDATE mobile_users SET
-//         civil_status=$1,
-//         sex=$2,
-//         home_address=$3,
-//         id_type=$4,
-//         id_front_path=$5,
-//         id_front_url=$6,
-//         id_back_path=$7,
-//         id_back_url=$8,
-//         selfie_path=$9,
-//         selfie_url=$10,
-//         status='pending'
-//       WHERE id=$11
-//       RETURNING *`,
-//       [
-//         civil_status,
-//         sex,
-//         home_address,
-//         id_type,
-//         idFrontFile.path,
-//         idFrontUrl,
-//         idBackFile.path,
-//         idBackUrl,
-//         selfieFile.path,
-//         selfieUrl,
-//         userId
-//       ]
-//     );
-
-//     console.log("DB Update result rowCount:", result.rowCount);
-
-//     if (result.rows.length === 0) {
-//       return res.status(404).json({ message: "User not found or not updated" });
-//     }
-
-//     try {
-//     await pool.query(
-//       `INSERT INTO notifications 
-//       (mobile_user_id, region, province, city, barangay, first_name, last_name, type, is_read, created_at)
-//       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, NOW())`,
-//       [
-//         user.id,
-//         user.region,
-//         user.province,
-//         user.city,
-//         user.barangay,
-//         user.first_name,
-//         user.last_name,
-//         'verificationRequest'
-//       ]
-//     );
-
-
-//       console.log(`Notification created for mobile user ID ${user.id} at location ${user.region}, ${user.province}, ${user.city}, ${user.barangay}`);
-//     } catch (notifErr) {
-//       console.error('Failed to create notification:', notifErr);
-//     }
-
-//     // Emit via Socket.io
-//     const io = getIo();
-//     io.emit('newVerificationRequest', result.rows[0]);
-//     console.log('Emitted newVerificationRequest event to web clients');
-
-//     res.json({ message: 'Verification submitted successfully', user: result.rows[0] });
-//   } catch (err) {
-//     console.error('Error during verification request:', err);
-//     res.status(500).json({ message: 'Server error during verification', error: err.message });
-//   }
-// };
-
 const MAX_ATTEMPTS = 2;
 const COOLDOWN_MINUTES = 1;
 
@@ -609,9 +483,9 @@ const requestMobileUserVerification = async (req, res) => {
     );
     if (!ures.rows.length) return res.status(404).json({ message: 'User not found' });
 
-    const user = ures.rows[0]; // <-- define first
+    const user = ures.rows[0];
     const attempts = user.verification_attempts || 0;
-    const lastRequest = user.last_verification_request ? new Date(user.last_verification_request) : null; // <-- now valid
+    const lastRequest = user.last_verification_request ? new Date(user.last_verification_request) : null;
     const now = new Date();
 
     if (user.status === 'unverified' && attempts >= MAX_ATTEMPTS && lastRequest) {
@@ -777,8 +651,8 @@ const serviceSid = process.env.TWILIO_SERVICE_SID;
 const client = twilio(accountSid, authToken);
 
 
-// ---- PH mobile normalizer (PH-only) -------------------------------
-// Accepts "+639xxxxxxxxx", "09xxxxxxxxx", or "9xxxxxxxxx" -> "+639..."
+// ---- PH mobile number normalizer (PH-only) -------------------------------
+// Accepts "+639xxxxxxxxx", "09xxxxxxxxx", or "9xxxxxxxxx" , automatically reads to = "+639..."
 function normalizePHMobile(input) {
   const s = String(input || '').trim().replace(/[^\d+]/g, '');
   if (/^\+639\d{9}$/.test(s)) return s;              // already E.164 PH
@@ -787,52 +661,6 @@ function normalizePHMobile(input) {
   throw new Error('Use a PH mobile like +639xxxxxxxxx');
 }
 
-
-// =================================================
-//  SEND OTP
-// =================================================
-/*
-const sendOTP = async (req, res) => {
-  const { phoneNumber } = req.body;
-
-  console.log('Requested for:', phoneNumber);
-
-  try {
-    const verification = await client.verify.v2.services(serviceSid)
-      .verifications
-      .create({ to: phoneNumber, channel: 'sms' });
-
-    console.log('Twilio response:', verification);
-
-    res.status(200).json({ success: true, status: verification.status });
-  } catch (err) {
-    console.error('Error sending OTP:', err.message);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-
-// =================================================
-//  VERIFY OTP
-// =================================================
-const verifyOTP = async (req, res) => {
-  const { phoneNumber, code } = req.body;
-
-  try {
-    const verificationCheck = await client.verify.v2.services(serviceSid)
-      .verificationChecks
-      .create({ to: phoneNumber, code });
-
-    if (verificationCheck.status === 'approved') {
-      res.status(200).json({ success: true });
-    } else {
-      res.status(200).json({ success: false, message: 'Incorrect OTP' });
-    }
-  } catch (err) {
-    res.status(200).json({ success: false, message: err.message });
-  }
-};
-*/
 
 // =================================================
 //  SEND OTP (PH-only)
@@ -853,11 +681,10 @@ const sendOTP = async (req, res) => {
     const code = err?.code || err?.status;
     console.error('[SEND OTP] Error:', code, err.message);
 
-    // Common helpful mappings (keep it simple)
     if (code === 60203) return res.status(429).json({ success: false, message: 'Too many attempts. Try later.' });
     if (code === 21608) return res.status(403).json({ success: false, message: 'Trial restriction: unverified recipient.' });
 
-    // Bad input (e.g., not PH mobile format)
+    // Bad input (not PH mobile format)
     if (/PH mobile|Use a PH mobile/i.test(err.message)) {
       return res.status(400).json({ success: false, message: err.message });
     }
@@ -1008,55 +835,6 @@ const getMobileUserProfile = async (req, res) => {
   }
 };
 
-// const getMobileUserProfile = async (req, res) => {
-//   try {
-
-//     const result = await pool.query("SELECT * FROM mobile_users WHERE id=$1", [req.params.id]);
-
-//     if (result.rows.length === 0) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     const user = result.rows[0];
-
-// //     const baseUrl = `${req.protocol}://${req.get("host")}`;
-
-// //     user.id_front_url  = user.id_front_path  ? `${baseUrl}/${user.id_front_path.replace(/\\/g, "/")}` : null;
-// //     user.id_back_url   = user.id_back_path   ? `${baseUrl}/${user.id_back_path.replace(/\\/g, "/")}` : null;
-// //     user.selfie_url    = user.selfie_path    ? `${baseUrl}/${user.selfie_path.replace(/\\/g, "/")}` : null;
-// //     user.profile_picture = user.profile_picture ? `${baseUrl}${user.profile_picture.replace(/\\/g, "/")}` : null;
-
-// //     res.json(user);
-// //   } catch (err) {
-// //     console.error("Error fetching profile:", err);
-// //     res.status(500).json({ message: "Server error", error: err.message });
-// //   }
-// // };
-
-//     //  (private bucket)
-//     if (!user.id_front_url && user.id_front_path) {
-//       try { user.id_front_url = await generateSignedUrl(user.id_front_path); } catch {}
-//     }
-//     if (!user.id_back_url && user.id_back_path) {
-//       try { user.id_back_url = await generateSignedUrl(user.id_back_path); } catch {}
-//     }
-//     if (!user.selfie_url && user.selfie_path) {
-//       try { user.selfie_url = await generateSignedUrl(user.selfie_path); } catch {}
-//     }
-
-//     // profile_picture is stored in PUBLIC bucket
-//     if (user.profile_picture) {
-//       try { user.profile_picture_url = getPublicUrl(user.profile_picture); } catch { user.profile_picture_url = null; }
-//     } else {
-//       user.profile_picture_url = null;
-//     }
-
-//     return res.json(user);
-//   } catch (err) {
-//     console.error('Error fetching profile:', err);
-//     return res.status(500).json({ message: 'Server error', error: err.message });
-//   }
-// };
 
 // =================================================
 // UPDATE MOBILE USER PROFILE PICTURE

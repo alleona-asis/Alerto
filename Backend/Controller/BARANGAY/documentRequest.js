@@ -130,7 +130,7 @@ const updateDocumentRequestStatus = async (req, res) => {
       first_name,
       last_name,
       new_date,
-      price_amount,   // <- from Amount Modal
+      price_amount,
       price_note,
       reason        
     } = req.body;
@@ -164,16 +164,16 @@ const updateDocumentRequestStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    // ========= Validate amount fields when moving to "ready for pick-up"
+    // Validate amount fields when moving to "ready for pick-up"
     if (status.toLowerCase() === "ready for pick-up") {
-      // allow 0, but not undefined/NaN/negative
+      // allow 0, but not undefined/negative
       const amt = Number(price_amount);
       if (!Number.isFinite(amt) || amt < 0) {
         return res.status(400).json({ message: "price_amount must be a non-negative number when setting Ready for Pick-up." });
       }
     }
 
-    // Get current history
+    // Get current request history
     const { rows } = await pool.query(
       `SELECT status_history FROM document_requests WHERE id = $1`,
       [id]
@@ -192,7 +192,7 @@ const updateDocumentRequestStatus = async (req, res) => {
     let finalNewDate = null;
 
     if (status.toLowerCase() === "ready for pick-up") {
-      // TEST: +5 mins; replace with working days logic later
+      // TEST: +5 mins;
       pickupDeadline = new Date(Date.now() + 5 * 60 * 1000);
     }
 
@@ -207,7 +207,6 @@ const updateDocumentRequestStatus = async (req, res) => {
       console.log(`Updated status history:`, updatedHistory);
     }
 
-    // ===== Build dynamic SQL to also set price fields when provided
     // Base columns always updated
     const sets = [
       `status = $1`,
@@ -225,7 +224,7 @@ const updateDocumentRequestStatus = async (req, res) => {
       finalNewDate,
     ];
 
-    // If going to Ready for Pick-up, also persist price fields
+    // If Ready for Pick-up, also persist price 
     if (status.toLowerCase() === "ready for pick-up") {
       sets.push(`price_amount = $${params.length + 1}`);
       params.push(price_amount !== undefined && price_amount !== null ? Number(price_amount) : null);
@@ -234,7 +233,7 @@ const updateDocumentRequestStatus = async (req, res) => {
       params.push(price_note ?? null);
     }
 
-    params.push(id); // WHERE id = $n
+    params.push(id);
     const sql = `
       UPDATE document_requests
       SET ${sets.join(", ")}
@@ -245,7 +244,6 @@ const updateDocumentRequestStatus = async (req, res) => {
     const updateResult = await pool.query(sql, params);
     const updatedRequest = updateResult.rows[0];
 
-    // Logs
     console.log(`Status updated to: "${updatedRequest.status}" by ${updatedBy}`);
     if (updatedRequest.new_date) {
       console.log(`Rescheduled date (new_date): ${updatedRequest.new_date}`);
@@ -261,7 +259,7 @@ const updateDocumentRequestStatus = async (req, res) => {
     }
     console.log(`Updated status history:`, updatedRequest.status_history);
 
-    // Create a mobile notification
+    // Create mobile notification
     const notificationQuery = `
       INSERT INTO mobile_notifications
       (mobile_user_id, type, status, reason_for_rejection, document_type, request_id)
@@ -288,7 +286,7 @@ const updateDocumentRequestStatus = async (req, res) => {
 
     const io = getIo();
 
-    // 1) Emit to the specific mobile user room
+    // Emit to the specific mobile user room
     io.to(`user_${updatedRequest.mobile_user_id}`).emit('documentRequestUpdate', {
       id: updatedRequest.id,
       status: updatedRequest.status,
@@ -310,12 +308,11 @@ const updateDocumentRequestStatus = async (req, res) => {
       requestId: updatedRequest.id,
     });
 
-    // 2) Also broadcast to BRGY dashboards (your panel listens to global "documentRequestUpdate")
+    // Also broadcast to BRGY dashboards 
     io.emit('documentRequestUpdate', {
       requestId: updatedRequest.id,
       status: updatedRequest.status,
       status_history: updatedRequest.status_history,
-      // (optional) include these for dashboards that want to diff:
       updated_by: updatedRequest.updated_by,
       updated_at: updatedRequest.updated_at,
       price_amount: updatedRequest.price_amount,
@@ -472,7 +469,7 @@ const getRequestsByLocation = async (req, res) => {
 // =========================
 // REJECT DOCUMENT REQUEST
 // =========================
-// Controller/BARANGAY/documentRequest.js
+// from Controller/BARANGAY/documentRequest.js
 
 const rejectDocumentRequest = async (req, res) => {
   const where = "[rejectDocumentRequest]";
@@ -512,7 +509,7 @@ const rejectDocumentRequest = async (req, res) => {
     const current = rows[0];
     const currentHistory = Array.isArray(current.status_history) ? current.status_history : [];
 
-    // Build history entry (we store the reason here as well)
+    // Build history entry 
     const newHistoryItem = {
       label: "rejected",
       updated_by: updatedBy,
@@ -521,8 +518,6 @@ const rejectDocumentRequest = async (req, res) => {
     };
     const updatedHistory = [...currentHistory, newHistoryItem];
 
-    // Update request -> status: rejected
-    // NOTE: If you don't have a `rejection_reason` column, remove it from the update list and rely on status_history.
     const updateSql = `
       UPDATE document_requests
       SET status = $1,
@@ -566,26 +561,21 @@ const rejectDocumentRequest = async (req, res) => {
       console.error(`${where} failed to save notification`, err);
     }
 
-    // Emit only to the mobile user's room
+    // Emit only to the mobile user
     try {
       const io = getIo();
       io.to(`user_${updatedRequest.mobile_user_id}`).emit("documentRequestUpdate", {
         type: "document_request_status",
         status: updatedRequest.status,
-        // Send both id shapes for client-side normalization
         id: updatedRequest.id,
         request_id: updatedRequest.id,
-
         status_history: updatedRequest.status_history,
         updated_by: updatedRequest.updated_by,
         updated_at: updatedRequest.updated_at,
         new_date: updatedRequest.new_date,
         pickup_deadline: updatedRequest.pickup_deadline,
-
-        // Use the actual column; also include both keys for compatibility
         rejection_reason: updatedRequest.rejection_reason,
         reason_for_rejection: updatedRequest.rejection_reason,
-
         created_at: new Date().toISOString(),
       });
 

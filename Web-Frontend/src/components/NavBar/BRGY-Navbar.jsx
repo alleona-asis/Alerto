@@ -103,7 +103,7 @@ const notifData = res.data.notifications.map(n => {
     read_by: n.read_by || null,
     read_at: n.read_at || null,
     reported_by: n.first_name && n.last_name ? `${n.first_name} ${n.last_name}` : '',
-    incident_type: n.incident_type || ''  // <-- keeps whatever backend sends
+    incident_type: n.incident_type || ''  
   };
 });
 
@@ -280,7 +280,6 @@ useEffect(() => {
   const readNotifications = notifications.filter(n => n.is_read);
   const unreadCount = unreadNotifications.length;
 
-  // ---------------- Render ----------------
   return (
     <>
       <div className="navbar">

@@ -1,4 +1,4 @@
-// utils/supabase.js, for uploading to supabase
+// for uploading to supabase
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const mime = require('mime-types');
@@ -31,30 +31,18 @@ async function uploadToSupabase(localPath, relativePath, bucketName, isPublic) {
   // Detect content type from file extension
   const contentType = mime.lookup(localPath) || undefined;
 
-  // const { data, error } = await supabase.storage
-  //   .from(bucket)
-  //   .upload(relativePath, fileBuffer, {
-  //     cacheControl: '3600',
-  //     upsert: false,
-  //     contentType,
-  //   });
+  // Upsert=true to avoid duplicate key failures on retries
+    const { error: upErr } = await supabase.storage
+      .from(bucket)
+      .upload(relativePath, fileBuffer, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType,
+      });
 
-  // if (error) {
-  //   throw new Error(`Supabase upload error: ${error.message}`);
-  // }
-
-    // Upsert=true to avoid duplicate key failures on retries
-      const { error: upErr } = await supabase.storage
-        .from(bucket)
-        .upload(relativePath, fileBuffer, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType,
-        });
-
-      if (upErr) {
-        throw new Error(`Supabase upload error: ${upErr.message}`);
-      }
+    if (upErr) {
+      throw new Error(`Supabase upload error: ${upErr.message}`);
+    }
 
 
   // Return public URL if public bucket
@@ -62,7 +50,7 @@ async function uploadToSupabase(localPath, relativePath, bucketName, isPublic) {
     const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(relativePath);
     return publicUrlData.publicUrl;
   } else {
-    // For private buckets, return a signed URL instead of a public placeholder
+    // For private buckets, return signed URL instead of a public placeholder
     const { data, error } = await supabase
       .storage
       .from(bucket)

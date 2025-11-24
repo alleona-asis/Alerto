@@ -1,4 +1,3 @@
-//  * Balance: $13.5997
 const twilio = require('twilio');
 require('dotenv').config();
 

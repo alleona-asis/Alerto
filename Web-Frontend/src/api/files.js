@@ -6,7 +6,6 @@ export async function fetchSignedUrl(filePath) {
   });
 
   if (response.status === 304) {
-    // Optionally refetch or throw error
     throw new Error('Resource not modified - no new signed URL');
   }
 
