@@ -140,17 +140,17 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
       });
     }
 
-    // Build files from Supabase upload middleware (prefer detailed objects if you have them)
-    // Option A: you already prepared req.lguFiles in the route:
-    const images = Array.isArray(req.lguFiles?.images) ? req.lguFiles.images : [];
-    const video  = req.lguFiles?.video ?? null;
+    // Build files from Supabase upload middleware 
+    let images = Array.isArray(req.lguFiles?.images) ? req.lguFiles.images : [];
+    let video  = req.lguFiles?.video ?? null;
 
     // Ensure only path/type/name are stored (no signed URLs)
-    images = (images || []).map(i => ({
+    images = (images || []).map((i) => ({
       path: i.path || '',
       type: i.type || '',
       name: i.name || undefined,
     }));
+
     if (video && video.path) {
       video = {
         path: video.path,
@@ -161,20 +161,26 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
       video = null;
     }
 
-    
-    // Option B: if route passed simple URLs via { fileUrls }, fall back to that:
+    // Option B: if route passed simple URLs via { fileUrls }, fall back to fileUrls:
     if ((!images || images.length === 0) && !video && Array.isArray(fileUrls)) {
       const tmpImages = [];
       let tmpVideo = null;
+
       for (const url of fileUrls) {
         const lower = String(url).toLowerCase();
-        const entry = { path: url }; // store as path-like string
-        if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi')) {
+        const entry = { path: url }; 
+
+        if (
+          lower.endsWith('.mp4') ||
+          lower.endsWith('.mov') ||
+          lower.endsWith('.avi')
+        ) {
           if (!tmpVideo) tmpVideo = entry;
         } else {
           tmpImages.push(entry);
         }
       }
+
       images = tmpImages;
       video = tmpVideo;
     }
@@ -186,6 +192,7 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
       RETURNING *;
     `;
+
     const values = [
       feedbackType,
       String(messages).trim(),
@@ -200,7 +207,7 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
     const result = await pool.query(query, values);
     return res.status(201).json({
       message: 'Feedback submitted successfully',
-      feedback: result.rows[0]
+      feedback: result.rows[0],
     });
   } catch (error) {
     console.error('Error submitting LGU feedback:', error);
@@ -209,6 +216,7 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
     }
   }
 };
+
 
 
 // ==============================
