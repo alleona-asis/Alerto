@@ -4,7 +4,7 @@ import BRGYNavbar from '../../../components/NavBar/BRGY-Navbar';
 import BRGYSidebar from '../../../components/SideBar/BRGY-Sidebar';
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
-import noBarangayAnim from '@/assets/animations/non data found.json';
+import noBarangayAnim from '../../../../public/animations/non data found.json';
 import Select from 'react-select';
 import { io } from 'socket.io-client';
 import '../../Barangay/BRGY-Mobile-Users/BRGY-Mobile-Users.css';
@@ -48,13 +48,10 @@ export default function BRGYDocumentRequest() {
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
   // socket connection
-  const socket = useMemo(() => 
-  io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
-    transports: ["websocket", "polling"],
-    withCredentials: true,
-  }), 
-[]
-);
+  const socket = useMemo(
+    () => io(import.meta.env.VITE_SOCKET_URL),
+    []
+  );
 
   // Status options
   const statusOptions = [
@@ -154,7 +151,6 @@ export default function BRGYDocumentRequest() {
     });
   };
 
-  // Memoized filtered and sorted users
   const displayDocumentRequests = useMemo(() => {
     const filtered = filterDocumentRequests(documentRequest);
     return sortDocumentRequests(filtered, sortOption);
@@ -266,7 +262,6 @@ export default function BRGYDocumentRequest() {
   // =================================================
 const handleStatusChange = async (requestOrId, newStatus) => {
   try {
-    // Resolve to a full request object, if only an id was passed
     let reqObj = null;
 
     if (requestOrId && typeof requestOrId === "object") {
@@ -275,7 +270,6 @@ const handleStatusChange = async (requestOrId, newStatus) => {
       reqObj = documentRequest.find(r => String(r.id) === String(requestOrId)) || null;
     }
 
-    // if still not found, no details modal
     if (!reqObj) {
       toast.error("Request not found");
       return;
@@ -336,7 +330,6 @@ const handleStatusChange = async (requestOrId, newStatus) => {
         payload
       );
 
-      // use data.request
       setDocumentRequest(prev =>
         prev.map(r => (String(r.id) === String(requestId) ? data.request : r))
       );
@@ -350,7 +343,6 @@ const handleStatusChange = async (requestOrId, newStatus) => {
       toast.error("Failed to reject request");
     }
   };
-
 
 
   // =================================================
@@ -435,51 +427,48 @@ const handleStatusChange = async (requestOrId, newStatus) => {
   // =================================================
   //  HANDLE AMOUNT
   // =================================================
-
-const [showAmountModal, setShowAmountModal] = useState(false);
-const [amountRequest, setAmountRequest] = useState(null);
-const [priceAmount, setPriceAmount] = useState('');
-const [priceNote, setPriceNote] = useState('');
-const [isSavingPrice, setIsSavingPrice] = useState(false);
-
-
-const handleReadyForPickupSubmit = async () => {
-  if (!amountRequest) return;
-  try {
-    setIsSavingPrice(true);
-
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const first_name = user?.firstName || "";
-    const last_name = user?.lastName || "";
-
-    const payload = {
-      status: "ready for pick-up",
-      first_name,
-      last_name,
-      price_amount: Number(priceAmount),
-      price_note: (priceNote || '').trim()
-    };
-
-    const { data } = await axios.patch(
-      `/api/brgy/update-document-request-status/${amountRequest.id}`,
-      payload
-    );
-
-    setDocumentRequest(prev => prev.map(r => (r.id === amountRequest.id ? data.report : r)));
-    toast.success("Marked as Ready for Pick-up with amount set.");
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to set amount / update status.");
-  } finally {
-    setIsSavingPrice(false);
-    setShowAmountModal(false);
-    setAmountRequest(null);
-    setPriceAmount('');
-    setPriceNote('');
-  }
-};
+  const [showAmountModal, setShowAmountModal] = useState(false);
+  const [amountRequest, setAmountRequest] = useState(null);
+  const [priceAmount, setPriceAmount] = useState('');
+  const [priceNote, setPriceNote] = useState('');
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
 
 
+  const handleReadyForPickupSubmit = async () => {
+    if (!amountRequest) return;
+    try {
+      setIsSavingPrice(true);
+
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const first_name = user?.firstName || "";
+      const last_name = user?.lastName || "";
+
+      const payload = {
+        status: "ready for pick-up",
+        first_name,
+        last_name,
+        price_amount: Number(priceAmount),
+        price_note: (priceNote || '').trim()
+      };
+
+      const { data } = await axios.patch(
+        `/api/brgy/update-document-request-status/${amountRequest.id}`,
+        payload
+      );
+
+      setDocumentRequest(prev => prev.map(r => (r.id === amountRequest.id ? data.report : r)));
+      toast.success("Marked as Ready for Pick-up with amount set.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to set amount / update status.");
+    } finally {
+      setIsSavingPrice(false);
+      setShowAmountModal(false);
+      setAmountRequest(null);
+      setPriceAmount('');
+      setPriceNote('');
+    }
+  };
 
 
   const renderTable = (documentRequest = []) => {
@@ -754,6 +743,35 @@ const handleReadyForPickupSubmit = async () => {
               <span className="modal-label">Date Requested:</span>
               <span className="modal-value"><b>{format(new Date(selectedRequest.created_at), 'MM/dd/yyyy')}</b></span>
             </div>
+
+            {selectedRequest.date && selectedRequest.time && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="modal-label">Preferred Pickup:</span>
+                <span className="modal-value">
+                  <b>
+                    {format(
+                      new Date(`${selectedRequest.date.split('T')[0]}T${selectedRequest.time}`),
+                      'MM/dd/yyyy | hh:mm a'
+                    )}
+                  </b>
+                </span>
+              </div>
+            )}
+
+            {selectedRequest.new_date && (
+              <div className="reschedule-card">
+                <div className="reschedule-card-content">
+                  <div className="reschedule-card-title">
+                    Rescheduled to
+                  </div>
+
+                  <div className="reschedule-card-text">
+                    <b>{format(new Date(selectedRequest.new_date), 'MMM dd, yyyy')}</b>
+                  </div>
+                </div>
+              </div>
+            )}
+
             </div>
           </div>
         </div>
@@ -888,86 +906,10 @@ const handleReadyForPickupSubmit = async () => {
         </div>
       )}
 
-
-{/* READY FOR PICK-UP (SET PRICE) MODAL */}
-{/* READY FOR PICK-UP (SET PRICE) MODAL */}
-{showAmountModal && amountRequest && (
-  <div
-    className="modal-overlay"
-    onClick={() => {
-      if (isSavingPrice) return;
-      setShowAmountModal(false);
-      setAmountRequest(null);
-      setPriceAmount('');
-      setPriceNote('');
-    }}
-  >
-    <div
-      className="modal-content"
-      onClick={(e) => e.stopPropagation()}
-      style={{ maxWidth: '420px' }}
-    >
-      <img
-        src="/icons/close.png"
-        alt="Close"
-        className="modal-close-btn"
-        onClick={() => {
-          if (isSavingPrice) return;
-          setShowAmountModal(false);
-          setAmountRequest(null);
-          setPriceAmount('');
-          setPriceNote('');
-        }}
-      />
-
-      <h3 className="modal-title" style={{ textAlign: 'center' }}>
-        Set Price for Pickup
-      </h3>
-      <p className="sub-title" style={{ textAlign: 'center' }}>
-        {`DOC-${String(amountRequest.id).padStart(5, '0')} • ${amountRequest.document_type}`}
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-        <label className="modal-label" htmlFor="priceAmount">Amount (₱)</label>
-        <input
-          id="priceAmount"
-          type="number"
-          step="0.01"
-          min="0"
-          value={priceAmount}
-          onChange={(e) => setPriceAmount(e.target.value)}
-          placeholder="Enter amount"
-          style={{
-            width: "100%",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "1px solid #eee",
-            fontFamily: 'Poppins, sans-serif'
-          }}
-          disabled={isSavingPrice}
-        />
-
-        <label className="modal-label" htmlFor="priceNote">Notes (optional)</label>
-        <textarea
-          id="priceNote"
-          value={priceNote}
-          onChange={(e) => setPriceNote(e.target.value)}
-          placeholder="e.g., Includes certification fee"
-          style={{
-            width: "100%",
-            minHeight: "90px",
-            borderRadius: "8px",
-            border: "1px solid #eee",
-            padding: "10px",
-            fontFamily: 'Poppins, sans-serif'
-          }}
-          disabled={isSavingPrice}
-        />
-      </div>
-
-      <div className="button-container" style={{ marginTop: 16 }}>
-        <button
-          className="cancel-button"
+      {/* READY FOR PICK-UP (SET PRICE) MODAL */}
+      {showAmountModal && amountRequest && (
+        <div
+          className="modal-overlay"
           onClick={() => {
             if (isSavingPrice) return;
             setShowAmountModal(false);
@@ -975,23 +917,95 @@ const handleReadyForPickupSubmit = async () => {
             setPriceAmount('');
             setPriceNote('');
           }}
-          disabled={isSavingPrice}
         >
-          Cancel
-        </button>
-        <button
-          className="confirm-button"
-          onClick={handleReadyForPickupSubmit}
-          disabled={isSavingPrice || priceAmount === '' || Number(priceAmount) < 0}
-        >
-          {isSavingPrice ? "Saving..." : "Confirm"}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '420px' }}
+          >
+            <img
+              src="/icons/close.png"
+              alt="Close"
+              className="modal-close-btn"
+              onClick={() => {
+                if (isSavingPrice) return;
+                setShowAmountModal(false);
+                setAmountRequest(null);
+                setPriceAmount('');
+                setPriceNote('');
+              }}
+            />
 
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>
+              Set Price for Pickup
+            </h3>
+            <p className="sub-title" style={{ textAlign: 'center' }}>
+              {`DOC-${String(amountRequest.id).padStart(5, '0')} • ${amountRequest.document_type}`}
+            </p>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+              <label className="modal-label" htmlFor="priceAmount">Amount (₱)</label>
+              <input
+                id="priceAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={priceAmount}
+                onChange={(e) => setPriceAmount(e.target.value)}
+                placeholder="Enter amount"
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #eee",
+                  fontFamily: 'Poppins, sans-serif'
+                }}
+                disabled={isSavingPrice}
+              />
+
+              <label className="modal-label" htmlFor="priceNote">Notes (optional)</label>
+              <textarea
+                id="priceNote"
+                value={priceNote}
+                onChange={(e) => setPriceNote(e.target.value)}
+                placeholder="e.g., Includes certification fee"
+                style={{
+                  width: "100%",
+                  minHeight: "90px",
+                  borderRadius: "8px",
+                  border: "1px solid #eee",
+                  padding: "10px",
+                  fontFamily: 'Poppins, sans-serif'
+                }}
+                disabled={isSavingPrice}
+              />
+            </div>
+
+            <div className="button-container" style={{ marginTop: 16 }}>
+              <button
+                className="cancel-button"
+                onClick={() => {
+                  if (isSavingPrice) return;
+                  setShowAmountModal(false);
+                  setAmountRequest(null);
+                  setPriceAmount('');
+                  setPriceNote('');
+                }}
+                disabled={isSavingPrice}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-button"
+                onClick={handleReadyForPickupSubmit}
+                disabled={isSavingPrice || priceAmount === '' || Number(priceAmount) < 0}
+              >
+                {isSavingPrice ? "Saving..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
     </>

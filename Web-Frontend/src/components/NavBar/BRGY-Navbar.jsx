@@ -222,7 +222,7 @@ useEffect(() => {
   };
 
 
-  socket.on('connect', () => console.log('🔌 Connected to socket server'));
+  socket.on('connect', () => console.log('Connected to socket server'));
   
   socket.on('mobileUserRegistered', refreshNotifications);
   socket.on('newVerificationRequest', refreshNotifications);
@@ -232,7 +232,7 @@ useEffect(() => {
 
   return () => {
     socket.disconnect();
-    console.log('🔌 Disconnected from socket server');
+    console.log('Disconnected from socket server');
   };
 }, [BRGYProfile]);
 
@@ -254,7 +254,7 @@ useEffect(() => {
       expired.forEach(async notif => {
         try {
           await axios.delete(`/api/brgy/notifications/${notif.id}`);
-          console.log(`🗑 Deleted notification ${notif.id} from DB`);
+          console.log(`Deleted notification ${notif.id} from DB`);
         } catch (err) {
           console.error(`Failed to delete notification ${notif.id}`, err);
         }

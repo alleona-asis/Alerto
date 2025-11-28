@@ -586,3 +586,47 @@ table.scroll,
 }
 
 
+.modal-label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #8696BB;
+}
+
+.modal-value {
+  font-weight: 500;
+  font-size: 13px;
+  color: #374856;
+  text-align: right;
+  max-width: 60%;
+  word-wrap: break-word;
+}
+
+.reschedule-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 86, 255, 0.35);
+  background-color: rgba(34, 38, 255, 0.06);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+
+.reschedule-card-content {
+  flex: 1;
+}
+
+.reschedule-card-title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: #4894FE;
+  margin-bottom: 2px;
+}
+
+.reschedule-card-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  color: #374856;
+}
