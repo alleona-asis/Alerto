@@ -4,7 +4,6 @@ import ADMINNavbar from '../../../components/NavBar/ADMIN-Navbar';
 import ADMINSidebar from '../../../components/SideBar/ADMIN-Sidebar';
 import axios from '../../../axios/axiosInstance';
 import '../../../components/SideBar/styles.css';
-import './ADMIN-Document-Requests.css'
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
 import noBarangayAnim from '@/assets/animations/non data found.json';

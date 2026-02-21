@@ -456,7 +456,6 @@ export default function LGUBarangayReports() {
                 <th className="table-header" style={{ width: '300px' }}>Incident Date</th>
                 <th className="table-header" style={{ width: '100px' }}>Incident Time</th>
                 <th className="table-header" style={{ width: '200px' }}>Barangay</th>
-                <th className="table-header" style={{ width: '200px' }}>Reported By</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
                 <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
             </tr>
@@ -486,7 +485,6 @@ export default function LGUBarangayReports() {
                 </td>
 
                 <td className="table-cell">{capitalizeWords(user.barangay)}</td>
-                <td className="table-cell">{capitalizeWords(user.reported_by)}</td>
 
                 <td className="table-cell" style={{ minWidth: 130 }}>
                   <Select
@@ -812,12 +810,6 @@ export default function LGUBarangayReports() {
             >
               {activeMiniTab === "details" && (
                 <>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span className="modal-label">Reported By:</span>
-                    <span className="modal-value">
-                      <b>{modalUser.reported_by}</b>
-                    </span>
-                  </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span className="modal-label">Date & Time:</span>
@@ -1195,8 +1187,8 @@ const styles = {
   cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
   row: { display: "flex", alignItems: "center", gap: "15px" },
   icon: {
-    width: "20px",
-    height: "20px",
+    width: "25px",
+    height: "25px",
     cursor: "pointer",
     transition: "transform 0.15s ease",
   },

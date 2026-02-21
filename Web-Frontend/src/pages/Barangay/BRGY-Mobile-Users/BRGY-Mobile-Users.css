@@ -596,8 +596,8 @@ table.scroll,
   font-weight: 500;
   font-size: 13px;
   color: #374856;
-  text-align: right;
-  max-width: 60%;
+  text-align: left;
+  max-width: 100%;
   word-wrap: break-word;
 }
 

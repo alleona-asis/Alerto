@@ -61,6 +61,7 @@ export default function LGUDashboard() {
 
   const [selectedYearReports, setSelectedYearReports] = useState('');
   const [selectedYearMobile,  setSelectedYearMobile]  = useState('');
+  const [selectedIncidentType, setSelectedIncidentType] = useState("");
   const [barangayGraphYear, setBarangayGraphYear] = useState(null);
 
   const pinIcons = {
@@ -187,6 +188,22 @@ export default function LGUDashboard() {
   const extractMonthFromPin = (p) => { const d = extractDateFromPin(p); return d? d.getMonth()+1: null; };
 
 
+
+  const getIncidentTypeFromPin = (p) => {
+  const raw =
+    p?.incidentType ??
+    p?.incident_type ??
+    p?.type ??
+    p?.reportType ??
+    p?.report_type ??
+    p?.complaintType ??
+    p?.complaint_type ??
+    p?.category ??
+    "";
+
+  const s = String(raw).trim();
+  return s.length ? s : null;
+};
   // =================================================
   //  FETCH LGU PROFILE
   // =================================================
@@ -483,28 +500,51 @@ export default function LGUDashboard() {
     return years.map(yy => ({ value: String(yy), label: String(yy) }));
   }, [barangayReportsGraph, mobileUsersGraph, pins, barangayGraphYear]);
 
+
+  const incidentTypeOptions = useMemo(() => {
+    const list = Array.isArray(pins) ? pins : [];
+    const set = new Set();
+
+    for (let i = 0; i < list.length; i++) {
+      const t = getIncidentTypeFromPin(list[i]);
+      if (t) set.add(t);
+    }
+
+    return Array.from(set)
+      .sort((a, b) => a.localeCompare(b))
+      .map((t) => ({ value: t, label: t }));
+  }, [pins]);
+
   // incidents per month graph
   const incidentsByMonthGraph = useMemo(() => {
     const buckets = [0,0,0,0,0,0,0,0,0,0,0,0];
     const list = Array.isArray(filteredPins) ? filteredPins : [];
+
     for (let i = 0; i < list.length; i++) {
       const p = list[i];
+
       const y = extractYearFromPin(p);
       if (selectedYearReports && y !== Number(selectedYearReports)) continue;
 
       if (selectedBarangay) {
-        const pinBrgy = (p.barangay || '').toString().trim().toLowerCase();
+        const pinBrgy = (p.barangay || "").toString().trim().toLowerCase();
         if (pinBrgy !== selectedBarangay.trim().toLowerCase()) continue;
+      }
+
+      if (selectedIncidentType) {
+        const t = (getIncidentTypeFromPin(p) || "").toLowerCase();
+        if (t !== selectedIncidentType.trim().toLowerCase()) continue;
       }
 
       const m = extractMonthFromPin(p);
       if (!m) continue;
       buckets[m - 1] += 1;
     }
-    const out = [];
-    for (let i = 0; i < 12; i++) out.push({ label: MONTHS[i], value: buckets[i] });
-    return out;
-  }, [filteredPins, selectedYearReports, selectedBarangay]);
+
+    return MONTHS.map((name, idx) => ({ label: name, value: buckets[idx] }));
+  }, [filteredPins, selectedYearReports, selectedBarangay, selectedIncidentType]);
+
+
 
   const rowsHaveExplicitMobileYear = useMemo(() => {
     const list = Array.isArray(mobileUsersGraph) ? mobileUsersGraph : [];
@@ -782,6 +822,20 @@ export default function LGUDashboard() {
                   </h3>
                   <div style={{ display: "flex", alignItems: "center", marginLeft: "auto", gap: 12 }}>
 
+                  {/* Incident Type Dropdown*/}
+                  <Select
+                    options={incidentTypeOptions}
+                    value={
+                      selectedIncidentType
+                        ? { value: selectedIncidentType, label: selectedIncidentType }
+                        : null
+                    }
+                    onChange={(opt) => setSelectedIncidentType(opt ? opt.value : "")}
+                    placeholder="Incident Type"
+                    styles={dropdownStyles}
+                    isClearable
+                  />
+
                   {/* Barangay Dropdown */}
                   <Select
                     options={barangayList.map((b) => {
@@ -802,6 +856,7 @@ export default function LGUDashboard() {
                     placeholder="Select Barangay"
                     styles={dropdownStyles}
                   />
+
 
                   {/* Year Dropdown*/}
                   <Select
