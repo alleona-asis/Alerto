@@ -162,7 +162,6 @@ const fuzzyMatchKeywords = (text, idType) => {
 const getAllMobileUsers = async (req, res) => {
   try {
     const { region, province, city, barangay } = req.query;
-
     const staffRegion = req.user.region;
     const staffProvince = req.user.province;
     const staffCity = req.user.city;
@@ -513,6 +512,244 @@ const markMobileNotificationAsRead = async (req, res) => {
   }
 };
 
+// =================================================
+//  DEACTIVATE MOBILE USER
+// =================================================
+const deactivateMobileUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "Missing user ID (id) in request params" });
+
+    // get current status first
+    const currentRes = await pool.query("SELECT status FROM mobile_users WHERE id = $1", [id]);
+    if (currentRes.rowCount === 0) return res.status(404).json({ message: "User not found" });
+
+    const currentStatus = String(currentRes.rows[0].status || "").toLowerCase();
+
+    // store only verified/unverified as previous
+    const prev =
+      currentStatus === "unverified" ? "unverified" : "verified";
+
+    const result = await pool.query(
+      `
+      UPDATE mobile_users
+      SET previous_status = $1,
+          status = 'deactivated'
+      WHERE id = $2
+      RETURNING *
+      `,
+      [prev, id]
+    );
+
+    const updatedUser = result.rows[0];
+
+    // optional: notify (same socket event your UI already listens to)
+    const io = getIo();
+    io.emit("verificationStatusUpdate", {
+      userId: updatedUser.id,
+      status: updatedUser.status,
+      reason_for_rejection: updatedUser.reason_for_rejection || null,
+      last_verification_request: updatedUser.last_verification_request || null,
+    });
+
+    return res.status(200).json({ message: "Account deactivated", user: updatedUser });
+  } catch (error) {
+    console.error("Error deactivating user:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// =================================================
+//  ACTIVATE MOBILE USER (restore previous_status)
+// =================================================
+const activateMobileUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "Missing user ID (id) in request params" });
+
+    const currentRes = await pool.query(
+      "SELECT previous_status FROM mobile_users WHERE id = $1",
+      [id]
+    );
+    if (currentRes.rowCount === 0) return res.status(404).json({ message: "User not found" });
+
+    const prev = String(currentRes.rows[0].previous_status || "").toLowerCase();
+    const restoreTo = prev === "unverified" ? "unverified" : "verified";
+
+    const result = await pool.query(
+      `
+      UPDATE mobile_users
+      SET status = $1,
+          previous_status = NULL,
+          suspended_at = NULL,
+          suspended_until = NULL
+      WHERE id = $2
+      RETURNING *
+      `,
+      [restoreTo, id]
+    );
+
+
+    const updatedUser = result.rows[0];
+
+    const io = getIo();
+    io.emit("verificationStatusUpdate", {
+      userId: updatedUser.id,
+      status: updatedUser.status,
+      reason_for_rejection: updatedUser.reason_for_rejection || null,
+      last_verification_request: updatedUser.last_verification_request || null,
+    });
+
+    return res.status(200).json({ message: "Account activated", user: updatedUser });
+  } catch (error) {
+    console.error("Error activating user:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// =================================================
+//  BLOCK MOBILE USER
+// =================================================
+const blockMobileUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Missing user ID (id) in request params" });
+    }
+
+    const currentRes = await pool.query(
+      "SELECT status FROM mobile_users WHERE id = $1",
+      [id]
+    );
+    if (currentRes.rowCount === 0) return res.status(404).json({ message: "User not found" });
+
+    const currentStatus = String(currentRes.rows[0].status || "").toLowerCase();
+
+    const prev = currentStatus === "unverified" ? "unverified" : "verified";
+
+    const result = await pool.query(
+      `
+      UPDATE mobile_users
+      SET previous_status = $1,
+          status = 'blocked'
+      WHERE id = $2
+      RETURNING *
+      `,
+      [prev, id]
+    );
+
+    const updatedUser = result.rows[0];
+
+    const io = getIo();
+    io.emit("verificationStatusUpdate", {
+      userId: updatedUser.id,
+      status: updatedUser.status,
+      reason_for_rejection: updatedUser.reason_for_rejection || null,
+      last_verification_request: updatedUser.last_verification_request || null,
+    });
+
+    return res.status(200).json({ message: "Account blocked", user: updatedUser });
+  } catch (error) {
+    console.error("Error blocking user:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// =================================================
+//  SUSPEND MOBILE USER (5 minutes)
+// =================================================
+const suspendMobileUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Missing user ID (id) in request params" });
+    }
+
+    // ✅ 1) If suspension already expired, restore immediately
+    const restoreRes = await pool.query(
+      `
+      UPDATE mobile_users
+      SET status = COALESCE(previous_status, 'verified'),
+          previous_status = NULL,
+          suspended_at = NULL,
+          suspended_until = NULL
+      WHERE id = $1
+        AND status = 'suspended'
+        AND suspended_until IS NOT NULL
+        AND suspended_until <= NOW()
+      RETURNING *
+      `,
+      [id]
+    );
+
+    if (restoreRes.rowCount > 0) {
+      const restoredUser = restoreRes.rows[0];
+
+      const io = getIo();
+      io.emit("verificationStatusUpdate", {
+        userId: restoredUser.id,
+        status: restoredUser.status,
+        suspended_at: restoredUser.suspended_at || null,
+        suspended_until: restoredUser.suspended_until || null,
+        reason_for_rejection: restoredUser.reason_for_rejection || null,
+        last_verification_request: restoredUser.last_verification_request || null,
+      });
+
+      return res.status(200).json({
+        message: "Suspension expired. Account restored to previous status.",
+        user: restoredUser,
+      });
+    }
+
+    // ✅ 2) Otherwise, apply suspension for 5 minutes
+    const currentRes = await pool.query(
+      "SELECT status, previous_status FROM mobile_users WHERE id = $1",
+      [id]
+    );
+    if (currentRes.rowCount === 0) return res.status(404).json({ message: "User not found" });
+
+    const currentStatus = String(currentRes.rows[0].status || "").toLowerCase();
+    const prev = currentStatus === "unverified" ? "unverified" : "verified";
+
+    const result = await pool.query(
+      `
+      UPDATE mobile_users
+      SET previous_status = COALESCE(previous_status, $1),
+          status = 'suspended',
+          suspended_at = NOW(),
+          suspended_until = NOW() + INTERVAL '5 minutes'
+      WHERE id = $2
+      RETURNING *
+      `,
+      [prev, id]
+    );
+
+    const updatedUser = result.rows[0];
+
+    const io = getIo();
+    io.emit("verificationStatusUpdate", {
+      userId: updatedUser.id,
+      status: updatedUser.status,
+      suspended_at: updatedUser.suspended_at || null,
+      suspended_until: updatedUser.suspended_until || null,
+      reason_for_rejection: updatedUser.reason_for_rejection || null,
+      last_verification_request: updatedUser.last_verification_request || null,
+    });
+
+    return res.status(200).json({
+      message: "Account Suspended (5 minutes)",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error suspending user:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 
 
 module.exports = { 
@@ -524,5 +761,9 @@ module.exports = {
   getNotificationsByLocation,
   deleteNotification,
   getMobileUserNotifications,
-  markMobileNotificationAsRead
+  markMobileNotificationAsRead,
+  deactivateMobileUser,
+  activateMobileUser,
+  blockMobileUser,
+  suspendMobileUser,
 };

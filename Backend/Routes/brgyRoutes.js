@@ -143,7 +143,11 @@ const {
     getNotificationsByLocation,
     deleteNotification,
     getMobileUserNotifications,
-    markMobileNotificationAsRead
+    markMobileNotificationAsRead,
+    deactivateMobileUser,
+    activateMobileUser,
+    blockMobileUser,
+    suspendMobileUser
 } = require('../Controller/BARANGAY/mobileUserRegistry');
 
 router.use(authenticateToken);
@@ -207,6 +211,10 @@ router.get('/notifications', getNotificationsByLocation);
 router.delete('/notifications/:id', deleteNotification);
 router.get('/mobile-notifications/:userId', getMobileUserNotifications);
 router.patch('/notifications/:notificationId/read', markMobileNotificationAsRead);
+router.patch('/deactivate-mobile-user/:id', deactivateMobileUser);
+router.patch("/activate-mobile-user/:id", activateMobileUser);
+router.patch("/block-mobile-user/:id", blockMobileUser);
+router.patch("/suspend-mobile-user/:id", suspendMobileUser);
 
 // =================================================
 //  INCIDENT REPORTING

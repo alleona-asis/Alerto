@@ -630,6 +630,7 @@ const mobileUserLogin = async (req, res) => {
         lastName: user.last_name,
         email: user.email,
         phoneNumber: user.phone_number,
+        status: user.status,
       },
       token,
     });
