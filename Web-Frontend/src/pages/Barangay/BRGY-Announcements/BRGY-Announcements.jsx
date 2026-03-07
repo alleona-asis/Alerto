@@ -646,7 +646,7 @@ export default function BRGYProfile() {
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)', // 6 dapat
+                        gridTemplateColumns: 'repeat(6, 1fr)',
                         gap: '15px',
                       }}
                     >
@@ -713,8 +713,8 @@ export default function BRGYProfile() {
                               src="/icons/delete.png"
                               alt="Delete"
                               style={{
-                                width: "20px",
-                                height: "20px",
+                                width: "30px",
+                                height: "30px",
                                 position: "absolute",
                                 bottom: "0",
                                 right: "0",

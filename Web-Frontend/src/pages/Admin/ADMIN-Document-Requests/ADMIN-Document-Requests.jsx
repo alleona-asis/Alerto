@@ -4,7 +4,6 @@ import ADMINNavbar from '../../../components/NavBar/ADMIN-Navbar';
 import ADMINSidebar from '../../../components/SideBar/ADMIN-Sidebar';
 import axios from '../../../axios/axiosInstance';
 import '../../../components/SideBar/styles.css';
-import './ADMIN-Document-Requests.css'
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
 import noBarangayAnim from '@/assets/animations/non data found.json';
@@ -54,7 +53,7 @@ export default function ADMINDashboard() {
   const [requestToDelete, setRequestToDelete] = useState(null);
 
 
-  // Create socket connection once, memoized
+
   const socket = useMemo(() => 
   io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
     transports: ["websocket", "polling"],
@@ -63,12 +62,12 @@ export default function ADMINDashboard() {
 []
 );
 
-  // Helper to capitalize words
-  const capitalizeWords = (str) =>
+
+const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()) || '';
 
-  // Status options
-  const statusOptions = [
+
+const statusOptions = [
     { value: 'Submitted', label: 'Submitted' },
     { value: 'Processing', label: 'Processing' },
     { value: 'Accepted', label: 'Accepted' },
@@ -103,8 +102,8 @@ const getNextStatusOptions = (currentStatus) => {
 };
 
 
-  // Sort options
-  const sortOptions = [
+
+const sortOptions = [
     { value: 'first-name-asc', label: 'Sort by First Name' },
     { value: 'last-name-asc', label: 'Sort by Last Name' },
     { value: 'date-desc', label: 'Sort by Date' },
@@ -112,7 +111,7 @@ const getNextStatusOptions = (currentStatus) => {
     { value: 'id-asc', label: 'Sort by ID' },
   ];
 
-  // Sorting function
+
   const sortDocumentRequests = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -131,7 +130,7 @@ const getNextStatusOptions = (currentStatus) => {
     }
   };
 
-  // Filtering function
+
   const filterDocumentRequests = (users) => {
     const query = searchQuery.toLowerCase();
     return users.filter(
@@ -146,7 +145,7 @@ const getNextStatusOptions = (currentStatus) => {
     );
   };
 
-  // Memoized filtered and sorted users
+  
   // Display all requests, sorted only
   const displayDocumentRequests = useMemo(() => {
     return sortDocumentRequests(documentRequest, sortOption);
@@ -168,7 +167,7 @@ const getNextStatusOptions = (currentStatus) => {
   const fetchReports = async () => {
     try {
       const response = await axios.get('/api/admin/admin-get-all-document-requests', {
-        headers: { Authorization: `Bearer ${token}` } // include token
+        headers: { Authorization: `Bearer ${token}` } 
       });
 
       console.log("Fetched requests:", response.data.length, response.data);
@@ -215,10 +214,10 @@ const getNextStatusOptions = (currentStatus) => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Remove from state
+
       setDocumentRequest((prev) => prev.filter((req) => req.id !== id));
 
-      // Close modal
+
       setShowDeleteConfirm(false);
       setRequestToDelete(null);
 
@@ -321,7 +320,7 @@ const getNextStatusOptions = (currentStatus) => {
                 options={getNextStatusOptions(user.status || 'submitted')}
                 styles={updateStatusStyles(user.status || 'submitted')}
                 isSearchable={false}
-                //isDisabled={getNextStatusOptions(user.status || 'submitted').length === 0}
+
                 isDisabled={true}
                 menuPortalTarget={document.body}
                 menuPosition="fixed"

@@ -88,7 +88,7 @@ const submitReport = async (req, res, { mediaUrls = [] }) => {
 
       const media = supabaseMedia.map(f => ({
         filename: f.filename,
-        url: f.supabaseUrl,  // signed URL
+        url: f.supabaseUrl,  
         mimetype: f.mimetype || (f.filename.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
       }));
 
@@ -609,7 +609,7 @@ const uploadProof = async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    // Append new proofs
+    // add new proofs
     const updatedProofs = [...currentProofs, ...proofFiles];
 
     // Update DB

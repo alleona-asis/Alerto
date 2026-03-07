@@ -65,11 +65,11 @@ export default function LGUBarangayReports() {
   const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
   const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper to capitalize words
+
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
+
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'under review', label: 'Under Review' },
@@ -80,7 +80,7 @@ export default function LGUBarangayReports() {
     { value: 'transferred', label: 'Transferred' },
   ];
 
-  // Next status options depending on current
+
   const getNextStatusOptions = (currentStatus) => {
     switch (currentStatus.toLowerCase()) {
       case "pending":
@@ -106,7 +106,7 @@ export default function LGUBarangayReports() {
     }
   };
 
-  // Sort options
+
   const sortOptions = [
     { value: 'incident-type-asc', label: 'Sort by Incident Type' },
     { value: 'date-desc', label: 'Sort by Date' },
@@ -114,7 +114,7 @@ export default function LGUBarangayReports() {
     { value: 'id-asc', label: 'Sort by ID' },
   ];
 
-  // Sorting function
+
   const sortIncidentReports = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -131,7 +131,7 @@ export default function LGUBarangayReports() {
     }
   };
 
-  // Filtering function
+
   const filterIncidentReports = (users) => {
     const query = searchQuery.toLowerCase();
 
@@ -170,7 +170,7 @@ export default function LGUBarangayReports() {
   };
 
 
-  // Memoized filtered and sorted reports
+
   const displayIncidentReports = useMemo(() => {
     const filtered = filterIncidentReports(incidentReports);
     return sortIncidentReports(filtered, sortOption);
@@ -456,7 +456,6 @@ export default function LGUBarangayReports() {
                 <th className="table-header" style={{ width: '300px' }}>Incident Date</th>
                 <th className="table-header" style={{ width: '100px' }}>Incident Time</th>
                 <th className="table-header" style={{ width: '200px' }}>Barangay</th>
-                <th className="table-header" style={{ width: '200px' }}>Reported By</th>
                 <th className="table-header" style={{ width: '100px' }}>Status</th>
                 <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
             </tr>
@@ -486,7 +485,6 @@ export default function LGUBarangayReports() {
                 </td>
 
                 <td className="table-cell">{capitalizeWords(user.barangay)}</td>
-                <td className="table-cell">{capitalizeWords(user.reported_by)}</td>
 
                 <td className="table-cell" style={{ minWidth: 130 }}>
                   <Select
@@ -812,12 +810,6 @@ export default function LGUBarangayReports() {
             >
               {activeMiniTab === "details" && (
                 <>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span className="modal-label">Reported By:</span>
-                    <span className="modal-value">
-                      <b>{modalUser.reported_by}</b>
-                    </span>
-                  </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span className="modal-label">Date & Time:</span>
@@ -1195,8 +1187,8 @@ const styles = {
   cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
   row: { display: "flex", alignItems: "center", gap: "15px" },
   icon: {
-    width: "20px",
-    height: "20px",
+    width: "25px",
+    height: "25px",
     cursor: "pointer",
     transition: "transform 0.15s ease",
   },

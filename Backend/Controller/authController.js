@@ -1,11 +1,6 @@
 const pool = require('../PostgreSQL/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-// const Tesseract = require('tesseract.js');
-// const fs = require('fs');
-// const path = require('path');
-// const sharp = require('sharp');
-// const { cleanText, fuzzyMatchKeywords, ID_KEYWORDS } = require('../utils/ocr');
 const { getIo } = require('../socket');
 const twilio = require('twilio');
 const { generateSignedUrl, getPublicUrl } = require('../utils/supabase');
@@ -35,56 +30,6 @@ const checkUsernameAvailability = async (req, res) => {
     res.status(500).json({ error: 'Server error while checking username' });
   }
 };
-
-
-// =================================================
-//  OCR PROCESSING
-// =================================================
-// const processOCR = async (req, res) => {
-//   try {
-//     if (!req.file || !req.file.path) {
-//       return res.status(400).json({ error: 'No image file uploaded' });
-//     }
-
-//     const { idType } = req.body;
-//     if (!idType || !ID_KEYWORDS[idType]) {
-//       return res.status(400).json({ error: 'Invalid or missing ID type' });
-//     }
-
-//     const processedBuffer = await sharp(req.file.path)
-//       .grayscale()
-//       .normalize()
-//       .resize({ width: 1000 })
-//       .png()
-//       .toBuffer();
-
-//     const {
-//       data: { text: rawText = '' }
-//     } = await Tesseract.recognize(processedBuffer, 'eng', {
-//       logger: m => console.log('OCR Progress:', m),
-//     });
-
-//     const cleanedText = cleanText(rawText);
-//     console.log('Cleaned OCR Text:', cleanedText);
-
-//     const { matched, keyword, score } = fuzzyMatchKeywords(cleanedText, idType);
-
-//     fs.promises.unlink(req.file.path).catch(err =>
-//       console.warn('Failed to delete original file:', err)
-//     );
-
-//     return res.status(200).json({
-//       text: cleanedText,
-//       matched,
-//       matchedKeyword: keyword,
-//       matchScore: score,
-//     });
-
-//   } catch (error) {
-//     console.error('OCR processing failed:', error.message || error);
-//     res.status(500).json({ error: 'OCR processing failed' });
-//   }
-// };
 
 
 // =================================================
@@ -132,7 +77,7 @@ const registerLguAdmin = async (req, res) => {
   const intentFileName = letterOfIntent?.filename || null;
 
 
-  //supabase urls
+  //supabase links
   const idFilePath = req.supabaseFiles?.idFile?.[0]?.relativePath || null;
   const intentFilePath = req.supabaseFiles?.intentFile?.[0]?.relativePath || null;
   const idFileUrl = req.supabaseFiles?.idFile?.[0]?.supabaseUrl || null;
@@ -630,6 +575,7 @@ const mobileUserLogin = async (req, res) => {
         lastName: user.last_name,
         email: user.email,
         phoneNumber: user.phone_number,
+        status: user.status,
       },
       token,
     });
@@ -651,19 +597,18 @@ const serviceSid = process.env.TWILIO_SERVICE_SID;
 const client = twilio(accountSid, authToken);
 
 
-// ---- PH mobile number normalizer (PH-only) -------------------------------
-// Accepts "+639xxxxxxxxx", "09xxxxxxxxx", or "9xxxxxxxxx" , automatically reads to = "+639..."
+// ----  mobile number normalizer (PH numbers only) -------------------------------
 function normalizePHMobile(input) {
   const s = String(input || '').trim().replace(/[^\d+]/g, '');
-  if (/^\+639\d{9}$/.test(s)) return s;              // already E.164 PH
-  if (/^09\d{9}$/.test(s)) return '+63' + s.slice(1); // 09 -> +639
-  if (/^9\d{9}$/.test(s))  return '+63' + s;          // 9xxxxxxxxx -> +639...
+  if (/^\+639\d{9}$/.test(s)) return s;             
+  if (/^09\d{9}$/.test(s)) return '+63' + s.slice(1); 
+  if (/^9\d{9}$/.test(s))  return '+63' + s;         
   throw new Error('Use a PH mobile like +639xxxxxxxxx');
 }
 
 
 // =================================================
-//  SEND OTP (PH-only)
+//  SEND OTP (PH number only)
 // =================================================
 const sendOTP = async (req, res) => {
   const { phoneNumber } = req.body;
@@ -694,7 +639,7 @@ const sendOTP = async (req, res) => {
 };
 
 // =================================================
-//  VERIFY OTP (PH-only)
+//  VERIFY OTP (PH numbers only)
 // =================================================
 const verifyOTP = async (req, res) => {
   const { phoneNumber, code } = req.body;
@@ -802,7 +747,7 @@ const getMobileUserProfile = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Always re-generate signed URLs for private assets
+    // Always re-generate signed urls for private files in supabase
     if (user.id_front_path) {
       try { user.id_front_url = await generateSignedUrl(user.id_front_path); } catch { user.id_front_url = null; }
     } else {
@@ -821,7 +766,7 @@ const getMobileUserProfile = async (req, res) => {
       user.selfie_url = null;
     }
 
-    // Public profile picture (stored in PUBLIC bucket): compute a public URL
+    // for public profile picture (stored in PUBLIC bucket)
     if (user.profile_picture) {
       try { user.profile_picture_url = getPublicUrl(user.profile_picture); } catch { user.profile_picture_url = null; }
     } else {

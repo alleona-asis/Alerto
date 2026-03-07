@@ -41,7 +41,6 @@ export default function LGUManageBarangay() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [barangayToDelete, setBarangayToDelete] = useState(null);
 
-  // const [sortOption, setSortOption] = useState('default');
   const [sortOption, setSortOption] = useState('incident-desc');
   const [incidentReports, setIncidentReports] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1836,8 +1835,8 @@ const styles = {
   cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
   row: { display: "flex", alignItems: "center", gap: "15px" },
   icon: {
-    width: "20px",
-    height: "20px",
+    width: "25px",
+    height: "25px",
     cursor: "pointer",
     transition: "transform 0.15s ease",
   },

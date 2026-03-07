@@ -143,7 +143,11 @@ const {
     getNotificationsByLocation,
     deleteNotification,
     getMobileUserNotifications,
-    markMobileNotificationAsRead
+    markMobileNotificationAsRead,
+    deactivateMobileUser,
+    activateMobileUser,
+    blockMobileUser,
+    suspendMobileUser
 } = require('../Controller/BARANGAY/mobileUserRegistry');
 
 router.use(authenticateToken);
@@ -171,15 +175,6 @@ router.post(
         : (req.files?.files || []);
       const localPaths = (multerFiles || []).map(f => f.path).filter(Boolean);
 
-      // console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
-
-      // await processOCR(req, res, { localPaths });
-
-      // console.log('[OCR] finished call to processOCR');
-
-      // for (const p of localPaths) {
-      //   try { if (p) await fs.promises.unlink(p); } catch {}
-      // }
 
       if (!res.headersSent) {
         return res.json({
@@ -207,6 +202,10 @@ router.get('/notifications', getNotificationsByLocation);
 router.delete('/notifications/:id', deleteNotification);
 router.get('/mobile-notifications/:userId', getMobileUserNotifications);
 router.patch('/notifications/:notificationId/read', markMobileNotificationAsRead);
+router.patch('/deactivate-mobile-user/:id', deactivateMobileUser);
+router.patch("/activate-mobile-user/:id", activateMobileUser);
+router.patch("/block-mobile-user/:id", blockMobileUser);
+router.patch("/suspend-mobile-user/:id", suspendMobileUser);
 
 // =================================================
 //  INCIDENT REPORTING

@@ -79,7 +79,7 @@ export default function LGUMobileUsers() {
     { value: 'barangay-asc', label: 'Sort by Barangay' },
   ];
 
-  // Sorting function
+
   const sortMobileUsers = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -98,7 +98,7 @@ export default function LGUMobileUsers() {
     }
   };
 
-  // Filtering function
+
   const filterMobileUsers = (users) => {
     const q = (searchQuery || '').trim().toLowerCase();
     if (!q) return users;
@@ -122,7 +122,7 @@ export default function LGUMobileUsers() {
   };
 
 
-  // Memoized filtered + sorted reports
+
   const displayMobileUsers = useMemo(() => {
     const filtered = filterMobileUsers(mobileUsers);
     return sortMobileUsers(filtered, sortOption);
@@ -307,7 +307,7 @@ export default function LGUMobileUsers() {
                   />
                 </td>
 
-                {/* Delete icon (stop row modal) */}
+                {/* Delete icon */}
                 <td className="table-cell" style={styles.cell}>
                   <div style={styles.row}>
                     {[
@@ -890,8 +890,8 @@ const styles = {
   cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
   row: { display: "flex", alignItems: "center", gap: "15px" },
   icon: {
-    width: "20px",
-    height: "20px",
+    width: "25px",
+    height: "25px",
     cursor: "pointer",
     transition: "transform 0.15s ease",
   },

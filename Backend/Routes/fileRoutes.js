@@ -1,4 +1,3 @@
-// routes/fileRoutes.js
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
@@ -12,7 +11,7 @@ router.get('/signed-url', async (req, res) => {
     if (!filePath) {
       return res.status(400).json({ error: 'filePath is required' });
     }
-    // Clean the path: Remove the bucket name prefix to get the relative path
+
     const bucketName = 'Alerto-private'; 
     const cleanPath = filePath.replace(new RegExp(`^${bucketName}/`), ''); 
     console.log(`Generating signed URL for cleaned path: ${cleanPath}`); 

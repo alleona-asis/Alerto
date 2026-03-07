@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import axios from '../../../axios/axiosInstance';
 import BRGYNavbar from '../../../components/NavBar/BRGY-Navbar';
 import BRGYSidebar from '../../../components/SideBar/BRGY-Sidebar';
@@ -16,6 +16,9 @@ const getStatusColor = (status) => {
     case 'pending': return '#FEBE8C';
     case 'verified': return '#BCE29E';
     case 'unverified': return '#FF8787';
+    case "deactivated": return "#9AA3AF";
+    case "suspended": return "#FBBF24";
+    case "blocked": return "#FF0000";
     default: return '#52575D';
   }
 };
@@ -38,7 +41,6 @@ export default function BRGY_MobileUsers() {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [username, setUsername] = useState('');
   const [viewInformationModal , setViewInformationModal ] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingSortOption, setPendingSortOption] = useState('default');
   const [approvedSortOption, setApprovedSortOption] = useState('default');
@@ -53,6 +55,66 @@ export default function BRGY_MobileUsers() {
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [userToApprove, setUserToApprove] = useState(null);
   const s = (v) => String(v ?? '').toLowerCase();
+
+  const normalizeStatus = (s) => String(s || "pending").trim().toLowerCase();
+  const allStatusOptions = [
+    { value: "pending", label: "Pending" },
+    { value: "verified", label: "Verified" },
+    { value: "unverified", label: "Unverified" },
+    { value: "deactivated", label: "Deactivated" },
+    { value: "suspended", label: "Suspended" },
+    { value: "blocked", label: "Blocked" },
+  ];
+  const statusOptions = [
+    { value: "deactivated", label: "Deactivate" },
+    { value: "suspended", label: "Suspend" },
+    { value: "blocked", label: "Block" },
+  ];
+
+  const [prevStatusMap, setPrevStatusMap] = useState({});
+  const activateOption = { value: "activate", label: "Activate" };
+  const getNextStatusOptions = (currentStatus) => {
+    const st = normalizeStatus(currentStatus);
+    if (st === "deactivated") return [activateOption];
+    if (st === "blocked") return [];
+    if (st === "suspended") return [];
+    return statusOptions;
+  };
+
+  const suspendTimersRef = useRef([]);
+  useEffect(() => {
+    suspendTimersRef.current.forEach(clearTimeout);
+    suspendTimersRef.current = [];
+
+    (mobileUsers || []).forEach((u) => {
+      if ((u.status || "").toLowerCase() !== "suspended") return;
+      if (!u.suspended_until) return;
+
+      const delay = new Date(u.suspended_until).getTime() - Date.now();
+      if (Number.isNaN(delay)) return;
+
+      const timerId = setTimeout(async () => {
+        try {
+          const res = await axios.patch(`/api/brgy/activate-mobile-user/${u.id}`);
+          const updatedUser = res?.data?.user;
+
+          setMobileUsers((prev) =>
+            prev.map((x) => (x.id === u.id ? { ...x, ...(updatedUser || {}) } : x))
+          );
+        } catch (e) {
+          console.error("Auto-restore failed:", e);
+        }
+      }, Math.max(0, delay) + 300);
+
+      suspendTimersRef.current.push(timerId);
+    });
+
+    return () => {
+      suspendTimersRef.current.forEach(clearTimeout);
+      suspendTimersRef.current = [];
+    };
+  }, [mobileUsers]);
+
 
   // =================================================
   //  SOCKET CONNECTION AND LISTENER
@@ -245,8 +307,14 @@ export default function BRGY_MobileUsers() {
     () => sortMobileUsers(
       displayMobileUsers.filter(u => {
         const st = s(u.status);
-        return st === 'verified' || st === 'unverified';
-      }),
+        return (
+            st === "verified" ||
+            st === "unverified" ||
+            st === "deactivated" ||
+            st === "suspended" ||
+            st === "blocked"
+          );
+          }),
       approvedSortOption
     ),
     [displayMobileUsers, approvedSortOption]
@@ -264,17 +332,38 @@ export default function BRGY_MobileUsers() {
   const [customReason, setCustomReason] = useState('');
 
   const handleStatusChange = (userId, newStatus) => {
-    const user = mobileUsers.find(u => u.id === userId);
-    if (!user) return;
+   const st = normalizeStatus(newStatus);
 
-    if (newStatus.toLowerCase() === 'unverified') {
+    if (normalizeStatus(newStatus) === "activate") {
+      activateAccount(userId);
+      return;
+    }
+
+    if (st === "deactivated") {
+      deactivateAccount(userId);
+      return;
+    }
+
+    if (st === "blocked") {
+      blockAccount(userId);
+      return;
+    }
+
+    if (st === "suspended") {
+      suspendAccount(userId);
+      return;
+    }
+
+    if (st === "unverified") {
+      const user = mobileUsers.find((u) => u.id === userId);
+      if (!user) return;
       setSelectedUser(user);
-      setReason('');
+      setReason("");
       setShowReasonModal(true);
       return;
     }
 
-    updateUserStatus(userId, newStatus);
+    updateUserStatus(userId, st);
   };
 
   const rejectionOptions = [
@@ -293,10 +382,11 @@ export default function BRGY_MobileUsers() {
       setMobileUsers(prev =>
         prev.map(user =>
           user.id === userId
-            ? { ...user, status: newStatus, reason: rejectionReason }
+            ? { ...user, status: newStatus.toLowerCase(), reason: rejectionReason }
             : user
         )
       );
+
 
       toast.success(`User ${newStatus.toLowerCase()} successfully.`);
     } catch (error) {
@@ -305,36 +395,133 @@ export default function BRGY_MobileUsers() {
     }
   };
 
+
   // =================================================
-  //  DELETE ACCOUNT
+  //  DEACTIVATE ACCOUNT
   // =================================================
-  const [userToDelete, setUserToDelete] = useState(null);
-  const deleteMobileUser = async (id) => {
+  const deactivateAccount = async (userId) => {
+    const user = mobileUsers.find((u) => u.id === userId);
+    const fullName = user
+      ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
+      : `USER-${userId}`;
+
+    const ok = window.confirm(
+      `Deactivate this account?\n\n${fullName}\n\nThey will not be able to use the app until reactivated.`
+    );
+    if (!ok) return;
+
+    const prev = normalizeStatus(user?.status);
+    const prevToStore = prev === "unverified" ? "unverified" : "verified";
+    setPrevStatusMap((m) => ({ ...m, [userId]: prevToStore }));
+
     try {
-      const response = await axios.delete(`/api/brgy/delete-mobile-user/${id}`);
+      const res = await axios.patch(`/api/brgy/deactivate-mobile-user/${userId}`);
+      const updatedUser = res?.data?.user;
 
-      setMobileUsers(prev => prev.filter(user => user.id !== id));
-      setShowDeleteConfirm(false);
-      setUserToDelete(null);
+      setMobileUsers((prevList) =>
+        prevList.map((u) =>
+          u.id === userId
+            ? { ...u, ...(updatedUser || {}), status: "deactivated" }
+            : u
+        )
+      );
 
-      toast.success(response.data?.message || 'User successfully deleted.');
-    } catch (error) {
-      console.error('Failed to delete user:', error);
-
-      const status = error.response?.status;
-      const data = error.response?.data;
-
-      if (status) {
-        console.error(`Status: ${status}`);
-        console.error('Response:', data);
-      } else if (error.request) {
-        console.error('No server response. Request details:', error.request);
-      } else {
-        console.error('Request setup error:', error.message);
-      }
-      toast.error(data?.message || 'Failed to delete user. Please try again.');
+      toast.success("Account deactivated successfully.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to deactivate account.");
     }
   };
+
+  const activateAccount = async (userId) => {
+    try {
+      const res = await axios.patch(`/api/brgy/activate-mobile-user/${userId}`);
+      const updatedUser = res?.data?.user;
+
+      setMobileUsers(prev =>
+        prev.map(u => (u.id === userId ? { ...u, ...(updatedUser || {}) } : u))
+      );
+
+      toast.success("Account activated successfully.");
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "Failed to activate account.");
+    }
+  };
+
+  // =================================================
+  //  BLOCK ACCOUNT
+  // =================================================
+  const blockAccount = async (userId) => {
+    const user = mobileUsers.find((u) => u.id === userId);
+    const fullName = user
+      ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
+      : `USER-${userId}`;
+
+    const ok = window.confirm(
+      `Block this account?\n\n${fullName}\n\nThey will not be able to use the app until reactivated/unblocked.`
+    );
+    if (!ok) return;
+
+    try {
+      const res = await axios.patch(`/api/brgy/block-mobile-user/${userId}`);
+      const updatedUser = res?.data?.user;
+
+      setMobileUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, ...(updatedUser || {}), status: "blocked" } : u
+        )
+      );
+
+      toast.success("Account blocked successfully.");
+    } catch (error) {
+     console.error(error);
+      toast.error(error?.response?.data?.message || "Failed to block account.");
+    }
+  };
+
+
+  // =================================================
+  //  SUSPEND ACCOUNT
+  // =================================================
+  const suspendAccount = async (userId) => {
+    const user = mobileUsers.find((u) => u.id === userId);
+    const fullName = user
+      ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
+      : `USER-${userId}`;
+
+    const ok = window.confirm(
+      `Suspend this account for 5 minutes?\n\n${fullName}\n\nThey will not be able to use the app during suspension.`
+    );
+    if (!ok) return;
+
+    try {
+      const res = await axios.patch(`/api/brgy/suspend-mobile-user/${userId}`);
+      const updatedUser = res?.data?.user;
+
+      setMobileUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, ...(updatedUser || {}), status: "suspended" } : u
+        )
+      );
+
+      toast.success("Account suspended successfully.");
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "Failed to suspend account.");
+    }
+  };
+
+
+
+
+
+
+
+
+
+
+
 
   // =================================================
   //  RENDER THE TABLE
@@ -428,31 +615,33 @@ export default function BRGY_MobileUsers() {
                       }}
                     />
                   </td>
-                  <td className="table-cell" style={{ minWidth: 130 }}>
-                    <span
-                      style={{
-                        width: "110px",
-                        height: "25px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "7px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        textTransform: "capitalize",
-                        backgroundColor: getStatusColor(user.status || "pending") + "20",
-                        color: getStatusColor(user.status || "pending"),
-                        border: `1px solid ${getStatusColor(user.status || "pending")}`,
-                        textAlign: "center",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
+                  <td className="table-cell" style={{ minWidth: 150 }}>
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
                     >
-                      {user.status || "pending"}
-                    </span>
+                      {(() => {
+                        const currentStatus = user.status || "pending";
+                        const nextOptions = getNextStatusOptions(currentStatus);
+
+                        return (
+                          <Select
+                            value={allStatusOptions.find(
+                              (opt) => opt.value === normalizeStatus(currentStatus)
+                            )}
+                            onChange={(selected) => handleStatusChange(user.id, selected.value)}
+                            options={nextOptions}
+                            styles={updateStatusStyles(currentStatus)}
+                            isSearchable={false}
+                            isDisabled={nextOptions.length === 0} 
+                          />
+                        );
+                      })()}
+                    </div>
 
                   </td>
+
+
                   <td
                     className="table-cell"
                     style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: 100 }}
@@ -616,46 +805,7 @@ export default function BRGY_MobileUsers() {
         </div>
       </div>
 
-      {showDeleteConfirm && userToDelete && (
-        <div className="overlay modal-fade" onClick={() => setShowDeleteConfirm(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setShowDeleteConfirm(false)}>×</button>
 
-            <div className="icon-container">
-              <img
-                src="/icons/delete.png"
-                alt="Delete"
-                className="icon-delete"
-              />
-            </div>
-
-            <h3 className="modal-title">Delete</h3>
-            <p className="sub-title">Are you sure you want to delete this account?</p>
-
-            <div style={{ display: 'flex', marginBottom: '20px', paddingLeft: '18px', paddingRight: '18px' }}>
-                <span className="location-text">
-                  {(userToDelete.first_name)},&nbsp;
-                  {(userToDelete.last_name)},&nbsp;
-                </span>
-            </div>
-
-            <div className="button-container">
-              <button
-                className="cancel-button"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="confirm-button"
-                onClick={() => deleteMobileUser(userToDelete.id)}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showReasonModal && selectedUser && (
         <div className="overlay modal-fade" onClick={() => setShowReasonModal(false)}>
@@ -942,6 +1092,44 @@ export default function BRGY_MobileUsers() {
             <button className="close-btn" onClick={() => setViewInformationModal(false)}>×</button>
             <h3 className="modal-title">User Profile Details</h3>
             <p className="sub-title">See the details associated with this account</p>
+            {selectedAccount?.status?.toLowerCase() === "suspended" && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #E5E7EB",
+                  background: "#FFFFFF",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: "16px", fontWeight: 700, color: "#111827", marginTop: "2px" }}>
+                    {selectedAccount?.suspended_until
+                      ? new Date(selectedAccount.suspended_until).toLocaleString()
+                      : "—"}
+                  </span>
+                </div>
+
+                <span
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    padding: "4px 15px",
+                    borderRadius: "999px",
+                    border: "1px solid #FDE68A",
+                    background: "#FFFBEB",
+                    color: "#92400E",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  SUSPENDED
+                </span>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
 
@@ -1122,7 +1310,7 @@ export default function BRGY_MobileUsers() {
             <h3 className="modal-title">Approve Verification</h3>
             <p className="sub-title">Are you sure you want to approve this account as verified?</p>
 
-            <div style={{ display: 'flex', marginBottom: '20px', paddingLeft: '18px', paddingRight: '18px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <span className="location-text">
                 {userToApprove.first_name},&nbsp;
                 {userToApprove.last_name}
@@ -1246,4 +1434,52 @@ const reasondropdownStyles = {
     boxShadow: '0 0 0 2px rgba(0,111,253,0.2)',
     zIndex: 20,
   }),
+};
+
+const updateStatusStyles = (status) => {
+  const color = getStatusColor(status);
+  return {
+    control: (provided, state) => ({
+      ...provided,
+      minWidth: 40,
+      borderRadius: 7,
+      borderColor: color,
+      boxShadow: state.isFocused ? `0 0 0 1.5px ${color}` : 'none',
+      cursor: 'pointer',
+      backgroundColor: state.isFocused
+        ? color + '40'
+        : color + '20',
+      transition: 'border-color 0.3s ease, background-color 0.3s ease',
+      fontSize: '12px',
+      textAlign: 'center',
+      minHeight: 25,
+      height: 24,
+      padding: '0 10px',
+      color: color,
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: color,
+      fontWeight: 600,
+      textTransform: 'capitalize',
+      fontSize: '12px',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      borderRadius: 6,
+      fontSize: '12px',
+    }),
+    indicatorsContainer: () => ({
+      display: 'none',
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      textTransform: 'capitalize',
+      backgroundColor: state.isFocused ? color + '30' : 'white',
+      color: state.isFocused ? color : 'black',
+      cursor: 'pointer',
+      fontSize: '12px',
+      padding: '6px 10px',
+    }),
+  };
 };

@@ -4,7 +4,6 @@ import ADMINNavbar from '../../../components/NavBar/ADMIN-Navbar';
 import ADMINSidebar from '../../../components/SideBar/ADMIN-Sidebar';
 import axios from '../../../axios/axiosInstance';
 import '../../../components/SideBar/styles.css';
-import './ADMIN-Barangay-Reports.css'
 import { ToastContainer, toast } from 'react-toastify';
 import { Player } from '@lottiefiles/react-lottie-player';
 import noBarangayAnim from '@/assets/animations/non data found.json';
@@ -66,11 +65,11 @@ export default function ADMINBarangayReports() {
   const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
   const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper to capitalize words
+
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
+
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'under review', label: 'Under Review' },

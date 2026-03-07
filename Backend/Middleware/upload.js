@@ -1,4 +1,3 @@
-// middleware/upload.js
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -8,13 +7,11 @@ const { v4: uuidv4 } = require('uuid');
 const PUBLIC_BUCKET = process.env.PUBLIC_BUCKET || 'Alerto-public';
 const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET || 'Alerto-private';
 
-// const storage = multer.memoryStorage();
-
 // -------- helpers
 const ensureDir = dir => fs.mkdirSync(dir, { recursive: true });
 const posixJoin = (...p) => p.join('/').replace(/\\/g, '/');
 
-// Storage for announcements (automatic public bucket)
+// Storage for announcements (in public bucket)
 const announcementStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const folder = 'uploads/announcements';
@@ -27,12 +24,11 @@ const announcementStorage = multer.diskStorage({
   }
 });
 
-// Storage for private files (private bucket)
+// Storage for private files (in private bucket)
 const privateStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    let folder = 'uploads/other';  // Default folder
+    let folder = 'uploads/other';  
 
-    // Dynamic folder logic based on fieldname
     switch (file.fieldname) {
       case 'idFile':
         folder = 'uploads/id'; //lgu id uploads
@@ -41,31 +37,31 @@ const privateStorage = multer.diskStorage({
         folder = 'uploads/letter'; //lgu letter uploads
         break;
       case 'idImage':
-        folder = 'uploads/mobile';  // For mobile ID uploads
+        folder = 'uploads/mobile';  // for mobile ID uploads
         break;
       case 'selfieTaken':
-        folder = 'uploads/selfie';  // For mobile user selfie pictures
+        folder = 'uploads/selfie';  // for mobile user selfie pictures
         break;
       case 'selfie':
-        folder = 'uploads/selfie'; // For mobile user selfie pictures
+        folder = 'uploads/selfie'; // for mobile user selfie pictures
         break
       case 'image':
         folder = 'uploads/ocr';  // OCR-specific images
         break;
       case 'picture':
-        folder = 'uploads/profile';  // For mobile user profile pictures
+        folder = 'uploads/profile';  // for mobile user profile pictures
         break;
       case 'media':
-        folder = 'uploads/reports';  // For report submissions
+        folder = 'uploads/reports';  // for report submissions
         break;
       case 'proof':
-        folder = 'uploads/proof'; // For proof submission
+        folder = 'uploads/proof'; // for proof submission
         break;
       case 'officialImage':
-        folder = 'uploads/officials';
+        folder = 'uploads/officials'; //for barangay official upload
         break;
       default:
-        folder = 'uploads/other';  // Fallback for unmatched fields
+        folder = 'uploads/other';  // fallback for unmatched fields
     }
 
     ensureDir(folder);
@@ -100,7 +96,7 @@ const privateStorage = multer.diskStorage({
     'video/x-matroska'
   ];
 
-  // File filter to allow specific mimetypes per field
+  // File filter to allow specific types per field
 const fileFilter = (req, file, cb) => {
   const ok = (types) => types.includes(file.mimetype);
 
@@ -148,7 +144,6 @@ const fileFilter = (req, file, cb) => {
 };
 
 
-// Multer upload instances
 const uploadPrivate = multer({
   storage: privateStorage,
   fileFilter,
@@ -237,40 +232,6 @@ function uploadWithSupabase(fields, isAnnouncement = false, options = {}) {
             });
           }
         }
-        //   const files = req.files[field.name];
-        //   if (!files) continue;
-        //   for (const f of files) {
-
-        //     const localPath = path.join(f.destination, f.filename);
-        //     const relativePath = path.relative('uploads', localPath).replace(/\\/g, '/');
-            
-        //     // Determine bucket and public/private flag using env vars
-        //     let bucketName = PRIVATE_BUCKET;
-        //     let isPublic = false;
-
-        //    if (field.name === 'images' && isAnnouncement) {
-        //       bucketName = PUBLIC_BUCKET;
-        //       isPublic = true;
-        //     }
-        //     let url = null;
-        //     try {
-        //       url = await uploadToSupabase(localPath, relativePath, bucketName, isPublic);
-        //     } catch (uploadErr) {
-        //       console.error(`[UPLOAD] Supabase upload failed for ${relativePath}:`, uploadErr.message);
-        //       return next(uploadErr);
-        //     }
-        //     // Delete local file after successful upload
-        //     deleteLocalFile(localPath);
-
-        //     if (!req.supabaseFiles[field.name]) req.supabaseFiles[field.name] = [];
-        //     req.supabaseFiles[field.name].push({
-        //       // localPath: `/uploads/${relativePath}`,
-        //       supabaseUrl: url,
-        //       isPublic,
-        //       relativePath
-        //     });
-        //   }
-        // }
         next();
       } catch (e) {
         console.error('[UPLOAD] Fatal Supabase sync error:', e.message);

@@ -1,4 +1,4 @@
-//for Tab title
+//for tab title
 
 import { useEffect } from 'react';
 

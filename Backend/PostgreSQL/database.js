@@ -48,7 +48,7 @@ if (process.env.DB_ENV === 'supabase') {
 
 const pool = new Pool(poolConfig);
 
-// Initial test (silent after first success)
+// Initial connection test (silent after first success)
 let testRetries = 0;
 const maxRetries = 5;
 let hasConnected = false;

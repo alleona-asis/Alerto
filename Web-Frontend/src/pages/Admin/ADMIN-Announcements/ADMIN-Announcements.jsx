@@ -12,7 +12,7 @@ export default function ADMINBarangayReports() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch announcements
+
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
@@ -28,7 +28,6 @@ export default function ADMINBarangayReports() {
     fetchAnnouncements();
   }, []);
 
-  // Helper
   const getImages = (announcement) => {
     let images = [];
     if (announcement.image_urls) {

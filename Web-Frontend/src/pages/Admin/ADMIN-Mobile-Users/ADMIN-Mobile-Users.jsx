@@ -54,17 +54,17 @@ export default function ADMINMobileUsers() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
 
-  // Helper to capitalize words
+
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
+
   const statusOptions = [
     { value: 'verified', label: 'verified' },
     { value: 'unverified', label: 'unverified' },
   ];
 
-  // Next status options depending on current
+
   const getNextStatusOptions = (currentStatus) => {
     switch (currentStatus.toLowerCase()) {
       case "pending":
@@ -90,7 +90,7 @@ export default function ADMINMobileUsers() {
     }
   };
 
-  // Sort options
+
   const sortOptions = [
     { value: 'incident-type-asc', label: 'Sort by Incident Type' },
     { value: 'date-desc', label: 'Sort by Date' },
@@ -98,7 +98,7 @@ export default function ADMINMobileUsers() {
     { value: 'id-asc', label: 'Sort by ID' },
   ];
 
-  // Sorting function
+
   const sortMobileUsers = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -115,7 +115,7 @@ export default function ADMINMobileUsers() {
     }
   };
 
-  // Filtering function
+
   const filterIncidentReports = (users) => {
     const query = searchQuery.toLowerCase();
     return users.filter((user) =>
@@ -134,7 +134,7 @@ export default function ADMINMobileUsers() {
     );
   };
 
-  // Memoized filtered + sorted reports
+
   const displayMobileUsers = useMemo(() => {
     const filtered = filterIncidentReports(mobileUsers);
     return sortMobileUsers(filtered, sortOption);

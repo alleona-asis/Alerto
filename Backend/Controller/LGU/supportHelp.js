@@ -1,4 +1,3 @@
-// controllers/lguFeedbackController.js
 const pool = require('../../PostgreSQL/database');
 const path = require('path');
 const {supabase} = require('../../PostgreSQL/supabaseClient');
@@ -7,21 +6,18 @@ const { generateSignedUrl } = require('../../utils/supabase');
 //  SUBMIT LGU FEEDBACK
 // ==============================
 
-// Helper: extract a single string from req.body (handles arrays/undefined)
 function pick(req, key) {
   const v = req?.body?.[key];
   if (Array.isArray(v)) return v[0];
   return v;
 }
 
-// Helper: "non-empty?" check for strings
 function need(v) {
   if (v === undefined || v === null) return false;
   const s = String(v).trim();
   return s.length > 0;
 }
 
-// normalize feedbackType to a set
 function normalizeFeedbackType(ft) {
   if (!ft) return '';
   const s = String(ft).trim().toLowerCase();
@@ -66,7 +62,7 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
     let images = Array.isArray(req.lguFiles?.images) ? req.lguFiles.images : [];
     let video  = req.lguFiles?.video ?? null;
 
-    // Ensure only path/type/name are stored (no signed URLs)
+    // only path/type/name are stored, no signed urls
     images = (images || []).map((i) => ({
       path: i.path || '',
       type: i.type || '',
@@ -83,7 +79,6 @@ const submitLGUFeedback = async (req, res, { fileUrls } = {}) => {
       video = null;
     }
 
-    // Option B: if route passed simple URLs via { fileUrls }, fall back to fileUrls:
     if ((!images || images.length === 0) && !video && Array.isArray(fileUrls)) {
       const tmpImages = [];
       let tmpVideo = null;
@@ -154,9 +149,9 @@ const getAllLGUFeedback = async (req, res) => {
     const result = await pool.query(query);
     const rows = result.rows || [];
 
-        // Generate fresh signed URLs for images & video each time
+    // Generate fresh signed URLs for images and video each time
     for (const row of rows) {
-      // images
+      // image(s)
       if (Array.isArray(row.images)) {
         row.images = await Promise.all(
           row.images.map(async (img) => {
@@ -177,7 +172,7 @@ const getAllLGUFeedback = async (req, res) => {
         );
       }
 
-      // video
+      // video(s)
       if (row.video && (row.video.path || row.video.url)) {
         const objectKey = row.video.path || row.video.url;
         let signedUrl = null;

@@ -3,7 +3,7 @@ import axios from '../../axios/axiosInstance';
 import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import './styles.css';
-//import 'react-toastify/dist/ReactToastify.css';
+
 
 export default function BRGYNavbar() {
   const [showSidebar, setShowSidebar] = useState(false);
@@ -222,7 +222,7 @@ useEffect(() => {
   };
 
 
-  socket.on('connect', () => console.log('🔌 Connected to socket server'));
+  socket.on('connect', () => console.log('Connected to socket server'));
   
   socket.on('mobileUserRegistered', refreshNotifications);
   socket.on('newVerificationRequest', refreshNotifications);
@@ -232,7 +232,7 @@ useEffect(() => {
 
   return () => {
     socket.disconnect();
-    console.log('🔌 Disconnected from socket server');
+    console.log('Disconnected from socket server');
   };
 }, [BRGYProfile]);
 
@@ -245,7 +245,7 @@ useEffect(() => {
     setNotifications(prev => {
       const now = new Date();
 
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000; // FIVE_MINUTES = 5 * 60 * 1000
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000; 
       const expired = prev.filter(
         n => n.is_read && (now - new Date(n.read_at)) > THIRTY_DAYS
       );
@@ -254,13 +254,13 @@ useEffect(() => {
       expired.forEach(async notif => {
         try {
           await axios.delete(`/api/brgy/notifications/${notif.id}`);
-          console.log(`🗑 Deleted notification ${notif.id} from DB`);
+          console.log(`Deleted notification ${notif.id} from DB`);
         } catch (err) {
           console.error(`Failed to delete notification ${notif.id}`, err);
         }
       });
 
-      // keep unread + valid read notifications
+      // keep unread and valid read notifications
       const filtered = prev.filter(
         n => !n.is_read || (now - new Date(n.read_at)) <= 5 * 60 * 1000
       );
@@ -268,7 +268,7 @@ useEffect(() => {
       localStorage.setItem('notifications', JSON.stringify(filtered));
       return filtered;
     });
-  }, 1000); // check every 10s
+  }, 1000); 
 
   return () => clearInterval(interval);
 }, []);

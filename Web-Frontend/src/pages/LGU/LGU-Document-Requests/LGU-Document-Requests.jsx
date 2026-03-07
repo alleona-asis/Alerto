@@ -45,7 +45,7 @@ export default function LGUDocumentRequest() {
   const [requestToDelete, setRequestToDelete] = useState(null);
 
 
-  // Create socket connection once, memoized
+
   const socket = useMemo(() => 
   io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
     transports: ["websocket", "polling"],
@@ -54,12 +54,12 @@ export default function LGUDocumentRequest() {
 []
 );
 
-  // Helper to capitalize words
-  const capitalizeWords = (str) =>
+
+const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()) || '';
 
-  // Status options
-  const statusOptions = [
+
+const statusOptions = [
     { value: 'Submitted', label: 'Submitted' },
     { value: 'Processing', label: 'Processing' },
     { value: 'Accepted', label: 'Accepted' },
@@ -93,7 +93,6 @@ export default function LGUDocumentRequest() {
     }
   };
 
-  // Sort options
   const sortOptions = [
     { value: 'document-type-asc', label: 'Sort by Document Type' },
     { value: 'date-time-asc', label: 'Sort by Preferred Date & Time' },
@@ -102,7 +101,6 @@ export default function LGUDocumentRequest() {
     { value: 'status-asc', label: 'Sort by Status' },
   ];
 
-  // Define custom status order
   const statusOrder = [
     'submitted',
     'processing',
@@ -114,7 +112,6 @@ export default function LGUDocumentRequest() {
     'unclaimed',
   ];
 
-  // Sorting function by date only
   const sortDocumentRequests = (requests, option) => {
     const sorted = [...requests];
 
@@ -167,7 +164,6 @@ export default function LGUDocumentRequest() {
   };
 
 
-  // Filtering function
   const filterDocumentRequests = (users) => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return users;
@@ -205,7 +201,6 @@ export default function LGUDocumentRequest() {
     });
   };
 
-  // Memoized filtered and sorted users
   const displayDocumentRequests = useMemo(() => {
     const filtered = filterDocumentRequests(documentRequest);
     return sortDocumentRequests(filtered, sortOption);
@@ -428,8 +423,6 @@ export default function LGUDocumentRequest() {
             <tr>
               <th className="table-header" style={{ width: '150px' }}>Document ID</th>
               <th className="table-header" style={{ width: '400px' }}>Document Type</th>
-              <th className="table-header" style={{ width: '300px' }}>Preferred Date & Time</th>
-              <th className="table-header" style={{ width: '300px' }}>Requested By</th>
               <th className="table-header" style={{ width: '100px' }}>Barangay</th>
               <th className="table-header" style={{ width: '100px' }}>Status</th>
               <th className="table-header" style={{ paddingLeft: '100px' }}>Action</th>
@@ -447,15 +440,6 @@ export default function LGUDocumentRequest() {
               >
                 <td className="table-cell">{`DOC-${String(user.id).padStart(5, '0')}`}</td>
                 <td className="table-cell">{user.document_type}</td>
-                <td className="table-cell">
-                  {user.date && user.time
-                    ? format(
-                        new Date(`${user.date.split('T')[0]}T${user.time}`),
-                        'MM/dd/yyyy | hh:mm a'
-                      )
-                    : 'N/A'}
-                </td>
-                <td className="table-cell">{user.requested_by}</td>
                 <td className="table-cell">{user.barangay}</td>
                 <td className="table-cell" style={{ minWidth: 130 }}>
                   <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
@@ -586,7 +570,7 @@ export default function LGUDocumentRequest() {
         </div>
       </div>
 
-      {/* SHOW DETAILS MODAL */}
+      {/* SHOW DETAILS MODAL 
       {showDetailsModal && selectedRequest && (
         <div
           className="modal-overlay"
@@ -693,6 +677,7 @@ export default function LGUDocumentRequest() {
           </div>
         </div>
       )}
+    */}
 
       {/* DELETE CONFIRMATION MODAL */}
       {showDeleteConfirm && requestToDelete && (
@@ -892,8 +877,8 @@ const styles = {
   cell: { padding: "4px", paddingLeft: "100px", paddingRight: "30px" },
   row: { display: "flex", alignItems: "center", gap: "15px" },
   icon: {
-    width: "20px",
-    height: "20px",
+    width: "25px",
+    height: "25px",
     cursor: "pointer",
     transition: "transform 0.15s ease",
   },

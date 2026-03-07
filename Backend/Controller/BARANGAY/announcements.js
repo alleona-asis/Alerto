@@ -52,7 +52,7 @@ const createAnnouncement = async (req, res) => {
     const supabaseFiles = req.supabaseFiles?.images || []; // from uploadWithSupabase
     const localFiles = req.files?.images || []; // from multer
 
-    // Safely handle files
+
     const filenames = localFiles.map(f => f.filename).filter(Boolean); //local file names of images
 
     const urls = supabaseFiles.map(f => f.supabaseUrl).filter(Boolean); //urls of supabase files
@@ -212,18 +212,18 @@ const deleteAnnouncement = async (req, res) => {
       ]
     );
 
-    // Delete image files from server
+    // Delete image files from server and database
     try {
       let filenames = [];
 
       if (Array.isArray(announcement.image_filenames)) {
-        // Case: already stored as array in DB
+        // if already stored as array in DB
         filenames = announcement.image_filenames;
       } else if (
         typeof announcement.image_filenames === "string" &&
         announcement.image_filenames.trim() !== ""
       ) {
-        // Case: stored as JSON string in DB
+        // if stored as JSON string in DB
         filenames = JSON.parse(announcement.image_filenames);
       }
 
@@ -323,12 +323,11 @@ const getAnnouncementByUserLocation = async (req, res) => {
       }
     }
 
-    // Include user's own barangay + followed barangays
+    // Include user's own barangay and followed barangays
     const allBarangays = [barangay, ...followed.map(f => f.brgyDesc)];
 
-    //console.log("All barangays to fetch:", allBarangays);
 
-    // Fetch announcements from own + followed barangays
+    // Fetch announcements from own and followed barangays
     const announcementResult = await pool.query(
       `SELECT *
        FROM announcements
@@ -338,7 +337,6 @@ const getAnnouncementByUserLocation = async (req, res) => {
       [region, province, city, allBarangays]
     );
 
-    //console.log(`Announcements fetched: ${announcementResult.rows.length}`);
     res.json(announcementResult.rows);
   } catch (err) {
     console.error(err);
@@ -447,7 +445,7 @@ const toggleLikeAnnouncement = async (req, res) => {
       [announcementId]
     );
 
-    const liked = check.rows.length === 0; // if inserted now, liked = true
+    const liked = check.rows.length === 0; 
     const likesCount = parseInt(countResult.rows[0].likes_count);
 
     return res.json({ liked, likesCount, users: usersResult.rows });
@@ -465,14 +463,12 @@ const getAnnouncementLikes = async (req, res) => {
   const { announcementId, userId } = req.params;
 
   try {
-    // Total likes for everyone
     const countResult = await pool.query(
       "SELECT COUNT(*) AS likes_count FROM announcement_likes WHERE announcement_id = $1",
       [announcementId]
     );
     const likesCount = parseInt(countResult.rows[0].likes_count);
 
-    // Whether this specific user liked it
     let liked = false;
     if (userId) {
       const userCheck = await pool.query(
@@ -580,9 +576,6 @@ const deleteComment = async (req, res) => {
 // BARANGAY OFFICIALS
 // =========================
 const createOfficial = async (req, res) => {
-  //console.log("📥 Incoming Official Creation Request");
-  //console.log("📝 Data:", req.body);
-  //console.log("📎 File:", req.file);
 
   const { 
     name, 
@@ -712,7 +705,6 @@ const getOfficials = async (req, res) => {
       `SELECT * FROM barangay_officials ORDER BY created_at DESC`
     );
 
-    // No need to parse if stored as JSONB, just ensure null if empty
     const officials = result.rows.map(o => ({
       ...o,
       profile_picture: o.profile_picture || null
@@ -876,7 +868,7 @@ const sendAlert = async (req, res) => {
   }
 
   try {
-    // Save alert in web table
+    // Save alert 
     const result = await pool.query(
       `INSERT INTO alerts
         (title, text, sent_by_id, sent_by_name, region, province, city, barangay)
@@ -887,10 +879,9 @@ const sendAlert = async (req, res) => {
 
     const createdAlert = result.rows[0];
 
-    // Debug: log what was saved in DB
     console.log("Alert saved in DB:", { id: createdAlert.id, title: createdAlert.title, text: createdAlert.text });
 
-    // Send mobile notifications
+    // for sending mobile notifications
     try {
       const usersResult = await pool.query(
         `SELECT id FROM mobile_users
@@ -909,7 +900,6 @@ const sendAlert = async (req, res) => {
             [userId, 'send_alert_updates', 'created', title, text]
           );
 
-          //log each notification inserted
           console.log("Notification saved:", { userId, title: notifResult.rows[0].title, text: notifResult.rows[0].text });
         }
 
@@ -922,7 +912,7 @@ const sendAlert = async (req, res) => {
       console.error("Full error:", notifErr);
     }
 
-    // Emit to all clients (web/mobile)
+    // Emit to all clients (both web and mobile)
     const io = getIo();
     console.log("Emitting alertUpdate with title/text:", { title: createdAlert.title, text: createdAlert.text });
     io.emit("alertUpdate", {
