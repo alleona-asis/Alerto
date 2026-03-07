@@ -45,116 +45,6 @@ const fuzzyMatchKeywords = (text, idType) => {
 };
 
 
-// =================================================
-//  OCR PROCESSING
-// =================================================
-
-// async function processOCR(req, res, { localPaths = [] }) {
-//   const userId = Number(req.params.userId);
-//   const idType = req.body.idType || req.body.id_type;
-
-//   console.log('[OCR] enter processOCR', { userId, idType, localCount: localPaths.length });
-
-//   try {
-//     const filesMeta = (req.supabaseFiles?.files) || [];
-//     const front = filesMeta[0] || null;
-//     const back  = filesMeta[1] || null;
-
-//     console.log('[OCR] filesMeta', {
-//       count: filesMeta.length,
-//       frontKey: front?.relativePath,
-//       backKey: back?.relativePath
-//     });
-
-//     console.log('[OCR] saving upload metadata to DB…');
-//     const upd = await pool.query(
-//       `UPDATE mobile_users
-//          SET id_type       = COALESCE($1, id_type),
-//              id_front_path = $2, id_front_url = $3,
-//              id_back_path  = $4, id_back_url  = $5,
-//              status        = CASE WHEN status = 'verified' THEN status ELSE 'pending' END,
-//              ocr_status    = 'pending',
-//              ocr_error     = NULL            
-//        WHERE id = $6
-//        RETURNING id, status, id_front_path, id_back_path`,
-//       [
-//         idType, 
-//         front?.relativePath || null, front?.supabaseUrl || null,
-//         back?.relativePath  || null, back?.supabaseUrl  || null, userId
-//       ]
-//     );
-
-//     console.log('[OCR] upload metadata saved', { rowCount: upd.rowCount, saved: upd.rows?.[0] });
-    
-//     console.log('[OCR] responding to client (upload accepted, OCR will continue async)…');
-//     res.json({ ok: true, message: 'ID images uploaded', saved: upd.rows[0] });
-
-
-//     setImmediate(async () => {
-//       const t0 = Date.now();
-//       console.log('[OCR] async worker start', { localCount: localPaths.length, idType });
-
-//       try {
-//         const results = [];
-//         for (const p of localPaths) {
-//            console.log('[OCR] start file', p);
-//           const r = await processOCRLocalFile(p, idType);
-//            console.log('[OCR] done file', { file: p, matched: r?.matched, score: r?.matchScore, textLen: r?.ocrResult?.length || 0 });
-//           results.push(r);
-//         }
-
-//         const frontRes = results[0] || {};
-//         const backRes  = results[1] || {};
-
-//         console.log('[OCR] all files done, writing OCR results to DB…', {
-//           frontScore: frontRes?.matchScore || 0,
-//           backScore: backRes?.matchScore || 0
-//         });
-
-//         await pool.query(
-//           `UPDATE mobile_users
-//              SET ocr_status = 'ok',
-//                  ocr_text_front = $1,
-//                  ocr_text_back  = $2,
-//                  ocr_match_score= $3,
-//                  ocr_updated_at = NOW()
-//            WHERE id = $4`,
-//           [
-//             frontRes?.ocrResult || null,
-//             backRes?.ocrResult  || null,
-//             Math.max(frontRes?.matchScore || 0, backRes?.matchScore || 0),
-//             userId
-//           ]
-//         );
-
-//          console.log('[OCR] DB updated with OCR results', { userId, ms: Date.now() - t0 });
-//       } catch (e) {
-//         console.error('[OCR] async worker failed', { userId, error: e?.message });
-//         await pool.query(
-//           `UPDATE mobile_users
-//              SET ocr_status = 'failed',
-//                  ocr_error  = $1,
-//                  ocr_updated_at = NOW()
-//            WHERE id = $2`,
-//           [String(e?.message || e), userId]
-//         );
-//       } finally {
-//         console.log('[OCR] cleanup: deleting local temp files…');
-//         for (const lp of localPaths) {
-//           try { await fs.promises.unlink(lp); }
-//           catch (e) { console.warn('[OCR] cleanup unlink failed', lp, e?.message); }
-//         }
-//         console.log('[OCR] async worker done');
-//       }
-//     });
-
-//   } catch (err) {
-//     console.error('[OCR] fatal in processOCR()', { userId, error: err?.message });
-//     return res.status(500).json({ ok: false, message: 'Upload saved, OCR failed', error: err.message });
-//   }
-// }
-
-
 
 // =================================================
 //  GET ALL MOBILE USERS WITHIN JURISDICTION
@@ -526,7 +416,7 @@ const deactivateMobileUser = async (req, res) => {
 
     const currentStatus = String(currentRes.rows[0].status || "").toLowerCase();
 
-    // store only verified/unverified as previous
+    // store only verified/unverified as previous history
     const prev =
       currentStatus === "unverified" ? "unverified" : "verified";
 
@@ -543,7 +433,6 @@ const deactivateMobileUser = async (req, res) => {
 
     const updatedUser = result.rows[0];
 
-    // optional: notify (same socket event your UI already listens to)
     const io = getIo();
     io.emit("verificationStatusUpdate", {
       userId: updatedUser.id,
@@ -668,7 +557,6 @@ const suspendMobileUser = async (req, res) => {
       return res.status(400).json({ message: "Missing user ID (id) in request params" });
     }
 
-    // ✅ 1) If suspension already expired, restore immediately
     const restoreRes = await pool.query(
       `
       UPDATE mobile_users
@@ -704,7 +592,6 @@ const suspendMobileUser = async (req, res) => {
       });
     }
 
-    // ✅ 2) Otherwise, apply suspension for 5 minutes
     const currentRes = await pool.query(
       "SELECT status, previous_status FROM mobile_users WHERE id = $1",
       [id]
@@ -753,7 +640,6 @@ const suspendMobileUser = async (req, res) => {
 
 
 module.exports = { 
-  // processOCR,
   getAllMobileUsers,
   deleteMobileUser,
   updateMobileUserStatus,

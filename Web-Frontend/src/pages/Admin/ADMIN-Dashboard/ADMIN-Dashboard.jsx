@@ -133,7 +133,7 @@ export default function ADMINDashboard() {
         // Graphs
         setBarangayReportsGraph(reportsRes.data.graphData || []);
         setMobileUsersGraph(mobileUsersRes.data.graphData || []);
-      // Convert string values to numbers
+      //  string values to numbers
       const lguGraphData = lguAccountsRes.data.graphData.map(item => ({
         status: item.status,
         value: Number(item.value),
@@ -596,7 +596,7 @@ rowThree: {
     alignItems: 'flex-start',
     justifyContent: 'center',
     flexDirection: 'column',
-    //border: '1px solid #ddd',
+
   },
   graphCard: {
     background: '#ffffff',
@@ -606,6 +606,6 @@ rowThree: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    //border: '1px solid #ddd',
+
   },
 }

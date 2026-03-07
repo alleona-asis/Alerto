@@ -16,7 +16,7 @@ fs.mkdirSync(TEMP_DIR, { recursive: true });
 const allowedOrigins = [
   "http://localhost:5173",            
   "http://localhost:3000",              
-  "https://alerto-t3cj.onrender.com",    // deployed frontend
+  "https://alerto-t3cj.onrender.com",    //deployed frontend
   "https://alertoplus.com",
   "https://www.alertoplus.com"           //custom domain(hostinger)
 ];
@@ -41,14 +41,11 @@ app.use(cors({
   exposedHeaders: ["Content-Length", "Content-Range"]
 }));
 
-// app.options('*', cors()); 
 
 app.use(express.json());
 
-// Create HTTP server using Express app
 const server = http.createServer(app);
 
-// Initialize Socket.IO using socket.js 
 const io = initSocket(server);
 
 // -----------------------------
@@ -58,7 +55,7 @@ setInterval(checkExpiredPickups, 10 * 1000);
 
 // Listen for new socket connections
 io.on('connection', (socket) => {
-  //console.log('New client connected:', socket.id);
+  console.log('New client connected:', socket.id);
 
   socket.on("joinRoom", ({ userId }) => {
     if (!userId) return;
@@ -69,27 +66,25 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    //console.log('Client disconnected:', socket.id);
+    console.log('Client disconnected:', socket.id);
   });
 });
 
-// Register existing routes
+// existing routes
 const authRoutes = require('./Routes/authRoutes');
 const adminRoutes = require('./Routes/adminRoutes');
 const lguRoutes = require('./Routes/lguRoutes');
 const brgyRoutes = require('./Routes/brgyRoutes');
 const fileRoutes = require('./Routes/fileRoutes')
 
-// const ocrRoutes   = require('./Routes/ocrRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/lgu', lguRoutes);
 app.use('/api/brgy', brgyRoutes);
 app.use('/api/files', fileRoutes);
-// app.use('/api/ocr', ocrRoutes);
 
-// Static file serving
+// Static file serving (for localhost)
 app.use('/uploads/id', express.static(path.join(__dirname, 'uploads/id')));
 app.use('/uploads/letter', express.static(path.join(__dirname, 'uploads/letter')));
 app.use('/uploads/mobile', express.static(path.join(__dirname, 'uploads/mobile')));
@@ -97,7 +92,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const PORT = process.env.PORT || 5000;
 
-// Use server.listen instead of app.listen for socket.io to work
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
 });

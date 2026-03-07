@@ -8,8 +8,8 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
   auth: { persistSession: false }
 });
 
-const PUBLIC_BUCKET = process.env.PUBLIC_BUCKET;   // 'Alerto-public'
-const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET; // 'Alerto-private'
+const PUBLIC_BUCKET = process.env.PUBLIC_BUCKET;   // 'Alerto-public' bucket
+const PRIVATE_BUCKET = process.env.PRIVATE_BUCKET; // 'Alerto-private' bucket
 
 
 /**
@@ -25,13 +25,13 @@ async function uploadToSupabase(localPath, relativePath, bucketName, isPublic) {
 
   const bucket = bucketName || (isPublic ? PUBLIC_BUCKET : PRIVATE_BUCKET);
 
-  // Read file buffer from localPath
+  // read file from localPath
   const fileBuffer = await fs.promises.readFile(localPath);
 
-  // Detect content type from file extension
+  // detetct content type from file extension
   const contentType = mime.lookup(localPath) || undefined;
 
-  // Upsert=true to avoid duplicate key failures on retries
+  // avoid duplicate key failures on retries
     const { error: upErr } = await supabase.storage
       .from(bucket)
       .upload(relativePath, fileBuffer, {
@@ -45,16 +45,16 @@ async function uploadToSupabase(localPath, relativePath, bucketName, isPublic) {
     }
 
 
-  // Return public URL if public bucket
+  // return public URL if public bucket
     if (isPublic) {
     const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(relativePath);
     return publicUrlData.publicUrl;
   } else {
-    // For private buckets, return signed URL instead of a public placeholder
+    // for private buckets, return signed URL instead of a public placeholder
     const { data, error } = await supabase
       .storage
       .from(bucket)
-      .createSignedUrl(relativePath,  60 * 60 * 24 * 7) // 7 days validity
+      .createSignedUrl(relativePath,  60 * 60 * 24 * 7) // 7 days validity of link
 
     if (error) throw new Error(`Supabase signed URL error: ${error.message}`);
     return data.signedUrl;

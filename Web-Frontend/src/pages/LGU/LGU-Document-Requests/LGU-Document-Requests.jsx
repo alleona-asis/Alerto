@@ -45,7 +45,7 @@ export default function LGUDocumentRequest() {
   const [requestToDelete, setRequestToDelete] = useState(null);
 
 
-  // Create socket connection once, memoized
+
   const socket = useMemo(() => 
   io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
     transports: ["websocket", "polling"],
@@ -54,12 +54,12 @@ export default function LGUDocumentRequest() {
 []
 );
 
-  // Helper to capitalize words
-  const capitalizeWords = (str) =>
+
+const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()) || '';
 
-  // Status options
-  const statusOptions = [
+
+const statusOptions = [
     { value: 'Submitted', label: 'Submitted' },
     { value: 'Processing', label: 'Processing' },
     { value: 'Accepted', label: 'Accepted' },
@@ -93,7 +93,6 @@ export default function LGUDocumentRequest() {
     }
   };
 
-  // Sort options
   const sortOptions = [
     { value: 'document-type-asc', label: 'Sort by Document Type' },
     { value: 'date-time-asc', label: 'Sort by Preferred Date & Time' },
@@ -102,7 +101,6 @@ export default function LGUDocumentRequest() {
     { value: 'status-asc', label: 'Sort by Status' },
   ];
 
-  // Define custom status order
   const statusOrder = [
     'submitted',
     'processing',
@@ -114,7 +112,6 @@ export default function LGUDocumentRequest() {
     'unclaimed',
   ];
 
-  // Sorting function by date only
   const sortDocumentRequests = (requests, option) => {
     const sorted = [...requests];
 
@@ -167,7 +164,6 @@ export default function LGUDocumentRequest() {
   };
 
 
-  // Filtering function
   const filterDocumentRequests = (users) => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return users;
@@ -205,7 +201,6 @@ export default function LGUDocumentRequest() {
     });
   };
 
-  // Memoized filtered and sorted users
   const displayDocumentRequests = useMemo(() => {
     const filtered = filterDocumentRequests(documentRequest);
     return sortDocumentRequests(filtered, sortOption);

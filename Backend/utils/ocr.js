@@ -1,4 +1,3 @@
-//ocr.js
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const fuzzball = require('fuzzball');
@@ -80,7 +79,7 @@ function fuzzyMatchKeywords(text, idType) {
 
 async function preprocess(buf) {
   return await sharp(buf)
-    .rotate()              // EXIF rotation
+    .rotate()              // rotation
     .grayscale()
     .normalize()
     .threshold(180)        // binarize

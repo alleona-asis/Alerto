@@ -120,7 +120,7 @@ function App() {
   const [role, setRole] = useState(localStorage.getItem('role')?.toLowerCase());
   const [notification, setNotification] = useState(null); // { message, type }
 
-  //console.log('Current Token:', token);
+
   console.log('Current Role:', role);
 
   // Sync state with localStorage changes (e.g., logout from another tab)
@@ -129,9 +129,8 @@ function App() {
       if (e.key === 'token' || e.key === 'role') {
         const newToken = localStorage.getItem('token');
         const newRole = localStorage.getItem('role');
-        //console.log('Storage change detected:', e.key);
-        //console.log('New Token:', newToken);
-        //console.log('New Role:', newRole);
+
+        
         setToken(newToken);
         setRole(newRole);
       }

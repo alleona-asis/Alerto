@@ -23,8 +23,8 @@ export default function LGUSidebar({ isCollapsed, toggleSidebar }) {
         const fetchProfile = async () => {
         try {
             const res = await axios.get(`/api/auth/lgu-admin-profile/${userId}`);
-            //console.log('Profile Data:', res.data);
 
+            
             const { last_name, first_name, position } = res.data || {};
 
             setLastName(last_name || 'Unknown');

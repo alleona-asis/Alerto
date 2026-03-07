@@ -65,11 +65,11 @@ export default function ADMINBarangayReports() {
   const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
   const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper to capitalize words
+
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
+
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'under review', label: 'Under Review' },

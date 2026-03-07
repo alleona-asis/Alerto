@@ -65,11 +65,11 @@ export default function LGUBarangayReports() {
   const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
   const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper to capitalize words
+
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
+
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'under review', label: 'Under Review' },
@@ -80,7 +80,7 @@ export default function LGUBarangayReports() {
     { value: 'transferred', label: 'Transferred' },
   ];
 
-  // Next status options depending on current
+
   const getNextStatusOptions = (currentStatus) => {
     switch (currentStatus.toLowerCase()) {
       case "pending":
@@ -106,7 +106,7 @@ export default function LGUBarangayReports() {
     }
   };
 
-  // Sort options
+
   const sortOptions = [
     { value: 'incident-type-asc', label: 'Sort by Incident Type' },
     { value: 'date-desc', label: 'Sort by Date' },
@@ -114,7 +114,7 @@ export default function LGUBarangayReports() {
     { value: 'id-asc', label: 'Sort by ID' },
   ];
 
-  // Sorting function
+
   const sortIncidentReports = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -131,7 +131,7 @@ export default function LGUBarangayReports() {
     }
   };
 
-  // Filtering function
+
   const filterIncidentReports = (users) => {
     const query = searchQuery.toLowerCase();
 
@@ -170,7 +170,7 @@ export default function LGUBarangayReports() {
   };
 
 
-  // Memoized filtered and sorted reports
+
   const displayIncidentReports = useMemo(() => {
     const filtered = filterIncidentReports(incidentReports);
     return sortIncidentReports(filtered, sortOption);

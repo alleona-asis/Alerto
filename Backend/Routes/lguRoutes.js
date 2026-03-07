@@ -98,7 +98,7 @@ const {
 router.post(
   '/submit-feedback',
 
-  // Debug: confirm multipart on device
+
   (req, res, next) => {
     console.log('[LGU FEEDBACK] CT:', req.headers['content-type']);
     next();
@@ -106,14 +106,14 @@ router.post(
 
   authenticateToken,
 
-  // Accept up to 5 files under "files" but do not require them
+  // accept up to 5 files under "files" but do not require them
   uploadWithSupabase([{ name: 'files', maxCount: 5 }]),
 
   async (req, res) => {
     try {
       console.log('[UPLOAD FEEDBACK] Starting submission');
 
-      // Supabase middleware: req.supabaseFiles = { files: [ ... ] } (or undefined)
+
       const list = Array.isArray(req.supabaseFiles?.files) ? req.supabaseFiles.files : [];
 
       const images = [];
@@ -130,10 +130,10 @@ router.post(
         else if (mime.startsWith('video/')) video = entry;
       }
 
-      // Make files available to the controller
+      //  files available to the controller
       req.lguFiles = { images, video };
 
-      // Also provide simple URL list as a fallback path
+      //  provide simple URL list as a fallback path
       const fileUrls = list.map(f => f.relativePath || '');
       console.log('[UPLOAD FEEDBACK] Files:', { count: list.length });
       if (fileUrls.length) console.log('[UPLOAD FEEDBACK] File URLs:', fileUrls);

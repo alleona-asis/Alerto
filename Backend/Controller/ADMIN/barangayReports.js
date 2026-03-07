@@ -50,7 +50,7 @@ const getTotalReports = async (req, res) => {
       GROUP BY TO_CHAR(incident_date, 'Mon')
     `);
 
-    // Map DB results to include all months, even with 0
+    // match database results to include all months, even with 0 existing reports
     const graphData = allMonths.map(month => {
       const existing = monthRows.find(r => r.label === month);
       return existing ? { label: month, value: Number(existing.value) } : { label: month, value: 0 };

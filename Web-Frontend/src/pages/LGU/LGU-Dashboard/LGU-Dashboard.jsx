@@ -224,7 +224,7 @@ export default function LGUDashboard() {
           city: res.data.city || "",
         });
 
-        //console.log("Profile location set:", res.data.region, res.data.province, res.data.city);
+
       } catch (error) {
         console.error("Failed to fetch profile location:", error?.response?.data || error.message);
         setProfile({ region: "", province: "", city: "" });
@@ -284,8 +284,8 @@ export default function LGUDashboard() {
           axios.get('/api/admin/total-LGU-accounts'),
           lguAxios('/api/admin/admin-get-all-pins')
         ]);
-        //console.log("Pins:", pinsRes.data);
 
+        
         // Set totals
         setTotalReports(reportsRes.data.total || 0);
         setTotalDocuments(documentsRes.data.total || 0);
@@ -347,8 +347,8 @@ export default function LGUDashboard() {
     }
 
     const provinces = getProvincesByRegion(regCode);
-    //console.log("Provinces for region:", profile.region, provinces.map(p => p.name));
 
+    
     const matchedProvince = provinces.find(
         (prov) =>
         prov.name.toLowerCase().includes(profile.province.toLowerCase().trim()) ||
@@ -1140,7 +1140,7 @@ const styles = {
     alignItems: 'flex-start',
     justifyContent: 'center',
     flexDirection: 'column',
-    //border: '1px solid #ddd',
+
   },
   graphCard: {
     background: '#ffffff',
@@ -1150,7 +1150,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    //border: '1px solid #ddd',
+
   },
 }
 

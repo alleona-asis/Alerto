@@ -47,13 +47,13 @@ export default function BRGYDocumentRequest() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
-  // socket connection
+
   const socket = useMemo(
     () => io(import.meta.env.VITE_SOCKET_URL),
     []
   );
 
-  // Status options
+
   const statusOptions = [
     { value: 'Submitted', label: 'Submitted' },
     { value: 'Processing', label: 'Processing' },
@@ -91,14 +91,14 @@ export default function BRGYDocumentRequest() {
   };
 
 
-  // Sort options
+
   const sortOptions = [
     { value: 'date-desc', label: 'Sort by Date' },
     { value: 'status-asc', label: 'Sort by Status' },
     { value: 'id-asc', label: 'Sort by ID' },
   ];
 
-  // Sorting function
+
   const sortDocumentRequests = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -113,7 +113,7 @@ export default function BRGYDocumentRequest() {
     }
   };
 
-  // Filtering function
+
   const filterDocumentRequests = (users) => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return users;

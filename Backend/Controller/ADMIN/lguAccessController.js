@@ -15,7 +15,6 @@ const getPendingAccount = async (req, res) => {
       ['pending', 'local government unit']
     );
 
-    //console.log('Found pending accounts:', result.rows);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching pending LGU accounts:', err.message);
@@ -123,7 +122,6 @@ const getLGUAccounts = async (req, res) => {
        AND LOWER(role) = $3`,
       ['approved', 'rejected', 'local government unit']
     );
-    //console.log('Found LGU accounts (approved + rejected):', result.rows);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching LGU accounts:', err.message);
@@ -175,13 +173,11 @@ const deleteLGUAccount = async (req, res) => {
 
 const getTotalLGUAccounts = async (req, res) => {
   try {
-    // Get total LGU accounts with role = 'Local Government Unit'
     const totalRes = await pool.query(`
       SELECT COUNT(*) AS total 
       FROM "admin_accounts" 
       WHERE role = 'Local Government Unit'
     `);
-    //console.log('Total LGU Accounts Result:', totalRes.rows);
 
     // Get count by status for LGU accounts only
     const statusRes = await pool.query(`
@@ -190,7 +186,6 @@ const getTotalLGUAccounts = async (req, res) => {
       WHERE role = 'Local Government Unit'
       GROUP BY status
     `);
-    //console.log('LGU Accounts Status Result:', statusRes.rows);
 
     res.status(200).json({
       total: parseInt(totalRes.rows[0].total),

@@ -50,7 +50,7 @@ const getTotalMobileUsers = async (req, res) => {
     const totalResult = await pool.query('SELECT COUNT(*) AS total FROM mobile_users');
     const total = totalResult.rows[0].total;
 
-    // Generate monthly data with 0 for months with no users
+    // for generating monthly data, with 0 for months with no users
     const graphResult = await pool.query(`
       WITH months AS (
         SELECT generate_series(1, 12) AS month

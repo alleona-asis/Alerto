@@ -98,16 +98,13 @@ const deleteMobileUser = async (req, res) => {
       return res.status(400).json({ message: "Mobile user ID is required" });
     }
 
-    // Start a transaction
     await pool.query('BEGIN');
 
-    // Delete notifications related to the mobile user
     await pool.query(
       `DELETE FROM notifications WHERE mobile_user_id = $1`,
       [id]
     );
 
-    // Delete the mobile user
     const result = await pool.query(
       `DELETE FROM mobile_users
        WHERE id = $1

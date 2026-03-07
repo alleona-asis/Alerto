@@ -98,7 +98,6 @@ const createDocumentRequest = async (req, res) => {
       console.warn('No mobile_user_id provided; skipping notification creation.');
     }
 
-    // Emit via socket.io
     try {
       const io = getIo();
       io.emit('newDocumentRequest', rows[0]);
@@ -166,7 +165,7 @@ const updateDocumentRequestStatus = async (req, res) => {
 
     // Validate amount fields when moving to "ready for pick-up"
     if (status.toLowerCase() === "ready for pick-up") {
-      // allow 0, but not undefined/negative
+      // allow 0 for amount, but not undefined/negative amount
       const amt = Number(price_amount);
       if (!Number.isFinite(amt) || amt < 0) {
         return res.status(400).json({ message: "price_amount must be a non-negative number when setting Ready for Pick-up." });
@@ -192,13 +191,11 @@ const updateDocumentRequestStatus = async (req, res) => {
     let finalNewDate = null;
 
     if (status.toLowerCase() === "ready for pick-up") {
-      // TEST: +5 mins;
       pickupDeadline = new Date(Date.now() + 5 * 60 * 1000);
     }
 
     if (status.toLowerCase() === "reschedule" && new_date) {
       finalNewDate = new Date(new_date);
-      // TEST: +5 mins after reschedule date
       pickupDeadline = new Date(finalNewDate.getTime() + 5 * 60 * 1000);
 
       console.log(`Status updated to: "${status}" by ${updatedBy}`);
@@ -207,7 +204,6 @@ const updateDocumentRequestStatus = async (req, res) => {
       console.log(`Updated status history:`, updatedHistory);
     }
 
-    // Base columns always updated
     const sets = [
       `status = $1`,
       `updated_by = $2`,
@@ -224,7 +220,6 @@ const updateDocumentRequestStatus = async (req, res) => {
       finalNewDate,
     ];
 
-    // If Ready for Pick-up, also persist price 
     if (status.toLowerCase() === "ready for pick-up") {
       sets.push(`price_amount = $${params.length + 1}`);
       params.push(price_amount !== undefined && price_amount !== null ? Number(price_amount) : null);
@@ -469,7 +464,6 @@ const getRequestsByLocation = async (req, res) => {
 // =========================
 // REJECT DOCUMENT REQUEST
 // =========================
-// from Controller/BARANGAY/documentRequest.js
 
 const rejectDocumentRequest = async (req, res) => {
   const where = "[rejectDocumentRequest]";
@@ -479,7 +473,6 @@ const rejectDocumentRequest = async (req, res) => {
 
     console.log(`${where} hit`, { requestId, reason, first_name, last_name });
 
-    // Basic validation
     if (!requestId) {
       console.warn(`${where} 400: missing requestId param`);
       return res.status(400).json({ message: "Missing requestId" });
@@ -561,7 +554,7 @@ const rejectDocumentRequest = async (req, res) => {
       console.error(`${where} failed to save notification`, err);
     }
 
-    // Emit only to the mobile user
+    // Emit only to the mobile user necessary
     try {
       const io = getIo();
       io.to(`user_${updatedRequest.mobile_user_id}`).emit("documentRequestUpdate", {

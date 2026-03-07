@@ -175,15 +175,6 @@ router.post(
         : (req.files?.files || []);
       const localPaths = (multerFiles || []).map(f => f.path).filter(Boolean);
 
-      // console.log('[OCR] starting on', localPaths.length, 'file(s), idType=', req.body?.idType || req.body?.id_type);
-
-      // await processOCR(req, res, { localPaths });
-
-      // console.log('[OCR] finished call to processOCR');
-
-      // for (const p of localPaths) {
-      //   try { if (p) await fs.promises.unlink(p); } catch {}
-      // }
 
       if (!res.headersSent) {
         return res.json({

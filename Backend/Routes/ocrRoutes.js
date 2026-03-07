@@ -1,4 +1,3 @@
-// Routes/ocrRoutes.js
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -6,7 +5,6 @@ const fs = require('fs');
 
 const { processOCRLocalFile, ID_KEYWORDS } = require('../utils/ocr');
 
-// temp upload (server.js ensures 'uploads/temp' exists)
 const upload = multer({ dest: 'uploads/temp/' });
 
 router.post('/', upload.single('image'), async (req, res) => {

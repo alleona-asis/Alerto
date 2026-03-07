@@ -79,7 +79,7 @@ export default function LGUMobileUsers() {
     { value: 'barangay-asc', label: 'Sort by Barangay' },
   ];
 
-  // Sorting function
+
   const sortMobileUsers = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -98,7 +98,7 @@ export default function LGUMobileUsers() {
     }
   };
 
-  // Filtering function
+
   const filterMobileUsers = (users) => {
     const q = (searchQuery || '').trim().toLowerCase();
     if (!q) return users;
@@ -122,7 +122,7 @@ export default function LGUMobileUsers() {
   };
 
 
-  // Memoized filtered + sorted reports
+
   const displayMobileUsers = useMemo(() => {
     const filtered = filterMobileUsers(mobileUsers);
     return sortMobileUsers(filtered, sortOption);

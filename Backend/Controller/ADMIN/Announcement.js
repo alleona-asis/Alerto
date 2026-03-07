@@ -12,7 +12,7 @@ const getTotalAnnouncements = async (req, res) => {
   }
 };
 
-// Get all announcements
+
 const getAllAnnouncements = async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');

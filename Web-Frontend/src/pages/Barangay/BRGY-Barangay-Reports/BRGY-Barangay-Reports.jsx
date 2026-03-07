@@ -82,11 +82,11 @@ export default function BRGYDashboard() {
   const [showBarangayReportDetailsModal, setShowBarangayReportDetailsModal] = useState(false);
   const [activeMiniTab, setActiveMiniTab] = useState("details");
 
-  // Helper to capitalize words
+
   const capitalizeWords = (str) =>
     str?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || '';
 
-  // Status options
+
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'under review', label: 'Under Review' },
@@ -97,7 +97,7 @@ export default function BRGYDashboard() {
     { value: 'transferred', label: 'Transferred' },
   ];
 
-  // Next status options depending on current
+
   const getNextStatusOptions = (currentStatus) => {
     switch (currentStatus.toLowerCase()) {
       case 'pending':
@@ -121,7 +121,7 @@ export default function BRGYDashboard() {
     }
   };
 
-  // Sort options
+
   const sortOptions = [
     { value: 'incident-type-asc', label: 'Sort by Incident Type' },
     { value: 'date-desc', label: 'Sort by Date' },
@@ -129,7 +129,7 @@ export default function BRGYDashboard() {
     { value: 'id-asc', label: 'Sort by ID' },
   ];
 
-  // Sorting function
+
   const sortIncidentReports = (users, option) => {
     const sorted = [...users];
     switch (option) {
@@ -184,7 +184,7 @@ export default function BRGYDashboard() {
     });
   };
 
-  // Memoized filtered + sorted reports
+
   const displayIncidentReports = useMemo(() => {
     const filtered = filterIncidentReports(incidentReports);
     return sortIncidentReports(filtered, sortOption);
@@ -233,7 +233,7 @@ export default function BRGYDashboard() {
   // =================================================
   const barangayList = useMemo(() => {
     if (!profile?.region || !profile?.province || !profile?.city) {
-      //console.warn("Profile incomplete:", profile);
+
       return [];
     }
 
@@ -274,7 +274,7 @@ export default function BRGYDashboard() {
     }
 
     const barangays = getBarangayByMun(matchedCity.mun_code);
-    //console.log("Barangays fetched:", barangays.map(b => b.name));
+
     return barangays;
   }, [profile]);
 
@@ -284,7 +284,7 @@ export default function BRGYDashboard() {
   // =================================================
   useEffect(() => {
     if (!profile) {
-      //console.log("Profile not set.");
+
       return;
     }
 
